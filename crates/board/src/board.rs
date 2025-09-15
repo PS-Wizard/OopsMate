@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::ops::BitOr;
+use std::{ops::BitOr};
 
 #[derive(Clone, Copy)]
 pub struct Board(pub u64);
