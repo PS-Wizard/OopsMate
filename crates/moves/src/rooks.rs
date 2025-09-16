@@ -52,20 +52,19 @@ pub fn get_rook_attacks(square: u64, blockers: u64) -> u64 {
 
 #[cfg(test)]
 mod test_rooks {
-    use crate::{
-        rooks::{get_rook_attacks, get_rook_masks},
-        utils::{BitBoardPrinter, StrToNotation},
-    };
+
+    use handies::{algebraic::Algebraic, board::PrintAsBoard};
+    use crate::rooks::{get_rook_attacks, get_rook_masks};
 
     #[test]
     fn test_rook_mask() {
-        let mask = get_rook_masks("h4".to_idx());
-        mask.print_board()
+        let mask = get_rook_masks("h4".idx());
+        mask.print()
     }
 
     #[test]
     fn test_rook_attacks() {
-        get_rook_attacks("e4".to_idx(), "d4,e2,h4".to_blockers()).print_board();
-        get_rook_attacks("e4".to_idx(), 0).print_board();
+        get_rook_attacks("e4".idx(), "d4,e2,h4".place()).print();
+        get_rook_attacks("e4".idx(), 0).print();
     }
 }

@@ -50,20 +50,19 @@ pub fn get_bishop_attacks(square: u64, blockers: u64) -> u64 {
 
 #[cfg(test)]
 mod test_bishops {
-    use crate::{
-        bishops::{get_bishop_attacks, get_bishop_masks},
-        utils::{BitBoardPrinter, StrToNotation},
-    };
+    use handies::{algebraic::Algebraic, board::PrintAsBoard};
+
+    use crate::bishops::{get_bishop_attacks, get_bishop_masks};
 
     #[test]
     fn test_bishop_mask() {
-        let mask = get_bishop_masks("e4".to_idx());
-        mask.print_board()
+        let mask = get_bishop_masks("e4".idx());
+        mask.print()
     }
 
     #[test]
     fn test_bishop_attacks() {
-       get_bishop_attacks("e4".to_idx(), "g2,c6,d3".to_blockers()).print_board();
-       get_bishop_attacks("e4".to_idx(), 0).print_board();
+        get_bishop_attacks("e4".idx(), "g2,c6,d3".place()).print();
+        get_bishop_attacks("e4".idx(), 0).print();
     }
 }

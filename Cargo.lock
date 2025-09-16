@@ -6,9 +6,17 @@ version = 4
 name = "board"
 version = "0.1.0"
 dependencies = [
- "magics",
+ "handies",
+ "moves",
 ]
 
 [[package]]
-name = "magics"
+name = "handies"
 version = "0.1.0"
+
+[[package]]
+name = "moves"
+version = "0.1.0"
+dependencies = [
+ "handies",
+]

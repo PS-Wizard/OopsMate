@@ -1,4 +1,4 @@
-use crate::utils::enumerate_bit_variations;
+use handies::bits::EnumerateVariations;
 
 /// Takes in functions to generate the attacks and the mask returns the attack table, indexed via
 /// PEXT, and the Masks array.
@@ -11,7 +11,7 @@ where
 
     for square in 0u64..64 {
         let mask = mask_generator(square);
-        let blocker_variants = enumerate_bit_variations(mask);
+        let blocker_variants = mask.enumerate();
 
         let attacks: Vec<u64> = blocker_variants
             .iter()
@@ -28,11 +28,12 @@ where
 mod test_bob {
     use std::arch::x86_64::_pext_u64;
 
+    use handies::{algebraic::Algebraic, board::PrintAsBoard};
+
     use crate::{
         bishops::{get_bishop_attacks, get_bishop_masks},
         bob::generate_attack_table,
         rooks::{get_rook_attacks, get_rook_masks},
-        utils::{BitBoardPrinter, StrToNotation},
     };
 
     #[test]
@@ -51,10 +52,11 @@ mod test_bob {
             total_bytes as f64 / (1024.0 * 1024.0)
         );
 
-        let pext = unsafe { _pext_u64("g2,d5".to_blockers(), get_bishop_masks("e4".to_idx())) };
-        let attack = bishop_attacks["e4".to_idx() as usize][pext as usize];
-        attack.print_board();
+        let pext = unsafe { _pext_u64("g2,d5".place(), get_bishop_masks("e4".idx())) };
+        let attack = bishop_attacks["e4".idx() as usize][pext as usize];
+        attack.print();
     }
+
     #[test]
     fn test_build_rooks() {
         let rook_attacks = generate_attack_table(get_rook_attacks, get_rook_masks);
@@ -71,8 +73,8 @@ mod test_bob {
             total_bytes as f64 / (1024.0 * 1024.0)
         );
 
-        let pext = unsafe { _pext_u64("c4,e2,e7".to_blockers(), get_rook_masks("e4".to_idx())) };
-        let attack = rook_attacks["e4".to_idx() as usize][pext as usize];
-        attack.print_board();
+        let pext = unsafe { _pext_u64("c4,e2,e7".place(), get_rook_masks("e4".idx())) };
+        let attack = rook_attacks["e4".idx() as usize][pext as usize];
+        attack.print();
     }
 }
