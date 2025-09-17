@@ -26,10 +26,6 @@ where
 
 #[cfg(test)]
 mod test_bob {
-    use std::arch::x86_64::_pext_u64;
-
-    use handies::{algebraic::Algebraic, board::PrintAsBoard};
-
     use crate::{
         bishops::{get_bishop_attacks, get_bishop_masks},
         bob::generate_attack_table,
@@ -37,7 +33,7 @@ mod test_bob {
     };
 
     #[test]
-    fn test_build_bishops() {
+    fn test_size_bishop() {
         let bishop_attacks = generate_attack_table(get_bishop_attacks, get_bishop_masks);
 
         let mut total_bytes = 0;
@@ -51,14 +47,10 @@ mod test_bob {
             total_bytes as f64 / 1024.0,
             total_bytes as f64 / (1024.0 * 1024.0)
         );
-
-        let pext = unsafe { _pext_u64("g2,d5".place(), get_bishop_masks("e4".idx())) };
-        let attack = bishop_attacks["e4".idx() as usize][pext as usize];
-        attack.print();
     }
 
     #[test]
-    fn test_build_rooks() {
+    fn test_size_rook() {
         let rook_attacks = generate_attack_table(get_rook_attacks, get_rook_masks);
 
         let mut total_bytes = 0;
@@ -72,9 +64,5 @@ mod test_bob {
             total_bytes as f64 / 1024.0,
             total_bytes as f64 / (1024.0 * 1024.0)
         );
-
-        let pext = unsafe { _pext_u64("c4,e2,e7".place(), get_rook_masks("e4".idx())) };
-        let attack = rook_attacks["e4".idx() as usize][pext as usize];
-        attack.print();
     }
 }
