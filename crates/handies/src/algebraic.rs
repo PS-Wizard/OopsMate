@@ -16,14 +16,22 @@ pub trait Algebraic {
     /// 2 . . . . . . X .
     /// 1 . . . . . . . .
     /// + a b c d e f g h
-    fn place(&self) -> u64;
+    fn place(&self) -> u64 {
+        unimplemented!("place() only for str");
+    }
     /// Takes in a `str` for a square in algebric notation and returns the corresponding index in
     /// a 0-63 indexed bitboard
     /// # Example
     ///
     /// let idx = "g2".idx();
     /// assert_eq(idx,14);
-    fn idx(&self) -> u64;
+    fn idx(&self) -> u64 {
+        unimplemented!("idx() only for str");
+    }
+
+    fn notation(&self) -> String {
+        unimplemented!("notation() is only for u64")
+    }
 }
 
 impl Algebraic for str {
@@ -66,5 +74,28 @@ impl Algebraic for str {
         let file = (self.as_bytes()[0].to_ascii_lowercase() - b'a') as u64; // 0..7
         let rank = (self.as_bytes()[1] - b'1') as u64; // '1'..'8' → 0..7
         rank * 8 + file
+    }
+}
+
+impl Algebraic for u64 {
+    fn notation(&self) -> String {
+        let mut result = String::new();
+        let mut bb = *self;
+
+        while bb != 0 {
+            let sq = bb.trailing_zeros() as u64;
+            bb &= bb - 1;
+
+            let file = (sq % 8) as u8;
+            let rank = (sq / 8) as u8;
+
+            if !result.is_empty() {
+                result.push(',');
+            }
+            result.push((b'a' + file) as char);
+            result.push((b'1' + rank) as char);
+        }
+
+        result
     }
 }

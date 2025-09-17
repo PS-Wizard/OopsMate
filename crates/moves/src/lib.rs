@@ -11,6 +11,7 @@ mod bishops;
 mod bob;
 mod king;
 mod knights;
+pub mod pawns;
 mod rooks;
 
 pub static BISHOP_MASKS: LazyLock<Vec<u64>> =
@@ -27,6 +28,8 @@ pub static KNIGHT_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_knigh
 
 #[cfg(test)]
 mod test {
+
+    use crate::pawns::generate_pawn_moves;
 
     use super::*;
     use handies::bits::EnumerateVariations;
@@ -73,7 +76,7 @@ mod test {
     }
 
     #[test]
-    fn benchmark_attack_lookups() {
+    fn benchmark_attacks() {
         // force initialization
         let _ = BISHOP_MASKS.len();
         let _ = BISHOP_ATTACKS.len();
@@ -150,6 +153,32 @@ mod test {
             knight_duration.as_nanos() as f64 / 64.0
         );
 
+        // pawns
+        let white_pawns = 0x000000000000FF00_u64;
+        let black_pawns = 0x00FF000000000000_u64;
+
+        let mut pawn_sink = 0u64;
+        let mut total_ops = 0usize;
+
+        // Benchmark white pawns
+        let start = Instant::now();
+        for i in 0..1000 {
+            // repeat to get measurable time
+            let wp = white_pawns.rotate_left((i % 8) * 8); // rotate ranks for variety
+            let bp = black_pawns.rotate_right((i % 8) * 8);
+            let moves_white = generate_pawn_moves(wp, bp, 0, 0);
+            let moves_black = generate_pawn_moves(bp, wp, 1, 0);
+            pawn_sink ^= moves_white ^ moves_black;
+            total_ops += 2;
+        }
+        let duration = start.elapsed();
+        println!(
+            "Pawn movegen varied: {} ops, total {:?}, avg {:.2} ns/op",
+            total_ops,
+            duration,
+            duration.as_nanos() as f64 / total_ops as f64
+        );
+
         // queens (cartesian product)
         let start = Instant::now();
         let mut queen_ops = 0usize;
@@ -180,6 +209,13 @@ mod test {
         );
 
         // prevent optimizer from nuking everything
-        std::hint::black_box((bishop_sink, rook_sink, king_sink, knight_sink, queen_sink));
+        std::hint::black_box((
+            bishop_sink,
+            rook_sink,
+            king_sink,
+            knight_sink,
+            queen_sink,
+            pawn_sink,
+        ));
     }
 }
