@@ -154,6 +154,8 @@ impl Game {
 }
 #[cfg(test)]
 mod game_tests {
+    use std::time::Instant;
+
     use super::{Color, Game, PieceType};
 
     #[test]
@@ -175,6 +177,31 @@ mod game_tests {
         assert_eq!(g.get_piece_at(60), Some((PieceType::King, Color::Black)));
 
         g.print_board();
+    }
+    #[test]
+    fn test_bench_speed() {
+        use std::hint::black_box;
+        use std::time::Instant;
+
+        let g = Game::new();
+        let mut acc: u64 = 0; // accumulate something so compiler can't remove the loop
+
+        let start = Instant::now();
+        for sq in 0..64 {
+            if let Some((piece_type, color)) = g.get_piece_at(sq) {
+                // combine values in a trivial way
+                acc += piece_type as u64 + color as u64;
+            }
+        }
+        // prevent compiler from optimizing away the loop entirely
+        black_box(acc);
+
+        let duration = start.elapsed();
+        println!(
+            "Lookups for Corresponding table took: {:.3?}, total: 64, avg: {:.2} ns/lookup",
+            duration,
+            duration.as_nanos() as f64 / 64.0
+        );
     }
 
     #[test]
