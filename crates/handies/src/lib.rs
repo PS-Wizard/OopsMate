@@ -1,7 +1,6 @@
 pub mod algebraic;
 pub mod bits;
 pub mod board;
-pub mod constants;
 
 #[cfg(test)]
 mod test {

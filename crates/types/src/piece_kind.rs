@@ -2,7 +2,7 @@
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum BoardIdx {
+pub enum PieceKind {
     Empty = 0,
     WhitePawn,
     WhiteRook,
@@ -18,9 +18,11 @@ pub enum BoardIdx {
     BlackKing,
 }
 
-impl BoardIdx {
-    pub fn idx(&self) -> usize {
-        debug_assert!(*self != BoardIdx::Empty, "Tried to index with Empty Piece");
-        (*self as usize) - 1
+impl PieceKind {
+    #[inline(always)]
+    pub fn idx(self) -> usize {
+        debug_assert!(self != PieceKind::Empty, "Tried to index with Empty Piece");
+        (self as usize) - 1
     }
 }
+

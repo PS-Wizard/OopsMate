@@ -57,6 +57,7 @@ mod test_king {
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     fn test_size_king() {
         let moves = generate_king_attacks();
         let total_bytes = moves.len() * std::mem::size_of::<u64>();

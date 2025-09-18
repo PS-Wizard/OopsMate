@@ -1,8 +1,0 @@
-[package]
-name = "board"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-moves = {path = "../moves/"}
-handies = {path = "../handies/"}

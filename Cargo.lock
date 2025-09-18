@@ -3,26 +3,18 @@
 version = 4
 
 [[package]]
-name = "bboard"
-version = "0.1.0"
-dependencies = [
- "handies",
-]
-
-[[package]]
-name = "board"
-version = "0.1.0"
-dependencies = [
- "handies",
- "moves",
-]
-
-[[package]]
 name = "handies"
 version = "0.1.0"
 
 [[package]]
 name = "moves"
+version = "0.1.0"
+dependencies = [
+ "handies",
+]
+
+[[package]]
+name = "types"
 version = "0.1.0"
 dependencies = [
  "handies",

@@ -25,6 +25,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg(debug_assertions)]
 mod test_bob {
     use crate::{
         bishops::{generate_bishop_attacks, generate_bishop_masks},

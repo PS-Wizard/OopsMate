@@ -6,7 +6,12 @@ const RANK_7: u64 = 0x00FF000000000000;
 const FILE_A: u64 = 0x0101010101010101;
 const FILE_H: u64 = 0x8080808080808080;
 
-pub fn get_pawn_attacks(pawn_bitboard: u64, enemies: u64, turn: u64, en_passant_square: u64) -> u64 {
+pub fn get_pawn_attacks(
+    pawn_bitboard: u64,
+    enemies: u64,
+    turn: u64,
+    en_passant_square: u64,
+) -> u64 {
     let empty = !(pawn_bitboard | enemies);
 
     // --- Single pushes ---
@@ -18,8 +23,10 @@ pub fn get_pawn_attacks(pawn_bitboard: u64, enemies: u64, turn: u64, en_passant_
     let double_pushes_black = ((pawn_bitboard & RANK_7) >> 8 & empty) >> 8 & empty;
 
     // --- Normal captures ---
-    let captures_white = (((pawn_bitboard << 7) & !FILE_H) | ((pawn_bitboard << 9) & !FILE_A)) & enemies;
-    let captures_black = (((pawn_bitboard >> 9) & !FILE_H) | ((pawn_bitboard >> 7) & !FILE_A)) & enemies;
+    let captures_white =
+        (((pawn_bitboard << 7) & !FILE_H) | ((pawn_bitboard << 9) & !FILE_A)) & enemies;
+    let captures_black =
+        (((pawn_bitboard >> 9) & !FILE_H) | ((pawn_bitboard >> 7) & !FILE_A)) & enemies;
 
     // --- En passant captures ---
     let ep_captures_white = (((pawn_bitboard & 0x000000FF00000000) << 7 & !FILE_H)
@@ -43,9 +50,9 @@ pub fn get_pawn_attacks(pawn_bitboard: u64, enemies: u64, turn: u64, en_passant_
 }
 
 #[cfg(test)]
+#[cfg(debug_assertions)]
 mod test_pawns {
     use handies::board::PrintAsBoard;
-
     use crate::pawns::{RANK_2, get_pawn_attacks};
 
     #[test]

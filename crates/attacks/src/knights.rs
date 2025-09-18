@@ -1,4 +1,4 @@
-pub fn generate_knight_moves() -> [u64; 64] {
+pub fn generate_knight_attacks() -> [u64; 64] {
     let mut moves = [0u64; 64];
 
     for square in 0..64 {
@@ -53,19 +53,20 @@ pub fn generate_knight_moves() -> [u64; 64] {
 mod test_knight {
     use handies::board::PrintAsBoard;
 
-    use crate::knights::generate_knight_moves;
+    use crate::knights::generate_knight_attacks;
 
     #[test]
     fn test_knight_attacks() {
-        let moves = generate_knight_moves();
+        let moves = generate_knight_attacks();
         for ele in moves {
             ele.print();
         }
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     fn test_size_knight() {
-        let moves = generate_knight_moves();
+        let moves = generate_knight_attacks();
         let total_bytes = moves.len() * std::mem::size_of::<u64>();
         println!(
             "Knight table size: {} bytes (~{:.2} KB, {:.2} MB)",

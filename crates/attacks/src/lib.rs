@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use crate::{
     bishops::{generate_bishop_attacks, generate_bishop_masks},
     king::generate_king_attacks,
-    knights::generate_knight_moves,
+    knights::generate_knight_attacks,
     rooks::{generate_rook_attacks, generate_rook_masks},
 };
 
@@ -23,7 +23,7 @@ static ROOK_MASKS: LazyLock<Vec<u64>> =
 static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
     LazyLock::new(|| bob::generate_attack_table(generate_rook_attacks, generate_rook_masks));
 static KING_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_king_attacks());
-static KNIGHT_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_knight_moves());
+static KNIGHT_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_knight_attacks());
 
 pub fn warmup_attack_tables() {
     use std::arch::x86_64::_pext_u64;
@@ -127,14 +127,15 @@ mod test {
         let pext_r = unsafe { _pext_u64("a2".place(), ROOK_MASKS[sq]) };
         let rook_attack = ROOK_ATTACKS[sq][pext_r as usize];
         rook_attack.print();
-
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     fn benchmark_init() {
         let start = Instant::now();
-        warmup_attack_tables(); 
+        warmup_attack_tables();
         let duration = start.elapsed();
+        #[cfg(debug_assertions)]
         println!("Attack tables initialized & warmed up in: {:.3?}", duration);
     }
 

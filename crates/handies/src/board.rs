@@ -19,6 +19,7 @@ pub trait PrintAsBoard {
 }
 
 impl PrintAsBoard for u64 {
+    #[cfg(debug_assertions)]
     fn print(&self) {
         for rank in (0..8).rev() {
             print!("{} ", rank + 1); // ranks 1..8
@@ -36,5 +37,3 @@ impl PrintAsBoard for u64 {
         println!("  a b c d e f g h");
     }
 }
-
-
