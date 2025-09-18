@@ -38,4 +38,3 @@ impl PrintAsBoard for u64 {
 }
 
 
-

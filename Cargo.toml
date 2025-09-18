@@ -1,4 +1,4 @@
 [workspace]
-members = ["crates/board", "crates/handies", "crates/moves"]
+members = [ "crates/bboard", "crates/board", "crates/handies", "crates/moves"]
 resolver = "3"
 
