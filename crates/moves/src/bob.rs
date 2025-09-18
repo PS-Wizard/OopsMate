@@ -27,15 +27,15 @@ where
 #[cfg(test)]
 mod test_bob {
     use crate::{
-        bishops::{get_bishop_attacks, get_bishop_masks},
+        bishops::{generate_bishop_attacks, generate_bishop_masks},
         bob::generate_attack_table,
-        rooks::{get_rook_attacks, get_rook_masks},
+        rooks::{generate_rook_attacks, generate_rook_masks},
     };
 
     #[test]
     fn test_size_rook() {
-        let rook_attacks = generate_attack_table(get_rook_attacks, get_rook_masks);
-        let rook_masks: Vec<u64> = (0..64).map(|sq| get_rook_masks(sq)).collect();
+        let rook_attacks = generate_attack_table(generate_rook_attacks, generate_rook_masks);
+        let rook_masks: Vec<u64> = (0..64).map(|sq| generate_rook_masks(sq)).collect();
 
         // Size of attack table
         let mut total_attack_bytes = 0;
@@ -63,8 +63,8 @@ mod test_bob {
 
     #[test]
     fn test_size_bishop() {
-        let bishop_attacks = generate_attack_table(get_bishop_attacks, get_bishop_masks);
-        let bishop_masks: Vec<u64> = (0..64).map(|sq| get_bishop_masks(sq)).collect();
+        let bishop_attacks = generate_attack_table(generate_bishop_attacks, generate_bishop_masks);
+        let bishop_masks: Vec<u64> = (0..64).map(|sq| generate_bishop_masks(sq)).collect();
 
         // Size of attack table
         let mut total_attack_bytes = 0;

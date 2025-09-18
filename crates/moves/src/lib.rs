@@ -1,10 +1,10 @@
 use std::sync::LazyLock;
 
 use crate::{
-    bishops::{get_bishop_attacks, get_bishop_masks},
-    king::generate_king_moves,
+    bishops::{generate_bishop_attacks, generate_bishop_masks},
+    king::generate_king_attacks,
     knights::generate_knight_moves,
-    rooks::{get_rook_attacks, get_rook_masks},
+    rooks::{generate_rook_attacks, generate_rook_masks},
 };
 
 mod bishops;
@@ -14,22 +14,104 @@ mod knights;
 pub mod pawns;
 mod rooks;
 
-pub static BISHOP_MASKS: LazyLock<Vec<u64>> =
-    LazyLock::new(|| (0u64..64).map(get_bishop_masks).collect());
-pub static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
-    LazyLock::new(|| bob::generate_attack_table(get_bishop_attacks, get_bishop_masks));
+static BISHOP_MASKS: LazyLock<Vec<u64>> =
+    LazyLock::new(|| (0u64..64).map(generate_bishop_masks).collect());
+static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+    LazyLock::new(|| bob::generate_attack_table(generate_bishop_attacks, generate_bishop_masks));
+static ROOK_MASKS: LazyLock<Vec<u64>> =
+    LazyLock::new(|| (0u64..64).map(generate_rook_masks).collect());
+static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+    LazyLock::new(|| bob::generate_attack_table(generate_rook_attacks, generate_rook_masks));
+static KING_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_king_attacks());
+static KNIGHT_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_knight_moves());
 
-pub static ROOK_MASKS: LazyLock<Vec<u64>> =
-    LazyLock::new(|| (0u64..64).map(get_rook_masks).collect());
-pub static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
-    LazyLock::new(|| bob::generate_attack_table(get_rook_attacks, get_rook_masks));
-pub static KING_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_king_moves());
-pub static KNIGHT_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_knight_moves());
+pub fn warmup_attack_tables() {
+    use std::arch::x86_64::_pext_u64;
+
+    // Force LazyLock initialization for all tables
+    let _ = BISHOP_MASKS.len();
+    let _ = BISHOP_ATTACKS.len();
+    let _ = ROOK_MASKS.len();
+    let _ = ROOK_ATTACKS.len();
+    let _ = KING_ATTACKS.len();
+    let _ = KNIGHT_ATTACKS.len();
+
+    let mut sink = 0u64;
+
+    // --- Warm up masks explicitly ---
+    for &mask in BISHOP_MASKS.iter() {
+        sink ^= mask;
+    }
+    for &mask in ROOK_MASKS.iter() {
+        sink ^= mask;
+    }
+
+    // --- Warm up fixed tables ---
+    for sq in 0..64 {
+        sink ^= KING_ATTACKS[sq];
+        sink ^= KNIGHT_ATTACKS[sq];
+    }
+
+    // --- Warm up bishop attacks ---
+    for sq in 0..64 {
+        let mask = BISHOP_MASKS[sq];
+        let table = &BISHOP_ATTACKS[sq];
+        for idx in 0..table.len() {
+            // simulate real _pext usage
+            let blockers = idx as u64;
+            let _ = unsafe { _pext_u64(blockers, mask) };
+            sink ^= table[idx];
+        }
+    }
+
+    // --- Warm up rook attacks ---
+    for sq in 0..64 {
+        let mask = ROOK_MASKS[sq];
+        let table = &ROOK_ATTACKS[sq];
+        for idx in 0..table.len() {
+            let blockers = idx as u64;
+            let _ = unsafe { _pext_u64(blockers, mask) };
+            sink ^= table[idx];
+        }
+    }
+
+    // Prevent optimizer from nuking everything
+    std::hint::black_box(sink);
+}
+
+#[inline(always)]
+pub fn get_king_attacks(from: usize) -> u64 {
+    KING_ATTACKS[from]
+}
+
+#[inline(always)]
+pub fn get_knight_attacks(from: usize) -> u64 {
+    KNIGHT_ATTACKS[from]
+}
+
+#[inline(always)]
+pub fn get_bishop_attacks(from: usize, enemies: u64) -> u64 {
+    let mask = BISHOP_MASKS[from];
+    let idx = unsafe { std::arch::x86_64::_pext_u64(enemies, mask) };
+    BISHOP_ATTACKS[from][idx as usize]
+}
+
+#[inline(always)]
+pub fn get_rook_attacks(from: usize, enemies: u64) -> u64 {
+    let mask = ROOK_MASKS[from];
+    let idx = unsafe { std::arch::x86_64::_pext_u64(enemies, mask) };
+    ROOK_ATTACKS[from][idx as usize]
+}
+
+#[inline(always)]
+pub fn get_queen_attacks(from: usize, enemies: u64) -> u64 {
+    get_bishop_attacks(from, enemies) | get_rook_attacks(from, enemies)
+}
 
 #[cfg(test)]
 mod test {
 
-    use crate::pawns::generate_pawn_moves;
+    use crate::pawns::get_pawn_attacks;
 
     use super::*;
     use handies::bits::EnumerateVariations;
@@ -39,51 +121,26 @@ mod test {
 
     #[test]
     fn test_attacks() {
-        let sq = "e4".idx() as usize;
-
-        // bishop attack
-        let pext_b = unsafe { _pext_u64("g2,d5".place(), BISHOP_MASKS[sq]) };
-        let bishop_attack = BISHOP_ATTACKS[sq][pext_b as usize];
-        bishop_attack.print();
-        "g2,d5".place().print();
+        let sq = "a1".idx() as usize;
 
         // rook attack
-        let pext_r = unsafe { _pext_u64("e3,d4".place(), ROOK_MASKS[sq]) };
+        let pext_r = unsafe { _pext_u64("a2".place(), ROOK_MASKS[sq]) };
         let rook_attack = ROOK_ATTACKS[sq][pext_r as usize];
         rook_attack.print();
-        "e3,d4".place().print();
 
-        // queen attack = rook | bishop
-        let queen_attack = rook_attack | bishop_attack;
-        println!("queen:");
-        queen_attack.print();
-        "g2,d5,e3,d4".place().print();
     }
 
     #[test]
     fn benchmark_init() {
         let start = Instant::now();
-        // Force initialization
-        let _ = BISHOP_MASKS.len();
-        let _ = BISHOP_ATTACKS.len();
-        let _ = ROOK_MASKS.len();
-        let _ = ROOK_ATTACKS.len();
-        let _ = KING_ATTACKS.len();
-        let _ = KNIGHT_ATTACKS.len();
-
+        warmup_attack_tables(); 
         let duration = start.elapsed();
-        println!("Attack tables initialized in: {:.3?}", duration);
+        println!("Attack tables initialized & warmed up in: {:.3?}", duration);
     }
 
     #[test]
     fn benchmark_attacks() {
-        // force initialization
-        let _ = BISHOP_MASKS.len();
-        let _ = BISHOP_ATTACKS.len();
-        let _ = ROOK_MASKS.len();
-        let _ = ROOK_ATTACKS.len();
-        let _ = KING_ATTACKS.len();
-        let _ = KNIGHT_ATTACKS.len();
+        warmup_attack_tables();
 
         // bishops
         let start = Instant::now();
@@ -166,8 +223,8 @@ mod test {
             // repeat to get measurable time
             let wp = white_pawns.rotate_left((i % 8) * 8); // rotate ranks for variety
             let bp = black_pawns.rotate_right((i % 8) * 8);
-            let moves_white = generate_pawn_moves(wp, bp, 0, 0);
-            let moves_black = generate_pawn_moves(bp, wp, 1, 0);
+            let moves_white = get_pawn_attacks(wp, bp, 0, 0);
+            let moves_black = get_pawn_attacks(bp, wp, 1, 0);
             pawn_sink ^= moves_white ^ moves_black;
             total_ops += 2;
         }

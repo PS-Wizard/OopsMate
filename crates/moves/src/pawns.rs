@@ -6,28 +6,28 @@ const RANK_7: u64 = 0x00FF000000000000;
 const FILE_A: u64 = 0x0101010101010101;
 const FILE_H: u64 = 0x8080808080808080;
 
-pub fn generate_pawn_moves(pawns: u64, enemies: u64, turn: u64, en_passant_square: u64) -> u64 {
-    let empty = !(pawns | enemies);
+pub fn get_pawn_attacks(pawn_bitboard: u64, enemies: u64, turn: u64, en_passant_square: u64) -> u64 {
+    let empty = !(pawn_bitboard | enemies);
 
     // --- Single pushes ---
-    let single_pushes_white = (pawns << 8) & empty;
-    let single_pushes_black = (pawns >> 8) & empty;
+    let single_pushes_white = (pawn_bitboard << 8) & empty;
+    let single_pushes_black = (pawn_bitboard >> 8) & empty;
 
     // --- Double pushes ---
-    let double_pushes_white = ((pawns & RANK_2) << 8 & empty) << 8 & empty;
-    let double_pushes_black = ((pawns & RANK_7) >> 8 & empty) >> 8 & empty;
+    let double_pushes_white = ((pawn_bitboard & RANK_2) << 8 & empty) << 8 & empty;
+    let double_pushes_black = ((pawn_bitboard & RANK_7) >> 8 & empty) >> 8 & empty;
 
     // --- Normal captures ---
-    let captures_white = (((pawns << 7) & !FILE_H) | ((pawns << 9) & !FILE_A)) & enemies;
-    let captures_black = (((pawns >> 9) & !FILE_H) | ((pawns >> 7) & !FILE_A)) & enemies;
+    let captures_white = (((pawn_bitboard << 7) & !FILE_H) | ((pawn_bitboard << 9) & !FILE_A)) & enemies;
+    let captures_black = (((pawn_bitboard >> 9) & !FILE_H) | ((pawn_bitboard >> 7) & !FILE_A)) & enemies;
 
     // --- En passant captures ---
-    let ep_captures_white = (((pawns & 0x000000FF00000000) << 7 & !FILE_H)
-        | ((pawns & 0x000000FF00000000) << 9 & !FILE_A))
+    let ep_captures_white = (((pawn_bitboard & 0x000000FF00000000) << 7 & !FILE_H)
+        | ((pawn_bitboard & 0x000000FF00000000) << 9 & !FILE_A))
         & en_passant_square;
 
-    let ep_captures_black = (((pawns & 0x00000000FF000000) >> 9 & !FILE_H)
-        | ((pawns & 0x00000000FF000000) >> 7 & !FILE_A))
+    let ep_captures_black = (((pawn_bitboard & 0x00000000FF000000) >> 9 & !FILE_H)
+        | ((pawn_bitboard & 0x00000000FF000000) >> 7 & !FILE_A))
         & en_passant_square;
 
     // --- Branchless turn selection ---
@@ -46,11 +46,11 @@ pub fn generate_pawn_moves(pawns: u64, enemies: u64, turn: u64, en_passant_squar
 mod test_pawns {
     use handies::board::PrintAsBoard;
 
-    use crate::pawns::{RANK_2, generate_pawn_moves};
+    use crate::pawns::{RANK_2, get_pawn_attacks};
 
     #[test]
     fn test_generate_pawn_moves() {
-        let moves = generate_pawn_moves(RANK_2, 0, 0, 0);
+        let moves = get_pawn_attacks(RANK_2, 0, 0, 0);
         println!("{}", moves.count_ones());
         moves.print();
     }

@@ -1,4 +1,4 @@
-pub fn get_bishop_masks(square: u64) -> u64 {
+pub fn generate_bishop_masks(square: u64) -> u64 {
     let mut mask = 0u64;
     let rank = (square / 8) as i32;
     let file = (square % 8) as i32;
@@ -20,7 +20,7 @@ pub fn get_bishop_masks(square: u64) -> u64 {
     mask
 }
 
-pub fn get_bishop_attacks(square: u64, blockers: u64) -> u64 {
+pub fn generate_bishop_attacks(square: u64, blockers: u64) -> u64 {
     let mut attacks = 0u64;
     let rank = (square / 8) as i32;
     let file = (square % 8) as i32;
@@ -52,17 +52,17 @@ pub fn get_bishop_attacks(square: u64, blockers: u64) -> u64 {
 mod test_bishops {
     use handies::{algebraic::Algebraic, board::PrintAsBoard};
 
-    use crate::bishops::{get_bishop_attacks, get_bishop_masks};
+    use crate::bishops::{generate_bishop_attacks, generate_bishop_masks};
 
     #[test]
     fn test_bishop_mask() {
-        let mask = get_bishop_masks("e4".idx());
+        let mask = generate_bishop_masks("e4".idx());
         mask.print()
     }
 
     #[test]
     fn test_bishop_attacks() {
-        get_bishop_attacks("e4".idx(), "g2,c6,d3".place()).print();
-        get_bishop_attacks("e4".idx(), 0).print();
+        generate_bishop_attacks("e4".idx(), "g2,c6,d3".place()).print();
+        generate_bishop_attacks("e4".idx(), 0).print();
     }
 }

@@ -1,5 +1,5 @@
 /// Returns a array of attacks for a king from any given square.
-pub fn generate_king_moves() -> [u64; 64] {
+pub fn generate_king_attacks() -> [u64; 64] {
     let mut moves = [0u64; 64];
     for square in 0..64 {
         let from = 1u64 << square;
@@ -46,11 +46,11 @@ pub fn generate_king_moves() -> [u64; 64] {
 mod test_king {
     use handies::board::PrintAsBoard;
 
-    use crate::king::generate_king_moves;
+    use crate::king::generate_king_attacks;
 
     #[test]
     fn test_king_attacks() {
-        let moves = generate_king_moves();
+        let moves = generate_king_attacks();
         for ele in moves {
             ele.print();
         }
@@ -58,7 +58,7 @@ mod test_king {
 
     #[test]
     fn test_size_king() {
-        let moves = generate_king_moves();
+        let moves = generate_king_attacks();
         let total_bytes = moves.len() * std::mem::size_of::<u64>();
         println!(
             "King table size: {} bytes (~{:.2} KB, {:.2} MB)",
