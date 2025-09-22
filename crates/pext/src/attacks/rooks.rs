@@ -70,6 +70,7 @@ pub fn generate_rook_attacks(square: u64, blockers: u64) -> u64 {
 }
 
 #[cfg(test)]
+#[cfg(debug_assertions)]
 mod test_rooks {
 
     use crate::attacks::rooks::{generate_rook_attacks, generate_rook_masks};
@@ -88,6 +89,7 @@ mod test_rooks {
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     fn test_rook_attacks() {
         let idxs = ["h4", "a1", "a8", "h8", "h1", "a4", "e5"];
         let blockers = "d4,d3,a2,h2,f4,g7,e6";

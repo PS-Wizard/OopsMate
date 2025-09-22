@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use crate::piece_kind::{self, PieceKind};
+use crate::piece_kind::PieceKind;
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

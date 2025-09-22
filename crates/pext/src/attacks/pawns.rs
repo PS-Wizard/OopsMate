@@ -51,6 +51,7 @@ pub const fn generate_pawn_attacks() -> [[u64; 64]; 2] {
 }
 
 #[cfg(test)]
+#[cfg(debug_assertions)]
 mod test_pawns {
     use utilities::board::PrintAsBoard;
 

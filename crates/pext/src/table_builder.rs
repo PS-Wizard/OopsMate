@@ -1,12 +1,10 @@
-use utilities::bits::EnumerateVariations;
-
 /// Takes in functions to generate the attacks and the mask returns the attack table, indexed via
 /// PEXT, and the Masks array.
 pub fn generate_attack_table<AG>(attack_generator: AG, masks: &[u64; 64]) -> Vec<Vec<u64>>
 where
     AG: Fn(u64, u64) -> u64,
 {
-    use utilities::bits::EnumerateVariations; // Make sure this trait is in scope
+    use utilities::bits::EnumerateVariations; 
 
     let mut moves: Vec<Vec<u64>> = Vec::with_capacity(64);
 
