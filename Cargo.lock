@@ -3,19 +3,23 @@
 version = 4
 
 [[package]]
-name = "attacks"
+name = "game"
 version = "0.1.0"
 dependencies = [
- "handies",
+ "types",
 ]
 
 [[package]]
-name = "handies"
+name = "pext"
 version = "0.1.0"
+dependencies = [
+ "utilities",
+]
 
 [[package]]
 name = "types"
 version = "0.1.0"
-dependencies = [
- "handies",
-]
+
+[[package]]
+name = "utilities"
+version = "0.1.0"

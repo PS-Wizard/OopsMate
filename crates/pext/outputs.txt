@@ -1,0 +1,121 @@
+--- Run 1 ---
+   Compiling pext v0.1.0 (/home/wizard/Projects/OopsMateV2/crates/pext)
+warning: unused import: `utilities::bits::EnumerateVariations`
+ --> crates/pext/src/table_builder.rs:1:5
+  |
+1 | use utilities::bits::EnumerateVariations;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: `pext` (lib test) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 0.35s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMateV2/target/release/deps/pext-91391a48ff92b634)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 15.108µs, avg 2.88 ns/lookup
+Rook lookup: 102400 lookups, total 291.004µs, avg 2.84 ns/lookup
+King lookup: 64 lookups, total 30.000ns, avg 0.47 ns/lookup
+Knight lookup: 64 lookups, total 30.000ns, avg 0.47 ns/lookup
+Pawn lookup: 128 lookups, total 20.000ns, avg 0.16 ns/lookup
+Queen lookup: 6946816 lookups, total 19.743ms, avg 2.84 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.02s
+
+--- Run 2 ---
+warning: unused import: `utilities::bits::EnumerateVariations`
+ --> crates/pext/src/table_builder.rs:1:5
+  |
+1 | use utilities::bits::EnumerateVariations;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: `pext` (lib test) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMateV2/target/release/deps/pext-91391a48ff92b634)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 15.008µs, avg 2.86 ns/lookup
+Rook lookup: 102400 lookups, total 291.025µs, avg 2.84 ns/lookup
+King lookup: 64 lookups, total 20.000ns, avg 0.31 ns/lookup
+Knight lookup: 64 lookups, total 31.000ns, avg 0.48 ns/lookup
+Pawn lookup: 128 lookups, total 30.000ns, avg 0.23 ns/lookup
+Queen lookup: 6946816 lookups, total 21.404ms, avg 3.08 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.02s
+
+--- Run 3 ---
+warning: unused import: `utilities::bits::EnumerateVariations`
+ --> crates/pext/src/table_builder.rs:1:5
+  |
+1 | use utilities::bits::EnumerateVariations;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: `pext` (lib test) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMateV2/target/release/deps/pext-91391a48ff92b634)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 11.552µs, avg 2.20 ns/lookup
+Rook lookup: 102400 lookups, total 222.687µs, avg 2.17 ns/lookup
+King lookup: 64 lookups, total 20.000ns, avg 0.31 ns/lookup
+Knight lookup: 64 lookups, total 20.000ns, avg 0.31 ns/lookup
+Pawn lookup: 128 lookups, total 20.000ns, avg 0.16 ns/lookup
+Queen lookup: 6946816 lookups, total 15.075ms, avg 2.17 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.02s
+
+--- Run 4 ---
+warning: unused import: `utilities::bits::EnumerateVariations`
+ --> crates/pext/src/table_builder.rs:1:5
+  |
+1 | use utilities::bits::EnumerateVariations;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: `pext` (lib test) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMateV2/target/release/deps/pext-91391a48ff92b634)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 11.511µs, avg 2.19 ns/lookup
+Rook lookup: 102400 lookups, total 222.957µs, avg 2.18 ns/lookup
+King lookup: 64 lookups, total 20.000ns, avg 0.31 ns/lookup
+Knight lookup: 64 lookups, total 20.000ns, avg 0.31 ns/lookup
+Pawn lookup: 128 lookups, total 20.000ns, avg 0.16 ns/lookup
+Queen lookup: 6946816 lookups, total 16.783ms, avg 2.42 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.02s
+
+--- Run 5 ---
+warning: unused import: `utilities::bits::EnumerateVariations`
+ --> crates/pext/src/table_builder.rs:1:5
+  |
+1 | use utilities::bits::EnumerateVariations;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: `pext` (lib test) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMateV2/target/release/deps/pext-91391a48ff92b634)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 28.884µs, avg 5.50 ns/lookup
+Rook lookup: 102400 lookups, total 222.326µs, avg 2.17 ns/lookup
+King lookup: 64 lookups, total 20.000ns, avg 0.31 ns/lookup
+Knight lookup: 64 lookups, total 20.000ns, avg 0.31 ns/lookup
+Pawn lookup: 128 lookups, total 20.000ns, avg 0.16 ns/lookup
+Queen lookup: 6946816 lookups, total 15.026ms, avg 2.16 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.02s
+

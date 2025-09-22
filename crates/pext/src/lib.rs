@@ -1,40 +1,34 @@
+use crate::{
+    attacks::{
+        bishops::{generate_bishop_attacks, generate_bishop_masks},
+        kings::generate_king_attacks,
+        knights::generate_knight_attacks,
+        pawns::generate_pawn_attacks,
+        rooks::{generate_rook_attacks, generate_rook_masks},
+    },
+    table_builder::generate_attack_table,
+};
 use std::sync::LazyLock;
 
-use crate::{
-    bishops::{generate_bishop_attacks, generate_bishop_masks},
-    king::generate_king_attacks,
-    knights::generate_knight_attacks,
-    rooks::{generate_rook_attacks, generate_rook_masks},
-};
+mod attacks;
+mod table_builder;
 
-mod bishops;
-mod bob;
-mod king;
-mod knights;
-pub mod pawns;
-mod rooks;
-
-pub static BISHOP_MASKS: LazyLock<Vec<u64>> =
-    LazyLock::new(|| (0u64..64).map(generate_bishop_masks).collect());
-pub static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
-    LazyLock::new(|| bob::generate_attack_table(generate_bishop_attacks, generate_bishop_masks));
-pub static ROOK_MASKS: LazyLock<Vec<u64>> =
-    LazyLock::new(|| (0u64..64).map(generate_rook_masks).collect());
+pub static KING_ATTACKS: [u64; 64] = generate_king_attacks();
+pub static KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
+pub static PAWN_ATTACKS: [[u64; 64]; 2] = generate_pawn_attacks();
+pub static ROOK_MASKS: [u64; 64] = generate_rook_masks();
+pub static BISHOP_MASKS: [u64; 64] = generate_bishop_masks();
 pub static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
-    LazyLock::new(|| bob::generate_attack_table(generate_rook_attacks, generate_rook_masks));
-pub static KING_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_king_attacks());
-pub static KNIGHT_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_knight_attacks());
+    LazyLock::new(|| generate_attack_table(generate_rook_attacks, &ROOK_MASKS));
+pub static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+    LazyLock::new(|| generate_attack_table(generate_bishop_attacks, &BISHOP_MASKS));
 
 pub fn warmup_attack_tables() {
     use std::arch::x86_64::_pext_u64;
 
     // Force LazyLock initialization for all tables
-    let _ = BISHOP_MASKS.len();
     let _ = BISHOP_ATTACKS.len();
-    let _ = ROOK_MASKS.len();
     let _ = ROOK_ATTACKS.len();
-    let _ = KING_ATTACKS.len();
-    let _ = KNIGHT_ATTACKS.len();
 
     let mut sink = 0u64;
 
@@ -50,6 +44,8 @@ pub fn warmup_attack_tables() {
     for sq in 0..64 {
         sink ^= KING_ATTACKS[sq];
         sink ^= KNIGHT_ATTACKS[sq];
+        sink ^= PAWN_ATTACKS[0][sq];
+        sink ^= PAWN_ATTACKS[1][sq];
     }
 
     // --- Warm up bishop attacks ---
@@ -81,14 +77,11 @@ pub fn warmup_attack_tables() {
 
 #[cfg(test)]
 mod test {
-
-    use crate::pawns::get_pawn_attacks;
-
     use super::*;
-    use handies::bits::EnumerateVariations;
-    use handies::{algebraic::Algebraic, board::PrintAsBoard};
     use std::arch::x86_64::_pext_u64;
     use std::time::Instant;
+    use utilities::bits::EnumerateVariations;
+    use utilities::{algebraic::Algebraic, board::PrintAsBoard};
 
     #[test]
     fn test_attacks() {
@@ -98,6 +91,25 @@ mod test {
         let pext_r = unsafe { _pext_u64("a2".place(), ROOK_MASKS[sq]) };
         let rook_attack = ROOK_ATTACKS[sq][pext_r as usize];
         rook_attack.print();
+
+        // bishop attack
+        let pext_b = unsafe { _pext_u64("b2,c3".place(), BISHOP_MASKS[sq]) };
+        let bishop_attack = BISHOP_ATTACKS[sq][pext_b as usize];
+        bishop_attack.print();
+
+        // king attack
+        let king_attack = KING_ATTACKS[sq];
+        king_attack.print();
+
+        // knight attack
+        let knight_attack = KNIGHT_ATTACKS[sq];
+        knight_attack.print();
+
+        // pawn attacks
+        let white_pawn_attack = PAWN_ATTACKS[0][sq];
+        let black_pawn_attack = PAWN_ATTACKS[1][sq];
+        white_pawn_attack.print();
+        black_pawn_attack.print();
     }
 
     #[test]
@@ -106,7 +118,6 @@ mod test {
         let start = Instant::now();
         warmup_attack_tables();
         let duration = start.elapsed();
-        #[cfg(debug_assertions)]
         println!("Attack tables initialized & warmed up in: {:.3?}", duration);
     }
 
@@ -183,29 +194,17 @@ mod test {
         );
 
         // pawns
-        let white_pawns = 0x000000000000FF00_u64;
-        let black_pawns = 0x00FF000000000000_u64;
-
-        let mut pawn_sink = 0u64;
-        let mut total_ops = 0usize;
-
-        // Benchmark white pawns
         let start = Instant::now();
-        for i in 0..1000 {
-            // repeat to get measurable time
-            let wp = white_pawns.rotate_left((i % 8) * 8); // rotate ranks for variety
-            let bp = black_pawns.rotate_right((i % 8) * 8);
-            let moves_white = get_pawn_attacks(wp, bp, 0, 0);
-            let moves_black = get_pawn_attacks(bp, wp, 1, 0);
-            pawn_sink ^= moves_white ^ moves_black;
-            total_ops += 2;
+        let mut pawn_sink = 0u64;
+        for square in 0..64 {
+            pawn_sink ^= PAWN_ATTACKS[0][square]; // white pawns
+            pawn_sink ^= PAWN_ATTACKS[1][square]; // black pawns
         }
-        let duration = start.elapsed();
+        let pawn_duration = start.elapsed();
         println!(
-            "Pawn movegen varied: {} ops, total {:?}, avg {:.2} ns/op",
-            total_ops,
-            duration,
-            duration.as_nanos() as f64 / total_ops as f64
+            "Pawn lookup: 128 lookups, total {:.3?}, avg {:.2} ns/lookup",
+            pawn_duration,
+            pawn_duration.as_nanos() as f64 / 128.0
         );
 
         // queens (cartesian product)
@@ -243,8 +242,112 @@ mod test {
             rook_sink,
             king_sink,
             knight_sink,
-            queen_sink,
             pawn_sink,
+            queen_sink,
         ));
+    }
+
+    #[test]
+    fn test_table_sizes() {
+        // Force initialization
+        let _ = &*ROOK_ATTACKS;
+        let _ = &*BISHOP_ATTACKS;
+
+        // Calculate memory usage
+        let mut total_rook_bytes = 0;
+        for attacks in ROOK_ATTACKS.iter() {
+            total_rook_bytes += attacks.len() * std::mem::size_of::<u64>();
+        }
+
+        let mut total_bishop_bytes = 0;
+        for attacks in BISHOP_ATTACKS.iter() {
+            total_bishop_bytes += attacks.len() * std::mem::size_of::<u64>();
+        }
+
+        let rook_mask_bytes = std::mem::size_of_val(&ROOK_MASKS);
+        let bishop_mask_bytes = std::mem::size_of_val(&BISHOP_MASKS);
+        let king_bytes = std::mem::size_of_val(&KING_ATTACKS);
+        let knight_bytes = std::mem::size_of_val(&KNIGHT_ATTACKS);
+        let pawn_bytes = std::mem::size_of_val(&PAWN_ATTACKS);
+
+        println!("=== ATTACK TABLE MEMORY USAGE ===");
+        println!(
+            "Rook attacks: {} bytes ({:.2} MB)",
+            total_rook_bytes,
+            total_rook_bytes as f64 / (1024.0 * 1024.0)
+        );
+        println!(
+            "Bishop attacks: {} bytes ({:.2} MB)",
+            total_bishop_bytes,
+            total_bishop_bytes as f64 / (1024.0 * 1024.0)
+        );
+        println!(
+            "Rook masks: {} bytes ({:.2} KB)",
+            rook_mask_bytes,
+            rook_mask_bytes as f64 / 1024.0
+        );
+        println!(
+            "Bishop masks: {} bytes ({:.2} KB)",
+            bishop_mask_bytes,
+            bishop_mask_bytes as f64 / 1024.0
+        );
+        println!(
+            "King attacks: {} bytes ({:.2} KB)",
+            king_bytes,
+            king_bytes as f64 / 1024.0
+        );
+        println!(
+            "Knight attacks: {} bytes ({:.2} KB)",
+            knight_bytes,
+            knight_bytes as f64 / 1024.0
+        );
+        println!(
+            "Pawn attacks: {} bytes ({:.2} KB)",
+            pawn_bytes,
+            pawn_bytes as f64 / 1024.0
+        );
+
+        let total_bytes = total_rook_bytes
+            + total_bishop_bytes
+            + rook_mask_bytes
+            + bishop_mask_bytes
+            + king_bytes
+            + knight_bytes
+            + pawn_bytes;
+        println!(
+            "Total: {} bytes ({:.2} MB)",
+            total_bytes,
+            total_bytes as f64 / (1024.0 * 1024.0)
+        );
+    }
+
+    #[test]
+    fn test_compile_time_vs_runtime() {
+        println!("=== COMPILE-TIME vs RUNTIME ===");
+        println!("Compile-time generated:");
+        println!(
+            "  - KING_ATTACKS: {} bytes",
+            std::mem::size_of_val(&KING_ATTACKS)
+        );
+        println!(
+            "  - KNIGHT_ATTACKS: {} bytes",
+            std::mem::size_of_val(&KNIGHT_ATTACKS)
+        );
+        println!(
+            "  - PAWN_ATTACKS: {} bytes",
+            std::mem::size_of_val(&PAWN_ATTACKS)
+        );
+        println!(
+            "  - ROOK_MASKS: {} bytes",
+            std::mem::size_of_val(&ROOK_MASKS)
+        );
+        println!(
+            "  - BISHOP_MASKS: {} bytes",
+            std::mem::size_of_val(&BISHOP_MASKS)
+        );
+
+        println!("Runtime generated (LazyLock):");
+        println!("  - ROOK_ATTACKS: dynamic size");
+        println!("  - BISHOP_ATTACKS: dynamic size");
     }
 }

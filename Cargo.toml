@@ -1,7 +1,3 @@
 [workspace]
-members = ["crates/handies", "crates/attacks", "crates/types"]
 resolver = "3"
-
-[profile.release]
-opt-level = 3
-overflow-checks = false
+members = [ "crates/game", "crates/pext","crates/types", "crates/utilities"]
