@@ -1,13 +1,17 @@
 #![allow(dead_code)]
 
-use crate::{board::Board, piece_kind::PieceKind::{self, *}};
+use crate::{
+    board::Board,
+    piece_kind::PieceKind::{self, *},
+};
 
-struct Game {
-    boards: [Board; 12],
-    board_map: [PieceKind; 64],
-    enpassant_square: u64,
-    castling_rights: u8,
-    turn: u8,
+pub struct Game {
+    pub boards: [Board; 12],
+    pub board_map: [PieceKind; 64],
+    pub enpassant_square: u64,
+    pub castling_rights: u8,
+    /// 0 for white, 1 for black
+    pub turn: u8,
 }
 
 impl Game {
@@ -62,6 +66,45 @@ impl Game {
     pub fn get_board_of(&self, square: usize) -> PieceKind {
         self.board_map[square]
     }
+
+    #[inline(always)]
+    pub fn flip_turn(&mut self) {
+        self.turn ^= 1;
+    }
+
+    #[inline(always)]
+    pub fn get_friendlies(&self) -> u64 {
+        // since turn is either 0 or 1, the range becomes either 0 to 6, or 6 to 12.
+        // 0 to 6 is the white pieces and 6 to 12 is the black pieces
+        let start = (self.turn as usize) * 6;
+        self.boards[start + 0].0
+            | self.boards[start + 1].0
+            | self.boards[start + 2].0
+            | self.boards[start + 3].0
+            | self.boards[start + 4].0
+            | self.boards[start + 5].0
+    }
+
+    #[inline(always)]
+    pub fn get_enemies(&self) -> u64 {
+        let start = 6 * (1 - self.turn as usize);
+        self.boards[start + 0].0
+            | self.boards[start + 1].0
+            | self.boards[start + 2].0
+            | self.boards[start + 3].0
+            | self.boards[start + 4].0
+            | self.boards[start + 5].0
+    }
+
+    #[inline(always)]
+    pub fn get_friendly_rooks(&self) -> u64 {
+        self.boards[WhiteRook.idx() + (self.turn as usize) * 6].0
+    }
+
+    #[inline(always)]
+    pub fn get_all(&self) -> u64 {
+        self.get_friendlies() | self.get_enemies()
+    }
 }
 
 #[cfg(test)]
@@ -81,6 +124,12 @@ mod test_board {
     }
 
     #[test]
+    fn test_work() {
+        let game = Game::new();
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
     fn bench_board_get() {
         let game = Game::new();
         let start = Instant::now();
@@ -89,7 +138,6 @@ mod test_board {
             something += game.get_board_of(square) as i64 - 1;
         }
         let duration = start.elapsed();
-        #[cfg(debug_assertions)]
         println!(
             "Lookups for which board contained the piece took: {:.3?} , total: 64, avg: {:.2} ns/lookup",
             duration,

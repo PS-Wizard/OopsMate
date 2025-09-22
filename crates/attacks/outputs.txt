@@ -1,0 +1,75 @@
+--- Run 1 ---
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMate/target/release/deps/attacks-eda35fd16263cf13)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 15.258µs, avg 2.91 ns/lookup
+Rook lookup: 102400 lookups, total 267.511µs, avg 2.61 ns/lookup
+King lookup: 64 lookups, total 100.000ns, avg 1.56 ns/lookup
+Knight lookup: 64 lookups, total 90.000ns, avg 1.41 ns/lookup
+Pawn movegen varied: 2000 ops, total 2.945µs, avg 1.47 ns/op
+Queen lookup: 6946816 lookups, total 19.360ms, avg 2.79 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+--- Run 2 ---
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMate/target/release/deps/attacks-eda35fd16263cf13)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 15.319µs, avg 2.92 ns/lookup
+Rook lookup: 102400 lookups, total 266.219µs, avg 2.60 ns/lookup
+King lookup: 64 lookups, total 90.000ns, avg 1.41 ns/lookup
+Knight lookup: 64 lookups, total 90.000ns, avg 1.41 ns/lookup
+Pawn movegen varied: 2000 ops, total 2.755µs, avg 1.38 ns/op
+Queen lookup: 6946816 lookups, total 18.178ms, avg 2.62 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+--- Run 3 ---
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMate/target/release/deps/attacks-eda35fd16263cf13)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 15.239µs, avg 2.90 ns/lookup
+Rook lookup: 102400 lookups, total 267.009µs, avg 2.61 ns/lookup
+King lookup: 64 lookups, total 90.000ns, avg 1.41 ns/lookup
+Knight lookup: 64 lookups, total 90.000ns, avg 1.41 ns/lookup
+Pawn movegen varied: 2000 ops, total 2.915µs, avg 1.46 ns/op
+Queen lookup: 6946816 lookups, total 19.193ms, avg 2.76 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+--- Run 4 ---
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMate/target/release/deps/attacks-eda35fd16263cf13)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 11.722µs, avg 2.23 ns/lookup
+Rook lookup: 102400 lookups, total 205.073µs, avg 2.00 ns/lookup
+King lookup: 64 lookups, total 70.000ns, avg 1.09 ns/lookup
+Knight lookup: 64 lookups, total 70.000ns, avg 1.09 ns/lookup
+Pawn movegen varied: 2000 ops, total 2.084µs, avg 1.04 ns/op
+Queen lookup: 6946816 lookups, total 13.388ms, avg 1.93 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+--- Run 5 ---
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (/home/wizard/Projects/OopsMate/target/release/deps/attacks-eda35fd16263cf13)
+
+running 1 test
+Bishop lookup: 5248 lookups, total 11.682µs, avg 2.23 ns/lookup
+Rook lookup: 102400 lookups, total 200.796µs, avg 1.96 ns/lookup
+King lookup: 64 lookups, total 70.000ns, avg 1.09 ns/lookup
+Knight lookup: 64 lookups, total 71.000ns, avg 1.11 ns/lookup
+Pawn movegen varied: 2000 ops, total 2.355µs, avg 1.18 ns/op
+Queen lookup: 6946816 lookups, total 13.336ms, avg 1.92 ns/lookup
+test test::benchmark_attacks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+

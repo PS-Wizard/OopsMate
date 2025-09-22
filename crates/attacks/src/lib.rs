@@ -14,16 +14,16 @@ mod knights;
 pub mod pawns;
 mod rooks;
 
-static BISHOP_MASKS: LazyLock<Vec<u64>> =
+pub static BISHOP_MASKS: LazyLock<Vec<u64>> =
     LazyLock::new(|| (0u64..64).map(generate_bishop_masks).collect());
-static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+pub static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
     LazyLock::new(|| bob::generate_attack_table(generate_bishop_attacks, generate_bishop_masks));
-static ROOK_MASKS: LazyLock<Vec<u64>> =
+pub static ROOK_MASKS: LazyLock<Vec<u64>> =
     LazyLock::new(|| (0u64..64).map(generate_rook_masks).collect());
-static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+pub static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
     LazyLock::new(|| bob::generate_attack_table(generate_rook_attacks, generate_rook_masks));
-static KING_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_king_attacks());
-static KNIGHT_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_knight_attacks());
+pub static KING_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_king_attacks());
+pub static KNIGHT_ATTACKS: LazyLock<[u64; 64]> = LazyLock::new(|| generate_knight_attacks());
 
 pub fn warmup_attack_tables() {
     use std::arch::x86_64::_pext_u64;
@@ -77,35 +77,6 @@ pub fn warmup_attack_tables() {
 
     // Prevent optimizer from nuking everything
     std::hint::black_box(sink);
-}
-
-#[inline(always)]
-pub fn get_king_attacks(from: usize) -> u64 {
-    KING_ATTACKS[from]
-}
-
-#[inline(always)]
-pub fn get_knight_attacks(from: usize) -> u64 {
-    KNIGHT_ATTACKS[from]
-}
-
-#[inline(always)]
-pub fn get_bishop_attacks(from: usize, enemies: u64) -> u64 {
-    let mask = BISHOP_MASKS[from];
-    let idx = unsafe { std::arch::x86_64::_pext_u64(enemies, mask) };
-    BISHOP_ATTACKS[from][idx as usize]
-}
-
-#[inline(always)]
-pub fn get_rook_attacks(from: usize, enemies: u64) -> u64 {
-    let mask = ROOK_MASKS[from];
-    let idx = unsafe { std::arch::x86_64::_pext_u64(enemies, mask) };
-    ROOK_ATTACKS[from][idx as usize]
-}
-
-#[inline(always)]
-pub fn get_queen_attacks(from: usize, enemies: u64) -> u64 {
-    get_bishop_attacks(from, enemies) | get_rook_attacks(from, enemies)
 }
 
 #[cfg(test)]

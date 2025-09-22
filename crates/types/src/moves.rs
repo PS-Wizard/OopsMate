@@ -7,6 +7,11 @@ use crate::{flags::*, piece_kind::PieceKind};
 pub struct Move(u32);
 
 impl Move {
+    #[inline(always)]
+    pub fn empty() -> Self {
+        Move(0)
+    }
+    #[inline(always)]
     pub fn new(
         from: u8,
         to: u8,
@@ -24,30 +29,37 @@ impl Move {
         Move(val)
     }
 
+    #[inline(always)]
     pub fn from(self) -> u8 {
         (self.0 & 0x3F) as u8
     }
 
+    #[inline(always)]
     pub fn to(self) -> u8 {
         ((self.0 >> 6) & 0x3F) as u8
     }
 
+    #[inline(always)]
     pub fn piece(self) -> u8 {
         ((self.0 >> 12) & 0xF) as u8
     }
 
+    #[inline(always)]
     pub fn capture(self) -> u8 {
         ((self.0 >> 16) & 0xF) as u8
     }
 
+    #[inline(always)]
     pub fn promotion(self) -> u8 {
         ((self.0 >> 20) & 0xF) as u8
     }
 
+    #[inline(always)]
     pub fn flags(self) -> u8 {
         ((self.0 >> 24) & 0xF) as u8
     }
 
+    #[inline(always)]
     pub fn additional_flags(self) -> u8 {
         ((self.0 >> 28) & 0xF) as u8
     }
