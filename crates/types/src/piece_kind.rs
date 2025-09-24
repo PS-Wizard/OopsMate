@@ -15,5 +15,16 @@ pub enum PieceKind {
     BlackBishop,
     BlackQueen,
     BlackKing,
-    Empty,
+    None,
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone, Debug)]
+pub enum Piece {
+    Pawns,
+    Rooks,
+    Knights,
+    Bishops,
+    Queens,
+    King,
 }

@@ -3,7 +3,6 @@ use crate::{
         bishops::{generate_bishop_attacks, generate_bishop_masks},
         kings::generate_king_attacks,
         knights::generate_knight_attacks,
-        pawns::generate_pawn_attacks,
         rooks::{generate_rook_attacks, generate_rook_masks},
     },
     table_builder::generate_attack_table,
@@ -13,9 +12,17 @@ use std::sync::LazyLock;
 mod attacks;
 mod table_builder;
 
+pub const RANK_1: u64 = 0x00000000000000FF; // Promotion For Black
+pub const RANK_2: u64 = 0x000000000000FF00;
+pub const RANK_4: u64 = 0x00000000FF000000; // for black EP
+pub const RANK_5: u64 = 0x000000FF00000000; // for white EP
+pub const RANK_7: u64 = 0x00FF000000000000;
+pub const RANK_8: u64 = 0xFF00000000000000; // Promotion for white
+pub const FILE_A: u64 = 0x0101010101010101;
+pub const FILE_H: u64 = 0x8080808080808080;
+
 pub static KING_ATTACKS: [u64; 64] = generate_king_attacks();
 pub static KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
-pub static PAWN_ATTACKS: [[u64; 64]; 2] = generate_pawn_attacks();
 pub static ROOK_MASKS: [u64; 64] = generate_rook_masks();
 pub static BISHOP_MASKS: [u64; 64] = generate_bishop_masks();
 pub static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
@@ -44,8 +51,6 @@ pub fn warmup_attack_tables() {
     for sq in 0..64 {
         sink ^= KING_ATTACKS[sq];
         sink ^= KNIGHT_ATTACKS[sq];
-        sink ^= PAWN_ATTACKS[0][sq];
-        sink ^= PAWN_ATTACKS[1][sq];
     }
 
     // --- Warm up bishop attacks ---
@@ -104,12 +109,6 @@ mod test {
         // knight attack
         let knight_attack = KNIGHT_ATTACKS[sq];
         knight_attack.print();
-
-        // pawn attacks
-        let white_pawn_attack = PAWN_ATTACKS[0][sq];
-        let black_pawn_attack = PAWN_ATTACKS[1][sq];
-        white_pawn_attack.print();
-        black_pawn_attack.print();
     }
 
     #[test]
@@ -193,20 +192,6 @@ mod test {
             knight_duration.as_nanos() as f64 / 64.0
         );
 
-        // pawns
-        let start = Instant::now();
-        let mut pawn_sink = 0u64;
-        for square in 0..64 {
-            pawn_sink ^= PAWN_ATTACKS[0][square]; // white pawns
-            pawn_sink ^= PAWN_ATTACKS[1][square]; // black pawns
-        }
-        let pawn_duration = start.elapsed();
-        println!(
-            "Pawn lookup: 128 lookups, total {:.3?}, avg {:.2} ns/lookup",
-            pawn_duration,
-            pawn_duration.as_nanos() as f64 / 128.0
-        );
-
         // queens (cartesian product)
         let start = Instant::now();
         let mut queen_ops = 0usize;
@@ -237,17 +222,11 @@ mod test {
         );
 
         // prevent optimizer from nuking everything
-        std::hint::black_box((
-            bishop_sink,
-            rook_sink,
-            king_sink,
-            knight_sink,
-            pawn_sink,
-            queen_sink,
-        ));
+        std::hint::black_box((bishop_sink, rook_sink, king_sink, knight_sink, queen_sink));
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     fn test_table_sizes() {
         // Force initialization
         let _ = &*ROOK_ATTACKS;
@@ -268,7 +247,6 @@ mod test {
         let bishop_mask_bytes = std::mem::size_of_val(&BISHOP_MASKS);
         let king_bytes = std::mem::size_of_val(&KING_ATTACKS);
         let knight_bytes = std::mem::size_of_val(&KNIGHT_ATTACKS);
-        let pawn_bytes = std::mem::size_of_val(&PAWN_ATTACKS);
 
         println!("=== ATTACK TABLE MEMORY USAGE ===");
         println!(
@@ -301,19 +279,13 @@ mod test {
             knight_bytes,
             knight_bytes as f64 / 1024.0
         );
-        println!(
-            "Pawn attacks: {} bytes ({:.2} KB)",
-            pawn_bytes,
-            pawn_bytes as f64 / 1024.0
-        );
 
         let total_bytes = total_rook_bytes
             + total_bishop_bytes
             + rook_mask_bytes
             + bishop_mask_bytes
             + king_bytes
-            + knight_bytes
-            + pawn_bytes;
+            + knight_bytes;
         println!(
             "Total: {} bytes ({:.2} MB)",
             total_bytes,
@@ -322,6 +294,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     fn test_compile_time_vs_runtime() {
         println!("=== COMPILE-TIME vs RUNTIME ===");
         println!("Compile-time generated:");
@@ -332,10 +305,6 @@ mod test {
         println!(
             "  - KNIGHT_ATTACKS: {} bytes",
             std::mem::size_of_val(&KNIGHT_ATTACKS)
-        );
-        println!(
-            "  - PAWN_ATTACKS: {} bytes",
-            std::mem::size_of_val(&PAWN_ATTACKS)
         );
         println!(
             "  - ROOK_MASKS: {} bytes",

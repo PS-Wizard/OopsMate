@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-const FILE_A: u64 = 0x0101010101010101;
-const FILE_H: u64 = 0x8080808080808080;
 
 pub const fn generate_pawn_attacks() -> [[u64; 64]; 2] {
     let mut attacks = [[0u64; 64]; 2];

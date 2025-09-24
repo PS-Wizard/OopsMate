@@ -41,6 +41,7 @@ pub const fn generate_knight_attacks() -> [u64; 64] {
 }
 
 #[cfg(test)]
+#[cfg(debug_assertions)]
 mod test_knight {
     use utilities::board::PrintAsBoard;
 

@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 use types::{
     board::Board,
-    piece_kind::PieceKind::{self, *},
+    piece_kind::{
+        Piece,
+        PieceKind::{self, *},
+    },
 };
 
 pub struct Game {
@@ -15,7 +18,7 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         let mut boards: [Board; 12] = [Board::empty(); 12];
-        let mut board_map = [Empty; 64];
+        let mut board_map = [None; 64];
 
         boards[WhitePawn] = Board(0x0000_0000_0000_FF00);
         boards[WhiteRook] = Board(0x0000_0000_0000_0081);
@@ -63,5 +66,81 @@ impl Game {
     #[inline(always)]
     pub fn flip_turn(&mut self) {
         self.turn ^= 1;
+    }
+
+    #[inline(always)]
+    pub fn friendly_board(&self, piece: Piece) -> u64 {
+        self.boards[(piece as usize) + (self.turn as usize * 6)].0
+    }
+
+    #[inline(always)]
+    pub fn piece_at(&self, idx: usize) -> PieceKind {
+        self.board_map[idx]
+    }
+
+    #[inline(always)]
+    pub fn friendly_occupied(&self) -> u64 {
+        self.friendly_board(Piece::Pawns)
+            | self.friendly_board(Piece::Rooks)
+            | self.friendly_board(Piece::Knights)
+            | self.friendly_board(Piece::Bishops)
+            | self.friendly_board(Piece::Queens)
+            | self.friendly_board(Piece::King)
+    }
+
+    #[inline(always)]
+    pub fn enemy_occupied(&self) -> u64 {
+        let enemy_turn = self.turn ^ 1; // 0->1, 1->0
+        self.boards[(Piece::Pawns as usize) + (enemy_turn as usize * 6)].0
+            | self.boards[(Piece::Rooks as usize) + (enemy_turn as usize * 6)].0
+            | self.boards[(Piece::Knights as usize) + (enemy_turn as usize * 6)].0
+            | self.boards[(Piece::Bishops as usize) + (enemy_turn as usize * 6)].0
+            | self.boards[(Piece::Queens as usize) + (enemy_turn as usize * 6)].0
+            | self.boards[(Piece::King as usize) + (enemy_turn as usize * 6)].0
+    }
+
+    #[inline(always)]
+    pub fn occupied(&self) -> u64 {
+        self.friendly_occupied() | self.enemy_occupied()
+    }
+}
+
+#[cfg(test)]
+#[cfg(debug_assertions)]
+mod test_game {
+    use crate::game::Game;
+    use types::piece_kind::Piece::*;
+    use utilities::board::PrintAsBoard;
+
+    #[test]
+    fn test_get_friendlies() {
+        let mut g = Game::new();
+        println!("Whites: -----");
+        println!("Pawns:");
+        g.friendly_board(Pawns).print();
+        println!("Rooks:");
+        g.friendly_board(Rooks).print();
+        println!("Knights:");
+        g.friendly_board(Knights).print();
+        println!("Bishops:");
+        g.friendly_board(Bishops).print();
+        println!("Queens:");
+        g.friendly_board(Queens).print();
+        println!("King:");
+        g.friendly_board(King).print();
+        g.flip_turn();
+        println!("Blacks: -----");
+        println!("Pawns:");
+        g.friendly_board(Pawns).print();
+        println!("Rooks:");
+        g.friendly_board(Rooks).print();
+        println!("Knights:");
+        g.friendly_board(Knights).print();
+        println!("Bishops:");
+        g.friendly_board(Bishops).print();
+        println!("Queens:");
+        g.friendly_board(Queens).print();
+        println!("King:");
+        g.friendly_board(King).print();
     }
 }

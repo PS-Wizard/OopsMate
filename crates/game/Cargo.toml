@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 types = {path="../types/"}
+pext = {path="../pext/"}
+utilities = {path="../utilities/"}

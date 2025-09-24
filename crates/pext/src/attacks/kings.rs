@@ -42,6 +42,7 @@ pub const fn generate_king_attacks() -> [u64; 64] {
 }
 
 #[cfg(test)]
+#[cfg(debug_assertions)]
 mod test_king {
     use utilities::board::PrintAsBoard;
 

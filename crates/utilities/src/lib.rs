@@ -3,6 +3,7 @@ pub mod bits;
 pub mod board;
 
 #[cfg(test)]
+#[cfg(debug_assertions)]
 mod test {
     use crate::{algebraic::Algebraic, bits::EnumerateVariations, board::PrintAsBoard};
 
