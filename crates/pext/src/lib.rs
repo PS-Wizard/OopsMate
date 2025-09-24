@@ -9,25 +9,18 @@ use crate::{
 };
 use std::sync::LazyLock;
 
+pub mod api;
 mod attacks;
+mod enumerate;
 mod table_builder;
 
-pub const RANK_1: u64 = 0x00000000000000FF; // Promotion For Black
-pub const RANK_2: u64 = 0x000000000000FF00;
-pub const RANK_4: u64 = 0x00000000FF000000; // for black EP
-pub const RANK_5: u64 = 0x000000FF00000000; // for white EP
-pub const RANK_7: u64 = 0x00FF000000000000;
-pub const RANK_8: u64 = 0xFF00000000000000; // Promotion for white
-pub const FILE_A: u64 = 0x0101010101010101;
-pub const FILE_H: u64 = 0x8080808080808080;
-
-pub static KING_ATTACKS: [u64; 64] = generate_king_attacks();
-pub static KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
-pub static ROOK_MASKS: [u64; 64] = generate_rook_masks();
-pub static BISHOP_MASKS: [u64; 64] = generate_bishop_masks();
-pub static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+static KING_ATTACKS: [u64; 64] = generate_king_attacks();
+static KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
+static ROOK_MASKS: [u64; 64] = generate_rook_masks();
+static BISHOP_MASKS: [u64; 64] = generate_bishop_masks();
+static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
     LazyLock::new(|| generate_attack_table(generate_rook_attacks, &ROOK_MASKS));
-pub static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
     LazyLock::new(|| generate_attack_table(generate_bishop_attacks, &BISHOP_MASKS));
 
 pub fn warmup_attack_tables() {
@@ -82,10 +75,11 @@ pub fn warmup_attack_tables() {
 
 #[cfg(test)]
 mod test {
+    use crate::enumerate::EnumerateVariations;
+
     use super::*;
     use std::arch::x86_64::_pext_u64;
     use std::time::Instant;
-    use utilities::bits::EnumerateVariations;
     use utilities::{algebraic::Algebraic, board::PrintAsBoard};
 
     #[test]

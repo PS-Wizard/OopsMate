@@ -95,7 +95,7 @@ mod test_rooks {
         let blockers = "d4,d3,a2,h2,f4,g7,e6";
         for idx in idxs {
             println!("For Rook on: {idx} & Blockers on {blockers}");
-            generate_rook_attacks(idx.idx(), blockers.place()).print();
+            generate_rook_attacks(idx.idx() as u64, blockers.place()).print();
             println!("---");
         }
     }

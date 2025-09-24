@@ -1,4 +1,3 @@
-pub mod pawns;
 pub mod rooks;
 pub mod knights;
 pub mod bishops;

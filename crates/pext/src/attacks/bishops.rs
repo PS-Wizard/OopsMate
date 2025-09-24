@@ -85,7 +85,7 @@ mod test_bishops {
         let blockers = "d4,d3,a2,h2,f4,g7,e6";
         for idx in idxs {
             println!("For Bishop on: {idx} & Blockers on {blockers}");
-            generate_bishop_attacks(idx.idx(), blockers.place()).print();
+            generate_bishop_attacks(idx.idx() as u64, blockers.place()).print();
             println!("---");
         }
     }

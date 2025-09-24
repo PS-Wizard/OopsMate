@@ -25,7 +25,7 @@ pub trait Algebraic {
     ///
     /// let idx = "g2".idx();
     /// assert_eq(idx,14);
-    fn idx(&self) -> u64 {
+    fn idx(&self) -> usize {
         unimplemented!("idx() only for str");
     }
 
@@ -70,10 +70,10 @@ impl Algebraic for str {
         board
     }
 
-    fn idx(&self) -> u64 {
+    fn idx(&self) -> usize {
         let file = (self.as_bytes()[0].to_ascii_lowercase() - b'a') as u64; // 0..7
         let rank = (self.as_bytes()[1] - b'1') as u64; // '1'..'8' → 0..7
-        rank * 8 + file
+        (rank * 8 + file) as usize
     }
 }
 
