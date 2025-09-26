@@ -3,6 +3,7 @@ use crate::{
         bishops::{generate_bishop_attacks, generate_bishop_masks},
         kings::generate_king_attacks,
         knights::generate_knight_attacks,
+        pawns::generate_pawn_attacks,
         rooks::{generate_rook_attacks, generate_rook_masks},
     },
     table_builder::generate_attack_table,
@@ -14,13 +15,14 @@ mod attacks;
 mod enumerate;
 mod table_builder;
 
-static KING_ATTACKS: [u64; 64] = generate_king_attacks();
-static KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
-static ROOK_MASKS: [u64; 64] = generate_rook_masks();
-static BISHOP_MASKS: [u64; 64] = generate_bishop_masks();
-static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+pub static PAWN_ATTACKS: [[u64; 64]; 2] = generate_pawn_attacks();
+pub static KING_ATTACKS: [u64; 64] = generate_king_attacks();
+pub static KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
+pub static ROOK_MASKS: [u64; 64] = generate_rook_masks();
+pub static BISHOP_MASKS: [u64; 64] = generate_bishop_masks();
+pub static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
     LazyLock::new(|| generate_attack_table(generate_rook_attacks, &ROOK_MASKS));
-static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+pub static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
     LazyLock::new(|| generate_attack_table(generate_bishop_attacks, &BISHOP_MASKS));
 
 pub fn warmup_attack_tables() {

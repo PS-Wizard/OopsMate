@@ -2,35 +2,56 @@ use crate::{BISHOP_ATTACKS, BISHOP_MASKS, ROOK_ATTACKS, ROOK_MASKS};
 use crate::{KING_ATTACKS, KNIGHT_ATTACKS};
 use std::arch::x86_64::_pext_u64;
 
-#[inline(always)]
-pub fn get_king_attacks(from: usize) -> u64 {
-    KING_ATTACKS[from]
+pub trait SquareIndex {
+    fn idx(self) -> usize;
+}
+
+impl SquareIndex for usize {
+    fn idx(self) -> usize { self
+    }
+}
+
+impl SquareIndex for u8 {
+    fn idx(self) -> usize {
+        self as usize
+    }
+}
+
+impl SquareIndex for u64 {
+    fn idx(self) -> usize {
+        self as usize
+    }
 }
 
 #[inline(always)]
-pub fn get_knight_attacks(from: usize) -> u64 {
-    KNIGHT_ATTACKS[from]
+pub fn get_king_attacks<T: SquareIndex>(from: T) -> u64 {
+    KING_ATTACKS[from.idx()]
 }
 
 #[inline(always)]
-pub fn get_bishop_attacks(from: usize, blockers: u64) -> u64 {
+pub fn get_knight_attacks<T: SquareIndex>(from: T) -> u64 {
+    KNIGHT_ATTACKS[from.idx()]
+}
+
+#[inline(always)]
+pub fn get_bishop_attacks<T: SquareIndex>(from: T, blockers: u64) -> u64 {
+    let from = from.idx();
     let mask = BISHOP_MASKS[from];
     let idx = unsafe { _pext_u64(blockers, mask) as usize };
     BISHOP_ATTACKS[from][idx]
 }
 
 #[inline(always)]
-pub fn get_rook_attacks(from: usize, blockers: u64) -> u64 {
+pub fn get_rook_attacks<T: SquareIndex>(from: T, blockers: u64) -> u64 {
+    let from = from.idx();
     let mask = ROOK_MASKS[from];
     let idx = unsafe { _pext_u64(blockers, mask) as usize };
     ROOK_ATTACKS[from][idx]
 }
 
 #[inline(always)]
-pub fn get_queen_attacks(from: usize, blockers: u64) -> u64 {
-    let bishop = get_bishop_attacks(from, blockers);
-    let rook = get_rook_attacks(from, blockers);
-    bishop | rook
+pub fn get_queen_attacks<T: SquareIndex + Copy>(from: T, blockers: u64) -> u64 {
+    get_bishop_attacks(from.idx(), blockers) | get_rook_attacks(from.idx(), blockers)
 }
 
 #[inline(always)]
