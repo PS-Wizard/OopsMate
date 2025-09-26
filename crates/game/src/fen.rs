@@ -3,8 +3,7 @@
 use crate::{board::Board, game::Game, piece::PieceKind};
 use utilities::algebraic::Algebraic;
 
-impl Game {
-    /// Parses FEN notation into a new `Game`
+impl Game { /// Parses FEN notation into a new `Game`
     pub fn from_fen(fen: &str) -> Self {
         let parts: Vec<&str> = fen.split_whitespace().collect();
 

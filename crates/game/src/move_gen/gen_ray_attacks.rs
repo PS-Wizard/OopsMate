@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::{BOTTOM, BOTTOM_LEFT, BOTTOM_RIGHT, LEFT, RIGHT, TOP, TOP_LEFT, TOP_RIGHT};
+use crate::move_gen::direction_consts::*;
 
 pub static RAY_ATTACKS: [[u64; 64]; 8] = generate_ray_attacks();
 
@@ -66,11 +66,11 @@ const fn generate_ray(
 mod test_ray_attacks {
     use utilities::{algebraic::Algebraic, board::PrintAsBoard};
 
-    use crate::ray_attacks::{RAY_ATTACKS, RIGHT, TOP, TOP_LEFT, TOP_RIGHT};
-
+    use crate::move_gen::direction_consts::*;
+    use crate::move_gen::gen_ray_attacks::RAY_ATTACKS;
     #[test]
     fn test_ray_attack_thingy() {
-        RAY_ATTACKS[TOP_RIGHT]["f4".idx()].print();
+        RAY_ATTACKS[TOP]["f4".idx()].print();
         RAY_ATTACKS[TOP_LEFT]["h4".idx()].print();
         RAY_ATTACKS[TOP_RIGHT]["h6".idx()].print();
         RAY_ATTACKS[RIGHT]["d6".idx()].print();

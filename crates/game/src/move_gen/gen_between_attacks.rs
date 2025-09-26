@@ -72,9 +72,8 @@ const fn calculate_between(from: usize, to: usize) -> u64 {
 
 #[cfg(test)]
 mod test_between {
+    use super::*;
     use utilities::{algebraic::Algebraic, board::PrintAsBoard};
-
-    use crate::between::BETWEEN;
 
     #[test]
     fn test_between_stuff() {

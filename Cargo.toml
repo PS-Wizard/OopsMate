@@ -1,3 +1,3 @@
 [workspace]
 resolver = "3"
-members = [ "crates/pext", "crates/game", "crates/utilities", "crates/the_great_filter"]
+members = [ "crates/pext", "crates/game", "crates/utilities"]
