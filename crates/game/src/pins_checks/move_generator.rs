@@ -1,5 +1,6 @@
-use crate::{game::Game, move_gen::move_type::Move};
+#![allow(dead_code, unused_variables)]
 
+use crate::{game::Game, pins_checks::move_type::Move};
 pub struct MoveGenerator {
     pub moves: [Move; 256],
     pub count: usize,

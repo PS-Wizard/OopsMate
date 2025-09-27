@@ -1,20 +1,19 @@
-use std::pin;
-
+#![allow(dead_code)]
 use pext::{KNIGHT_ATTACKS, PAWN_ATTACKS};
 
 use crate::{
     game::Game,
-    move_gen::{
+    piece::{Piece::*, PieceKind::*},
+    pins_checks::{
         direction_consts::{
             BOTTOM, BOTTOM_LEFT, BOTTOM_RIGHT, LEFT, RIGHT, TOP, TOP_LEFT, TOP_RIGHT,
         },
         gen_between_attacks::BETWEEN,
         gen_ray_attacks::RAY_ATTACKS,
     },
-    piece::{Piece::*, PieceKind::*},
 };
 
-fn find_pinned_checkers_mask(g: &Game) -> (u64, u64, u64) {
+fn find_pins_n_checks(g: &Game) -> (u64, u64, u64) {
     let king_sq = g.friendly_board(King).trailing_zeros() as usize;
     let friendly = g.get_all_friendlies();
     let enemy = g.get_all_enemies();
@@ -36,7 +35,7 @@ fn find_pinned_checkers_mask(g: &Game) -> (u64, u64, u64) {
             } else {
                 // If the direction is more than bottom, the ray goes from larger values to smaller
                 // values, so closest will be the MSB
-                63 - pieces_along_the_ray.trailing_zeros() as usize
+                63 - pieces_along_the_ray.leading_zeros() as usize
             };
 
             // Check if the piece is friendly or enemy
@@ -115,5 +114,30 @@ fn get_slider_mask_for_direction(g: &Game, direction: usize) -> u64 {
             g.enemy_board(Bishop) | g.enemy_board(Queen)
         }
         _ => 0,
+    }
+}
+
+#[cfg(test)]
+mod test_find_pins_checks {
+    use utilities::algebraic::Algebraic;
+    use utilities::board::PrintAsBoard;
+
+    use crate::game::Game;
+    use crate::piece::PieceKind::*;
+    use crate::pins_checks::pin_check_finder::find_pins_n_checks;
+
+    #[test]
+    fn test_find_checks_pins_mask() {
+        let mut g = Game::new();
+        g.remove_piece(WhitePawn, "e2".idx());
+        g.remove_piece(BlackPawn, "e7".idx());
+        g.move_piece(BlackQueen, "d8".idx(), "e7".idx());
+        let (pinned, checkers, check_mask) = find_pins_n_checks(&g);
+        println!("Pinned: ");
+        pinned.print();
+        println!("Checking Pieces:");
+        checkers.print();
+        println!("Check Mask:");
+        check_mask.print();
     }
 }
