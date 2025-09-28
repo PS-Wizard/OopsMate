@@ -1,11 +1,12 @@
 use std::arch::x86_64::_pext_u64;
 
 use pext::{ROOK_ATTACKS, ROOK_MASKS};
-use utilities::board::PrintAsBoard;
 
 use crate::{
     game::Game,
+    move_gen::{Move, MoveGenerator},
     piece::Piece::*,
+    pins_checks::move_type::mv_flags,
     pins_checks::{
         BETWEEN, RAY_ATTACKS,
         direction_consts::{BOTTOM, LEFT, RIGHT, TOP},
@@ -13,30 +14,27 @@ use crate::{
 };
 
 impl Game {
-    fn generate_rook_moves(&self, pinned: u64, check_mask: u64) {
-        // We cant filter out the rook like self.friendly(Rook) & !pinned because for
-        // sliding pieces they can still move along the check_mask even if pinned
+    pub fn generate_rook_moves(&self, pinned: u64, check_mask: u64, move_gen: &mut MoveGenerator) {
         let mut rooks = self.friendly_board(Rook);
         let king_sq = self.friendly_board(King).trailing_zeros() as usize;
         let all_pieces = self.white_occupied | self.black_occupied;
         let friendly_pieces = self.get_all_friendlies();
+        let enemy_pieces = self.get_all_enemies();
+
         while rooks != 0 {
             let from = rooks.trailing_zeros() as usize;
             rooks &= rooks - 1;
-            // check if this rook is pinned
-            // if so, it can only move along the pin ray
+
+            // Get legal move squares for this rook
             let legal_moves = if (pinned >> from) & 1 != 0 {
                 get_pin_ray_moves_for_rook(from, king_sq, all_pieces, friendly_pieces) & check_mask
             } else {
-                // If not it could still be in check or can just be a normal move
-                let mask_idx = unsafe {
-                    _pext_u64(self.white_occupied | self.black_occupied, ROOK_MASKS[from])
-                };
-                // Filter out the moves that don't align with the check_mask
+                let mask_idx = unsafe { _pext_u64(all_pieces, ROOK_MASKS[from]) };
                 ROOK_ATTACKS[from][mask_idx as usize] & !friendly_pieces & check_mask
             };
-            println!("Rook Moves for a rook on {from}:");
-            legal_moves.print();
+
+            // Convert bitboard to individual moves
+            add_moves_from_bitboard(legal_moves, from, enemy_pieces, move_gen);
         }
     }
 }
@@ -47,12 +45,9 @@ fn get_pin_ray_moves_for_rook(
     all_pieces: u64,
     friendly_pieces: u64,
 ) -> u64 {
-    // Find which direction the pin is in by checking which ray from the king contains the rook
     for direction in [TOP, RIGHT, BOTTOM, LEFT] {
         let ray = RAY_ATTACKS[direction][king_sq];
         if (ray >> rook_sq) & 1 != 0 {
-            // The piece is on this ray, so it can move along this ray
-            // Rook is pinned along this axis - it can move in BOTH directions along this axis
             let opposite_direction = match direction {
                 TOP => BOTTOM,
                 BOTTOM => TOP,
@@ -60,15 +55,12 @@ fn get_pin_ray_moves_for_rook(
                 RIGHT => LEFT,
                 _ => direction,
             };
-            //
-            // Filter out the friendly_pieces cause get_sliding_attacks_in_direction returns upto
-            // and INCLUDING the closest piece, which couldve been a frieldy
+
             return (get_sliding_attacks_in_direction(rook_sq, direction, all_pieces)
                 | get_sliding_attacks_in_direction(rook_sq, opposite_direction, all_pieces))
                 & !friendly_pieces;
         }
     }
-    // If we get here, gang we are so cooked, the rook should be on one of the above rays
     0
 }
 
@@ -79,11 +71,10 @@ fn get_sliding_attacks_in_direction(from: usize, direction: usize, all_pieces: u
         return ray;
     }
 
-    // Find the FIRST piece in the direction we're moving from the rook
     let blocking_piece_sq = if is_direction_increasing(direction, from) {
-        pieces_on_the_ray.trailing_zeros() as usize // First piece in increasing direction
+        pieces_on_the_ray.trailing_zeros() as usize
     } else {
-        63 - pieces_on_the_ray.leading_zeros() as usize // First piece in decreasing direction
+        63 - pieces_on_the_ray.leading_zeros() as usize
     };
 
     BETWEEN[from][blocking_piece_sq] | (1u64 << blocking_piece_sq)
@@ -91,41 +82,85 @@ fn get_sliding_attacks_in_direction(from: usize, direction: usize, all_pieces: u
 
 fn is_direction_increasing(direction: usize, _from: usize) -> bool {
     match direction {
-        TOP | RIGHT => true,    // These go to higher square numbers
-        BOTTOM | LEFT => false, // These go to lower square numbers
+        TOP | RIGHT => true,
+        BOTTOM | LEFT => false,
         _ => true,
+    }
+}
+
+fn add_moves_from_bitboard(
+    moves_bitboard: u64,
+    from_sq: usize,
+    enemy_pieces: u64,
+    move_gen: &mut MoveGenerator,
+) {
+    let mut moves = moves_bitboard;
+    while moves != 0 {
+        let to_sq = moves.trailing_zeros() as usize;
+        moves &= moves - 1;
+
+        // Determine flags based on move type
+        let flags = if (enemy_pieces >> to_sq) & 1 != 0 {
+            mv_flags::CAPT // Capture
+        } else {
+            mv_flags::NONE // Normal move
+        };
+
+        // Create and add the move
+        let mv = Move::new(from_sq as u16, to_sq as u16, flags);
+        move_gen.moves[move_gen.count] = mv;
+        move_gen.count += 1;
+
+        // Safety check to prevent buffer overflow
+        if move_gen.count >= move_gen.moves.len() {
+            break;
+        }
     }
 }
 
 #[cfg(test)]
 mod test_rooks_legal {
-    use utilities::board::PrintAsBoard;
-
-    use crate::{game::Game, pins_checks::pin_check_finder::find_pins_n_checks};
+    use crate::{
+        game::Game,
+        move_gen::{Move, MoveGenerator},
+        pins_checks::{
+            move_type::mv_flags::{CAPT, NONE},
+            pin_check_finder::find_pins_n_checks,
+        },
+    };
 
     #[test]
     fn test_rook_legal() {
-        // https://lichess.org/editor/rnbqk1nr/pppp1ppp/8/8/1b6/2N5/PP2PPPP/R1BQKBNR_w_KQkq_-_0_1?color=white
-        // https://lichess.org/editor/rnb1k1nr/pppp1ppp/8/8/1b5q/8/PP2P1PP/RNBQKBNR_w_KQkq_-_0_1?color=white
-        // https://lichess.org/editor/rnb1k1nr/pppp1ppp/8/8/1b6/8/PP2P1PP/K2Rq3_w_kq_-_0_1?color=white
-        // https://lichess.org/editor/2Q2r1k/7P/8/8/8/8/8/8_b_-_-_0_1?color=black
         let positions = [
             "rnbqk1nr/pppp1ppp/8/8/1b6/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 1",
             "rnb1k1nr/pppp1ppp/8/8/1b5q/8/PP2P1PP/RNBQKBNR w KQkq - 0 1",
             "rnb1k1nr/pppp1ppp/8/8/1b6/8/PP2P1PP/K2Rq3 w kq - 0 1",
             "2Q2r1k/7P/8/8/8/8/8/8 b - - 0 1",
         ];
+
         for position in positions {
             println!("================");
             let g = Game::from_fen(position);
             let (pinned, _checking, check_mask) = find_pins_n_checks(&g);
-            println!("Pinned:");
-            pinned.print();
-            println!("Checking:");
-            _checking.print();
-            println!("CheckMask:");
-            check_mask.print();
-            g.generate_rook_moves(pinned, check_mask);
+            println!("Position: {}", position);
+
+            let mut move_gen = MoveGenerator {
+                moves: [Move::from_u16(0); 256],
+                count: 0,
+            };
+
+            g.generate_rook_moves(pinned, check_mask, &mut move_gen);
+
+            println!("Generated {} rook moves:", move_gen.count);
+            for i in 0..move_gen.count {
+                let mv = move_gen.moves[i];
+                let flags_str = match mv.flags() {
+                    CAPT => " (capture)",
+                    NONE => "",
+                    _ => " (other)",
+                };
+                println!("  {} -> {}{}", mv.from_sq(), mv.to_sq(), flags_str);
+            }
             println!("================");
         }
     }

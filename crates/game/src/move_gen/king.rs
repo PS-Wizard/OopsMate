@@ -1,20 +1,21 @@
-use pext::PAWN_ATTACKS;
-use pext::KING_ATTACKS;
-use utilities::board::PrintAsBoard;
+use pext::{PAWN_ATTACKS, KING_ATTACKS};
 
 use crate::{
     game::Game,
+    move_gen::{Move, MoveGenerator},
     piece::Piece::*,
+    pins_checks::move_type::mv_flags,
 };
 
 impl Game {
-    fn generate_king_moves(&self, _pinned: u64, _check_mask: u64) {
+    pub fn generate_king_moves(&self, _pinned: u64, _check_mask: u64, move_gen: &mut MoveGenerator) {
         // King moves ignore pinned and check_mask parameters because:
         // 1. Kings can't be pinned (would be in check instead)
         // 2. Kings must avoid moving into check regardless of check_mask
         
         let king_sq = self.friendly_board(King).trailing_zeros() as usize;
         let friendly_pieces = self.get_all_friendlies();
+        let enemy_pieces = self.get_all_enemies();
         
         // Get all possible king moves (one square in any direction)
         let possible_moves = KING_ATTACKS[king_sq] & !friendly_pieces;
@@ -22,15 +23,11 @@ impl Game {
         // Filter out moves that would put king in check
         let legal_moves = self.filter_safe_king_moves(possible_moves, king_sq);
         
-        println!("King Moves for king on {king_sq}:");
-        legal_moves.print();
+        // Convert bitboard to individual moves
+        add_moves_from_bitboard(legal_moves, king_sq, enemy_pieces, move_gen);
         
         // Handle castling separately
-        let castling_moves = self.generate_castling_moves();
-        if castling_moves != 0 {
-            println!("Castling moves:");
-            castling_moves.print();
-        }
+        self.generate_castling_moves(move_gen);
     }
     
     /// Filters out king moves that would put the king in check
@@ -70,7 +67,7 @@ impl Game {
         }
         
         // Check for enemy knight attacks
-        if (KING_ATTACKS[square] & self.enemy_board(Knight)) != 0 {
+        if (pext::KNIGHT_ATTACKS[square] & self.enemy_board(Knight)) != 0 {
             return true;
         }
         
@@ -150,36 +147,56 @@ impl Game {
     }
     
     /// Generates castling moves if legal
-    fn generate_castling_moves(&self) -> u64 {
-        let mut castling_moves = 0u64;
-        
+    fn generate_castling_moves(&self, move_gen: &mut MoveGenerator) {
         if self.turn == 0 {
             // White castling
-            if (self.castling_rights & 0b0001) != 0 {  // White kingside
-                if self.can_castle_kingside() {
-                    castling_moves |= 1u64 << 6; // g1
+            if (self.castling_rights & 0b0001) != 0 && self.can_castle_kingside() {
+                // White kingside castling
+                let mv = Move::new(4, 6, mv_flags::CASTLE); // e1 -> g1
+                move_gen.moves[move_gen.count] = mv;
+                move_gen.count += 1;
+                
+                // Safety check to prevent buffer overflow
+                if move_gen.count >= move_gen.moves.len() {
+                    return;
                 }
             }
-            if (self.castling_rights & 0b0010) != 0 {  // White queenside
-                if self.can_castle_queenside() {
-                    castling_moves |= 1u64 << 2; // c1
+            if (self.castling_rights & 0b0010) != 0 && self.can_castle_queenside() {
+                // White queenside castling
+                let mv = Move::new(4, 2, mv_flags::CASTLE); // e1 -> c1
+                move_gen.moves[move_gen.count] = mv;
+                move_gen.count += 1;
+                
+                // Safety check to prevent buffer overflow
+                if move_gen.count >= move_gen.moves.len() {
+                    return;
                 }
             }
         } else {
             // Black castling
-            if (self.castling_rights & 0b0100) != 0 {  // Black kingside
-                if self.can_castle_kingside() {
-                    castling_moves |= 1u64 << 62; // g8
+            if (self.castling_rights & 0b0100) != 0 && self.can_castle_kingside() {
+                // Black kingside castling
+                let mv = Move::new(60, 62, mv_flags::CASTLE); // e8 -> g8
+                move_gen.moves[move_gen.count] = mv;
+                move_gen.count += 1;
+                
+                // Safety check to prevent buffer overflow
+                if move_gen.count >= move_gen.moves.len() {
+                    return;
                 }
             }
-            if (self.castling_rights & 0b1000) != 0 {  // Black queenside
-                if self.can_castle_queenside() {
-                    castling_moves |= 1u64 << 58; // c8
+            if (self.castling_rights & 0b1000) != 0 && self.can_castle_queenside() {
+                // Black queenside castling
+                let mv = Move::new(60, 58, mv_flags::CASTLE); // e8 -> c8
+                move_gen.moves[move_gen.count] = mv;
+                move_gen.count += 1;
+                
+                // Safety check to prevent buffer overflow
+                if move_gen.count >= move_gen.moves.len() {
+                    return;
                 }
             }
         }
-        
-        castling_moves
     }
     
     fn can_castle_kingside(&self) -> bool {
@@ -217,22 +234,59 @@ impl Game {
     }
 }
 
+fn add_moves_from_bitboard(
+    moves_bitboard: u64,
+    from_sq: usize,
+    enemy_pieces: u64,
+    move_gen: &mut MoveGenerator,
+) {
+    let mut moves = moves_bitboard;
+    while moves != 0 {
+        let to_sq = moves.trailing_zeros() as usize;
+        moves &= moves - 1;
+
+        // Determine flags based on move type
+        let flags = if (enemy_pieces >> to_sq) & 1 != 0 {
+            mv_flags::CAPT // Capture
+        } else {
+            mv_flags::NONE // Normal move
+        };
+
+        // Create and add the move
+        let mv = Move::new(from_sq as u16, to_sq as u16, flags);
+        move_gen.moves[move_gen.count] = mv;
+        move_gen.count += 1;
+
+        // Safety check to prevent buffer overflow
+        if move_gen.count >= move_gen.moves.len() {
+            break;
+        }
+    }
+}
+
 #[cfg(test)]
 mod test_king_legal {
-    use crate::{game::Game, pins_checks::pin_check_finder::find_pins_n_checks};
+    use crate::{
+        game::Game,
+        move_gen::{Move, MoveGenerator},
+        pins_checks::{
+            move_type::mv_flags::{CAPT, CASTLE, NONE},
+            pin_check_finder::find_pins_n_checks,
+        },
+    };
 
     #[test]
     fn test_king_legal() {
         let positions = [
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // Starting position
-            "8/8/8/8/8/8/8/4K3 w - - 0 1", // King alone
-            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", // Castling test
-            "8/8/8/3qk3/8/8/8/3K4 w - - 0 1", // King under attack
-            "k7/8/8/5q2/8/8/8/R3K2R w KQ - 0 1", // King Shouldnt be able to castle kingside
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // Starting position: 0
+            "8/8/8/8/8/8/8/4K3 w - - 0 1", // King alone: 5
+            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", // Castling test: 4
+            "8/8/8/3qk3/8/8/8/3K4 w - - 0 1", // King under attack: 4
+            "k7/8/8/5q2/8/8/8/R3K2R w KQ - 0 1", // King Shouldnt be able to castle kingside: 3
             "k7/8/8/2r2q2/8/8/8/R3K2R w KQ - 0 1", // King Shouldnt be able to castle both king or
-                                                   // queen side
+                                                   // queen side: 3
             "k7/8/8/8/8/8/8/1R2K2R w K - 0 1", // No queen side castling cause the rook moved or
-                                               // somethin
+                                               // somethin: 6
         ];
         
         for position in positions {
@@ -240,7 +294,25 @@ mod test_king_legal {
             let g = Game::from_fen(position);
             let (pinned, _checking, check_mask) = find_pins_n_checks(&g);
             println!("Position: {}", position);
-            g.generate_king_moves(pinned, check_mask);
+
+            let mut move_gen = MoveGenerator {
+                moves: [Move::from_u16(0); 256],
+                count: 0,
+            };
+
+            g.generate_king_moves(pinned, check_mask, &mut move_gen);
+
+            println!("Generated {} king moves:", move_gen.count);
+            for i in 0..move_gen.count {
+                let mv = move_gen.moves[i];
+                let flags_str = match mv.flags() {
+                    CAPT => " (capture)",
+                    CASTLE => " (castle)",
+                    NONE => "",
+                    _ => " (other)",
+                };
+                println!("  {} -> {}{}", mv.from_sq(), mv.to_sq(), flags_str);
+            }
             println!("================");
         }
     }

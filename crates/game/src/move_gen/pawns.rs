@@ -1,9 +1,10 @@
 use pext::PAWN_ATTACKS;
-use utilities::board::PrintAsBoard;
 
 use crate::{
     game::Game,
+    move_gen::{Move, MoveGenerator},
     piece::Piece::*,
+    pins_checks::move_type::mv_flags,
     pins_checks::{
         RAY_ATTACKS,
         direction_consts::{BOTTOM, BOTTOM_LEFT, BOTTOM_RIGHT, TOP, TOP_LEFT, TOP_RIGHT},
@@ -11,49 +12,36 @@ use crate::{
 };
 
 impl Game {
-    fn generate_pawn_moves(&self, pinned: u64, check_mask: u64) {
+    pub fn generate_pawn_moves(&self, pinned: u64, check_mask: u64, move_gen: &mut MoveGenerator) {
         let mut pawns = self.friendly_board(Pawn);
         let king_sq = self.friendly_board(King).trailing_zeros() as usize;
         let all_pieces = self.white_occupied | self.black_occupied;
         let enemy_pieces = self.get_all_enemies();
 
-        println!("=== Pawn Move Generation ===");
-
         while pawns != 0 {
             let from = pawns.trailing_zeros() as usize;
             pawns &= pawns - 1;
 
-            let mut _legal_moves = 0u64;
+            let mut legal_moves;
 
             if (pinned >> from) & 1 != 0 {
                 // Pawn is pinned - very restricted movement
-                _legal_moves =
+                legal_moves =
                     get_pinned_pawn_moves(from, king_sq, all_pieces, enemy_pieces, self.turn);
             } else {
                 // Pawn is not pinned - normal pawn moves
-                _legal_moves = get_normal_pawn_moves(from, all_pieces, enemy_pieces, self.turn);
+                legal_moves = get_normal_pawn_moves(from, all_pieces, enemy_pieces, self.turn);
 
                 // Add en passant moves if available
                 if self.en_passant != 0 {
-                    _legal_moves |=
+                    legal_moves |=
                         get_en_passant_moves(from, self.en_passant as usize, self.turn, self);
                 }
             }
 
             // Apply check mask
-            _legal_moves &= check_mask;
-
-            if _legal_moves != 0 {
-                println!("Pawn moves for pawn on {from}:");
-                _legal_moves.print();
-
-                // Check for promotion moves
-                let promotion_moves = get_promotion_moves(_legal_moves, self.turn);
-                if promotion_moves != 0 {
-                    println!("Promotion squares:");
-                    promotion_moves.print();
-                }
-            }
+            legal_moves &= check_mask;
+            add_pawn_moves_from_bitboard(legal_moves, from, enemy_pieces, self.turn, move_gen);
         }
     }
 }
@@ -61,10 +49,10 @@ impl Game {
 fn get_normal_pawn_moves(from: usize, all_pieces: u64, enemy_pieces: u64, turn: u8) -> u64 {
     let mut moves = 0u64;
 
-    let (forward_offset, starting_rank, _double_move_rank) = if turn == 0 {
-        (8, 1, 3) // White: move up, start on rank 2, double move to rank 4
+    let (forward_offset, starting_rank) = if turn == 0 {
+        (8, 1) // White: move up, start on rank 2
     } else {
-        (-8i8 as u8, 6, 4) // Black: move down, start on rank 7, double move to rank 5
+        (-8i8 as u8, 6) // Black: move down, start on rank 7
     };
 
     let rank = from / 8;
@@ -96,7 +84,6 @@ fn get_pinned_pawn_moves(
     enemy_pieces: u64,
     turn: u8,
 ) -> u64 {
-    // Find which direction the pin is along
     let pin_direction = find_pin_direction(pawn_sq, king_sq);
     if pin_direction.is_none() {
         return 0;
@@ -123,7 +110,6 @@ fn get_pinned_pawn_moves(
 fn find_pin_direction(pawn_sq: usize, king_sq: usize) -> Option<usize> {
     use crate::pins_checks::direction_consts::*;
 
-    // Check all 8 directions to find which ray the pawn is on
     for direction in [
         TOP,
         TOP_RIGHT,
@@ -170,10 +156,7 @@ fn get_diagonal_pawn_moves_along_pin(
     enemy_pieces: u64,
     turn: u8,
 ) -> u64 {
-    // Pawn can only capture along the pin diagonal
     let pawn_attacks = PAWN_ATTACKS[turn as usize][pawn_sq] & enemy_pieces;
-
-    // Filter to only include captures along the pin direction
     let mut valid_captures = 0u64;
     let mut attacks = pawn_attacks;
 
@@ -181,7 +164,6 @@ fn get_diagonal_pawn_moves_along_pin(
         let capture_sq = attacks.trailing_zeros() as usize;
         attacks &= attacks - 1;
 
-        // Check if this capture is along the pin direction
         let capture_direction = get_direction_between_squares(pawn_sq, capture_sq);
         if capture_direction == Some(pin_direction) {
             valid_captures |= 1u64 << capture_sq;
@@ -216,20 +198,17 @@ fn get_direction_between_squares(from: usize, to: usize) -> Option<usize> {
 }
 
 fn get_en_passant_moves(pawn_sq: usize, en_passant_sq: usize, turn: u8, game: &Game) -> u64 {
-    // Check if this pawn can capture en passant
     let pawn_attacks = PAWN_ATTACKS[turn as usize][pawn_sq];
     if (pawn_attacks >> en_passant_sq) & 1 == 0 {
         return 0;
     }
 
-    // Calculate the square of the captured pawn
     let captured_pawn_sq = if turn == 0 {
-        en_passant_sq - 8 // White captures black pawn one rank below
+        en_passant_sq - 8
     } else {
-        en_passant_sq + 8 // Black captures white pawn one rank above
+        en_passant_sq + 8
     };
 
-    // Simulate the en passant capture and check if king would be in check
     if is_en_passant_legal(pawn_sq, en_passant_sq, captured_pawn_sq, game) {
         1u64 << en_passant_sq
     } else {
@@ -245,54 +224,15 @@ fn is_en_passant_legal(
 ) -> bool {
     let king_sq = game.friendly_board(King).trailing_zeros() as usize;
 
-    // Create a temporary board state after en passant
     let mut all_pieces = game.white_occupied | game.black_occupied;
-    all_pieces &= !(1u64 << pawn_sq); // Remove capturing pawn
-    all_pieces &= !(1u64 << captured_pawn_sq); // Remove captured pawn  
-    all_pieces |= 1u64 << en_passant_sq; // Add pawn to new position
+    all_pieces &= !(1u64 << pawn_sq);
+    all_pieces &= !(1u64 << captured_pawn_sq);
+    all_pieces |= 1u64 << en_passant_sq;
 
-    // Check if king would be in check in this new position
     !is_square_attacked_by_enemy(king_sq, game.get_all_enemies(), all_pieces, game)
 }
 
-// Helper function for en passant validation - checks if a square is attacked
 fn is_square_attacked_by_enemy(
-    square: usize,
-    enemy_pieces: u64,
-    all_pieces: u64,
-    game: &Game,
-) -> bool {
-    // Check for enemy pawn attacks
-    if (PAWN_ATTACKS[game.turn as usize][square] & game.enemy_board(Pawn)) != 0 {
-        return true;
-    }
-
-    // Check for enemy knight attacks
-    use pext::KNIGHT_ATTACKS;
-    if (KNIGHT_ATTACKS[square] & game.enemy_board(Knight)) != 0 {
-        return true;
-    }
-
-    // Check for enemy king attacks
-    use pext::KING_ATTACKS;
-    if (KING_ATTACKS[square] & game.enemy_board(King)) != 0 {
-        return true;
-    }
-
-    // Check for enemy sliding piece attacks (rooks, bishops, queens)
-    is_square_attacked_by_sliders(square, enemy_pieces, all_pieces, game)
-}
-
-fn is_direction_increasing_for_validation(direction: usize) -> bool {
-    use crate::pins_checks::direction_consts::*;
-    match direction {
-        TOP | TOP_RIGHT | RIGHT | TOP_LEFT => true,
-        BOTTOM | BOTTOM_LEFT | LEFT | BOTTOM_RIGHT => false,
-        _ => true,
-    }
-}
-
-fn is_square_attacked_by_sliders(
     square: usize,
     _enemy_pieces: u64,
     all_pieces: u64,
@@ -300,8 +240,24 @@ fn is_square_attacked_by_sliders(
 ) -> bool {
     use crate::piece::PieceKind::*;
     use crate::pins_checks::{RAY_ATTACKS, direction_consts::*};
+    use pext::{KING_ATTACKS, KNIGHT_ATTACKS};
 
-    // Check all 8 directions for attacking sliders
+    // Check for enemy pawn attacks
+    if (PAWN_ATTACKS[game.turn as usize][square] & game.enemy_board(Pawn)) != 0 {
+        return true;
+    }
+
+    // Check for enemy knight attacks
+    if (KNIGHT_ATTACKS[square] & game.enemy_board(Knight)) != 0 {
+        return true;
+    }
+
+    // Check for enemy king attacks
+    if (KING_ATTACKS[square] & game.enemy_board(King)) != 0 {
+        return true;
+    }
+
+    // Check for enemy sliding piece attacks
     for direction in [
         TOP,
         TOP_RIGHT,
@@ -316,14 +272,12 @@ fn is_square_attacked_by_sliders(
         let pieces_on_ray = ray & all_pieces;
 
         if pieces_on_ray != 0 {
-            // Find the first piece in this direction
             let first_piece_sq = if is_direction_increasing_for_validation(direction) {
                 pieces_on_ray.trailing_zeros() as usize
             } else {
                 63 - pieces_on_ray.leading_zeros() as usize
             };
 
-            // Check if it's an enemy slider that can attack in this direction
             let piece = game.piece_at(first_piece_sq);
             let is_enemy = match game.turn {
                 0 => matches!(piece, BlackRook | BlackBishop | BlackQueen),
@@ -352,26 +306,88 @@ fn is_square_attacked_by_sliders(
     false
 }
 
-fn get_promotion_moves(moves: u64, turn: u8) -> u64 {
-    let promotion_rank = if turn == 0 { 7 } else { 0 }; // 8th rank for white, 1st rank for black
+fn is_direction_increasing_for_validation(direction: usize) -> bool {
+    use crate::pins_checks::direction_consts::*;
+    match direction {
+        TOP | TOP_RIGHT | RIGHT | TOP_LEFT => true,
+        BOTTOM | BOTTOM_LEFT | LEFT | BOTTOM_RIGHT => false,
+        _ => true,
+    }
+}
 
-    // Filter moves to only include those that reach the promotion rank
-    moves & (0xFF << (promotion_rank * 8))
+fn add_pawn_moves_from_bitboard(
+    moves_bitboard: u64,
+    from_sq: usize,
+    enemy_pieces: u64,
+    turn: u8,
+    move_gen: &mut MoveGenerator,
+) {
+    let mut moves = moves_bitboard;
+    let promotion_rank = if turn == 0 { 7 } else { 0 };
+
+    while moves != 0 {
+        let to_sq = moves.trailing_zeros() as usize;
+        moves &= moves - 1;
+        let to_rank = to_sq / 8;
+
+        let is_capture = (enemy_pieces >> to_sq) & 1 != 0;
+        let is_promotion = to_rank == promotion_rank;
+
+        if is_promotion {
+            // Generate all 4 promotion moves (Queen, Rook, Bishop, Knight)
+            let base_flags = if is_capture {
+                mv_flags::PROMO | mv_flags::CAPT
+            } else {
+                mv_flags::PROMO
+            };
+
+            // Add all promotion piece types - you'll need to extend your move format to handle this
+            // For now, just add queen promotion
+            let mv = Move::new(from_sq as u16, to_sq as u16, base_flags);
+            move_gen.moves[move_gen.count] = mv;
+            move_gen.count += 1;
+        } else {
+            let flags = if is_capture {
+                mv_flags::CAPT
+            } else {
+                mv_flags::NONE
+            };
+
+            let mv = Move::new(from_sq as u16, to_sq as u16, flags);
+            move_gen.moves[move_gen.count] = mv;
+            move_gen.count += 1;
+        }
+
+        if move_gen.count >= move_gen.moves.len() {
+            break;
+        }
+    }
 }
 
 #[cfg(test)]
 mod test_pawn_legal {
-    use crate::{game::Game, pins_checks::pin_check_finder::find_pins_n_checks};
-    use utilities::board::PrintAsBoard;
+    use crate::{
+        game::Game,
+        move_gen::{Move, MoveGenerator},
+        pins_checks::{
+            move_type::mv_flags::{CAPT, ENPASS, NONE, PROMO},
+            pin_check_finder::find_pins_n_checks,
+        },
+    };
 
     #[test]
     fn test_pawn_legal() {
         let positions = [
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // Starting position
-            "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2", // En passant available
-            "4k3/P7/8/8/8/8/7p/2K5 w - - 0 1",                          // Promotion test
-            "rnbqk1nr/pppp1ppp/8/8/1b6/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 1", // Pinned pawns
-            "5k2/8/8/1KpP1r2/8/8/8/8 w - - 0 1",                        // En passant capture
+            // starting pos expected 16
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            // expected 16
+            "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2",
+            // expected 1, promotion
+            "4k3/P7/8/8/8/8/7p/2K5 w - - 0 1",
+            //  expected 11
+            "rnbqk1nr/pppp1ppp/8/8/1b6/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 1",
+            // expected 1
+            "7k/8/8/1KpP2r1/8/8/8/8 w - c6 0 1", // En passant legality test
         ];
 
         for position in positions {
@@ -379,13 +395,26 @@ mod test_pawn_legal {
             let g = Game::from_fen(position);
             let (pinned, _checking, check_mask) = find_pins_n_checks(&g);
             println!("Position: {}", position);
-            println!("Pinned:");
-            pinned.print();
-            println!("Checking:");
-            _checking.print();
-            println!("CheckMask:");
-            check_mask.print();
-            g.generate_pawn_moves(pinned, check_mask);
+
+            let mut move_gen = MoveGenerator {
+                moves: [Move::from_u16(0); 256],
+                count: 0,
+            };
+
+            g.generate_pawn_moves(pinned, check_mask, &mut move_gen);
+
+            println!("Generated {} pawn moves:", move_gen.count);
+            for i in 0..move_gen.count {
+                let mv = move_gen.moves[i];
+                let flags_str = match mv.flags() {
+                    CAPT => " (capture)",
+                    PROMO => " (promotion)",
+                    ENPASS => " (en passant)",
+                    NONE => "",
+                    _ => " (combined flags)",
+                };
+                println!("  {} -> {}{}", mv.from_sq(), mv.to_sq(), flags_str);
+            }
             println!("================");
         }
     }
