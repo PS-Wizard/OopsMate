@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 
-pub static BETWEEN: [[u64; 64]; 64] = generate_between();
 
-const fn generate_between() -> [[u64; 64]; 64] {
+pub const fn generate_between() -> [[u64; 64]; 64] {
     let mut between = [[0u64; 64]; 64];
 
     let mut from = 0;
@@ -72,7 +71,7 @@ const fn calculate_between(from: usize, to: usize) -> u64 {
 
 #[cfg(test)]
 mod test_between {
-    use super::*;
+    use crate::pins_checks::BETWEEN;
     use utilities::{algebraic::Algebraic, board::PrintAsBoard};
 
     #[test]

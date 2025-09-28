@@ -1,3 +1,4 @@
+use pext::PAWN_ATTACKS;
 use pext::KING_ATTACKS;
 use utilities::board::PrintAsBoard;
 
@@ -218,7 +219,6 @@ impl Game {
 
 #[cfg(test)]
 mod test_king_legal {
-    use utilities::board::PrintAsBoard;
     use crate::{game::Game, pins_checks::pin_check_finder::find_pins_n_checks};
 
     #[test]
@@ -228,6 +228,11 @@ mod test_king_legal {
             "8/8/8/8/8/8/8/4K3 w - - 0 1", // King alone
             "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", // Castling test
             "8/8/8/3qk3/8/8/8/3K4 w - - 0 1", // King under attack
+            "k7/8/8/5q2/8/8/8/R3K2R w KQ - 0 1", // King Shouldnt be able to castle kingside
+            "k7/8/8/2r2q2/8/8/8/R3K2R w KQ - 0 1", // King Shouldnt be able to castle both king or
+                                                   // queen side
+            "k7/8/8/8/8/8/8/1R2K2R w K - 0 1", // No queen side castling cause the rook moved or
+                                               // somethin
         ];
         
         for position in positions {

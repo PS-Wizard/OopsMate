@@ -2,9 +2,8 @@
 
 use crate::pins_checks::direction_consts::*;
 
-pub static RAY_ATTACKS: [[u64; 64]; 8] = generate_ray_attacks();
 
-const fn generate_ray_attacks() -> [[u64; 64]; 8] {
+pub const fn generate_ray_attacks() -> [[u64; 64]; 8] {
     let mut rays = [[0u64; 64]; 8];
 
     let mut square = 0;
@@ -66,8 +65,7 @@ const fn generate_ray(
 mod test_ray_attacks {
     use utilities::{algebraic::Algebraic, board::PrintAsBoard};
 
-    use crate::pins_checks::direction_consts::*;
-    use crate::pins_checks::gen_ray_attacks::RAY_ATTACKS;
+    use crate::pins_checks::{direction_consts::*, RAY_ATTACKS};
     #[test]
     fn test_ray_attack_thingy() {
         RAY_ATTACKS[TOP]["f4".idx()].print();

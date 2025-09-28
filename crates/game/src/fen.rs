@@ -3,7 +3,8 @@
 use crate::{board::Board, game::Game, piece::PieceKind};
 use utilities::algebraic::Algebraic;
 
-impl Game { /// Parses FEN notation into a new `Game`
+impl Game {
+    /// Parses FEN notation into a new `Game`
     pub fn from_fen(fen: &str) -> Self {
         let parts: Vec<&str> = fen.split_whitespace().collect();
 
@@ -27,7 +28,7 @@ impl Game { /// Parses FEN notation into a new `Game`
 
     /// Parses FEN Position
     fn parse_position(&mut self, position: &str) {
-        let mut rank = 7u8; 
+        let mut rank = 7u8;
         let mut file = 0u8;
 
         for ch in position.chars() {
@@ -54,18 +55,8 @@ impl Game { /// Parses FEN notation into a new `Game`
 
     /// Updates the white_occupied & black_occupied bitboards
     fn update_occupied_boards(&mut self) {
-        let white_occupied = (0..6).fold(0, |acc, i| acc | self.boards[i].0);
-        let black_occupied = (6..12).fold(0, |acc, i| acc | self.boards[i].0);
-
-        if self.turn == 0 {
-            // White to move
-            self.white_occupied = white_occupied; // White = friendly
-            self.black_occupied = black_occupied; // Black = enemy
-        } else {
-            // Black to move
-            self.white_occupied = black_occupied; // Black = friendly
-            self.black_occupied = white_occupied; // White = enemy
-        }
+        self.white_occupied = (0..6).fold(0, |acc, i| acc | self.boards[i].0);
+        self.black_occupied = (6..12).fold(0, |acc, i| acc | self.boards[i].0);
     }
 
     /// Pretty Self Explainatory
@@ -98,8 +89,8 @@ impl Game { /// Parses FEN notation into a new `Game`
 
 #[cfg(test)]
 mod test_fen {
-    use utilities::board::PrintAsBoard;
     use crate::game::Game;
+    use utilities::board::PrintAsBoard;
 
     #[test]
     #[cfg(debug_assertions)]
@@ -112,7 +103,9 @@ mod test_fen {
     #[test]
     #[cfg(debug_assertions)]
     fn test_from_position() {
-        let g = Game::from_position("rnbqk1nr/pppp2pp/5p2/4p3/1b2P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 3");
+        let g = Game::from_position(
+            "rnbqk1nr/pppp2pp/5p2/4p3/1b2P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 3",
+        );
         println!("Enemy:");
         g.black_occupied.print();
         println!("Friendly:");
