@@ -85,34 +85,39 @@ impl Game {
 
     #[inline(always)]
     pub fn remove_piece(&mut self, board: PieceKind, idx: usize) {
+        if board == PieceKind::None {
+            return; // Nothing to remove
+        }
         self.boards[board as usize].remove_bit(idx);
         self.piece_map[idx] = PieceKind::None;
-
         let bit = 1u64 << idx;
         if (board as usize) < 6 {
-            self.white_occupied &= !bit;  
+            self.white_occupied &= !bit;
         } else {
-            self.black_occupied &= !bit; 
+            self.black_occupied &= !bit;
         }
     }
 
     #[inline(always)]
     pub fn add_piece(&mut self, board: PieceKind, idx: usize) {
+        if board == PieceKind::None {
+            return; // Nothing to add
+        }
         self.boards[board as usize].set_bit(idx as u8);
         self.piece_map[idx] = board;
-
         let bit = 1u64 << idx;
         if (board as usize) < 6 {
-            self.white_occupied |= bit;   // Add to white
+            self.white_occupied |= bit;
         } else {
-            self.black_occupied |= bit;   // Add to black
+            self.black_occupied |= bit;
         }
     }
 
     #[inline(always)]
     pub fn move_piece(&mut self, board: PieceKind, from: usize, to: usize) {
-        self.remove_piece(board,from);
-        self.add_piece(board,to);
+        self.remove_piece(board, from);
+        self.add_piece(board, to);
     }
+
 
 }

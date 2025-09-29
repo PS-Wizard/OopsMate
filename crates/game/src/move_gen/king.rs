@@ -8,7 +8,8 @@ use crate::{
 };
 
 impl Game {
-    pub fn generate_king_moves(&self, _pinned: u64, _check_mask: u64, move_gen: &mut MoveGenerator) {
+    /// Generates legal king moves for a given position
+    pub fn generate_king_moves(&self, move_gen: &mut MoveGenerator) {
         // King moves ignore pinned and check_mask parameters because:
         // 1. Kings can't be pinned (would be in check instead)
         // 2. Kings must avoid moving into check regardless of check_mask
@@ -271,7 +272,6 @@ mod test_king_legal {
         move_gen::{Move, MoveGenerator},
         pins_checks::{
             move_type::mv_flags::{CAPT, CASTLE, NONE},
-            pin_check_finder::find_pins_n_checks,
         },
     };
 
@@ -292,7 +292,6 @@ mod test_king_legal {
         for position in positions {
             println!("================");
             let g = Game::from_fen(position);
-            let (pinned, _checking, check_mask) = find_pins_n_checks(&g);
             println!("Position: {}", position);
 
             let mut move_gen = MoveGenerator {
@@ -300,7 +299,7 @@ mod test_king_legal {
                 count: 0,
             };
 
-            g.generate_king_moves(pinned, check_mask, &mut move_gen);
+            g.generate_king_moves(&mut move_gen);
 
             println!("Generated {} king moves:", move_gen.count);
             for i in 0..move_gen.count {

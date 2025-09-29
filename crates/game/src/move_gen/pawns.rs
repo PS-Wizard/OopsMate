@@ -334,18 +334,31 @@ fn add_pawn_moves_from_bitboard(
         let is_promotion = to_rank == promotion_rank;
 
         if is_promotion {
-            // Generate all 4 promotion moves (Queen, Rook, Bishop, Knight)
-            let base_flags = if is_capture {
-                mv_flags::PROMO | mv_flags::CAPT
+            let promotion_flags = if is_capture {
+                [
+                    mv_flags::PROMO_CAPT_QUEEN,
+                    mv_flags::PROMO_CAPT_ROOK,
+                    mv_flags::PROMO_CAPT_BISHOP,
+                    mv_flags::PROMO_CAPT_KNIGHT,
+                ]
             } else {
-                mv_flags::PROMO
+                [
+                    mv_flags::PROMO_QUEEN,
+                    mv_flags::PROMO_ROOK,
+                    mv_flags::PROMO_BISHOP,
+                    mv_flags::PROMO_KNIGHT,
+                ]
             };
 
-            // Add all promotion piece types - you'll need to extend your move format to handle this
-            // For now, just add queen promotion
-            let mv = Move::new(from_sq as u16, to_sq as u16, base_flags);
-            move_gen.moves[move_gen.count] = mv;
-            move_gen.count += 1;
+            for &flags in &promotion_flags {
+                let mv = Move::new(from_sq as u16, to_sq as u16, flags);
+                move_gen.moves[move_gen.count] = mv;
+                move_gen.count += 1;
+
+                if move_gen.count >= move_gen.moves.len() {
+                    return;
+                }
+            }
         } else {
             let flags = if is_capture {
                 mv_flags::CAPT
@@ -369,10 +382,7 @@ mod test_pawn_legal {
     use crate::{
         game::Game,
         move_gen::{Move, MoveGenerator},
-        pins_checks::{
-            move_type::mv_flags::{CAPT, ENPASS, NONE, PROMO},
-            pin_check_finder::find_pins_n_checks,
-        },
+        pins_checks::pin_check_finder::find_pins_n_checks,
     };
 
     #[test]
@@ -406,14 +416,7 @@ mod test_pawn_legal {
             println!("Generated {} pawn moves:", move_gen.count);
             for i in 0..move_gen.count {
                 let mv = move_gen.moves[i];
-                let flags_str = match mv.flags() {
-                    CAPT => " (capture)",
-                    PROMO => " (promotion)",
-                    ENPASS => " (en passant)",
-                    NONE => "",
-                    _ => " (combined flags)",
-                };
-                println!("  {} -> {}{}", mv.from_sq(), mv.to_sq(), flags_str);
+                println!("  {} -> {}", mv.from_sq(), mv.to_sq());
             }
             println!("================");
         }

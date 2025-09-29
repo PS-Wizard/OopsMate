@@ -2,12 +2,31 @@
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Move(u16);
 
+impl Default for Move {
+    fn default() -> Self {
+        Move(0)
+    }
+}
+
 pub mod mv_flags {
     pub const NONE: u16 = 0;
-    pub const PROMO: u16 = 1; // promotion
-    pub const CAPT: u16 = 2; // capture
-    pub const ENPASS: u16 = 4; // en-passant
-    pub const CASTLE: u16 = 8; // castling
+    pub const ENPASS: u16 = 1;
+    pub const CASTLE: u16 = 2;
+
+    // Promotions (non-capture): bits = 0100, 0101, 0110, 0111
+    pub const PROMO_QUEEN: u16 = 4;
+    pub const PROMO_ROOK: u16 = 5;
+    pub const PROMO_BISHOP: u16 = 6;
+    pub const PROMO_KNIGHT: u16 = 7;
+
+    // Regular capture
+    pub const CAPT: u16 = 8;
+
+    // Promotion captures: bits = 1100, 1101, 1110, 1111
+    pub const PROMO_CAPT_QUEEN: u16 = 12;
+    pub const PROMO_CAPT_ROOK: u16 = 13;
+    pub const PROMO_CAPT_BISHOP: u16 = 14;
+    pub const PROMO_CAPT_KNIGHT: u16 = 15;
 }
 
 impl Move {
