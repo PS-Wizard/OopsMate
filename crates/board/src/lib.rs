@@ -1,0 +1,80 @@
+#![allow(dead_code)]
+
+use types::{
+    bitboard::Bitboard,
+    others::{CastleRights, Color, Piece},
+};
+
+mod fen;
+mod move_gen;
+
+pub struct Position {
+    pieces: [Bitboard; 6],
+    all_pieces: [Bitboard; 2],
+    piece_map: [Option<(Piece, Color)>; 64],
+    side_to_move: Color,
+    castling_rights: CastleRights,
+    en_passant: Option<u8>,
+    half_clock: u8,
+    full_clock: u16,
+    hash: u64, // Zobrist Hash Later On
+}
+
+impl Position {
+    pub fn new() -> Self {
+        Self::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap_or_else(|err| panic!("Failed to parse starting FEN: {}", err))
+    }
+
+    pub fn new_from_fen(fen: &str) -> Self {
+        Self::from_fen(fen).unwrap_or_else(|err| panic!("Failed to parse starting FEN: {}", err))
+    }
+
+    pub fn us(&self) -> Bitboard {
+        self.all_pieces[self.side_to_move as usize]
+    }
+
+    pub fn them(&self) -> Bitboard {
+        self.all_pieces[self.side_to_move.flip() as usize - 1]
+    }
+
+    pub fn our(&self, piece: Piece) -> Bitboard {
+        self.pieces[piece as usize] & self.us()
+    }
+
+    pub fn their(&self, piece: Piece) -> Bitboard {
+        self.pieces[piece as usize] & self.them()
+    }
+
+    pub fn remove_piece(&mut self, idx: usize) {
+        if let Some((piece, color)) = self.piece_map[idx] {
+            self.pieces[piece as usize].remove_bit(idx);
+            self.all_pieces[color as usize].remove_bit(idx);
+            self.piece_map[idx] = None;
+        }
+    }
+
+    pub fn add_piece(&mut self, idx: usize, color: Color, board: Piece) {
+        self.pieces[board as usize].set_bit(idx);
+        self.all_pieces[color as usize].set_bit(idx);
+        self.piece_map[idx] = Some((board, color));
+    }
+}
+
+#[cfg(test)]
+mod position {
+    use crate::Position;
+    use types::others::Color::*;
+    use types::others::Piece::*;
+    use utilities::algebraic::Algebraic;
+    use utilities::board::PrintAsBoard;
+
+    #[test]
+    fn set_remove() {
+        let mut pos = Position::new();
+        pos.add_piece("a5".idx(), White, Rook);
+        pos.remove_piece("a1".idx());
+        pos.all_pieces[White as usize].0.print();
+        pos.all_pieces[Black as usize].0.print();
+    }
+}

@@ -3,19 +3,24 @@
 version = 4
 
 [[package]]
-name = "game"
+name = "board"
 version = "0.1.0"
 dependencies = [
- "pext",
+ "raw",
+ "types",
  "utilities",
 ]
 
 [[package]]
-name = "pext"
+name = "raw"
 version = "0.1.0"
 dependencies = [
  "utilities",
 ]
+
+[[package]]
+name = "types"
+version = "0.1.0"
 
 [[package]]
 name = "utilities"

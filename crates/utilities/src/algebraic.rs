@@ -29,6 +29,7 @@ pub trait Algebraic {
         unimplemented!("idx() only for str");
     }
 
+    /// Takes in a u64 and returns the notation for it.
     fn notation(&self) -> String {
         unimplemented!("notation() is only for u64")
     }
