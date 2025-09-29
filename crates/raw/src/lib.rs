@@ -10,7 +10,6 @@ use crate::{
 };
 use std::sync::LazyLock;
 
-pub mod api;
 mod attacks;
 mod enumerate;
 mod table_builder;
