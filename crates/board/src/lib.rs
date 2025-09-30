@@ -7,6 +7,7 @@ use types::{
 
 mod fen;
 mod move_gen;
+mod legality;
 
 pub struct Position {
     pieces: [Bitboard; 6],
@@ -26,26 +27,32 @@ impl Position {
             .unwrap_or_else(|err| panic!("Failed to parse starting FEN: {}", err))
     }
 
+    #[inline(always)]
     pub fn new_from_fen(fen: &str) -> Self {
         Self::from_fen(fen).unwrap_or_else(|err| panic!("Failed to parse starting FEN: {}", err))
     }
 
+    #[inline(always)]
     pub fn us(&self) -> Bitboard {
         self.all_pieces[self.side_to_move as usize]
     }
 
+    #[inline(always)]
     pub fn them(&self) -> Bitboard {
-        self.all_pieces[self.side_to_move.flip() as usize - 1]
+        self.all_pieces[self.side_to_move.flip() as usize]
     }
 
+    #[inline(always)]
     pub fn our(&self, piece: Piece) -> Bitboard {
         self.pieces[piece as usize] & self.us()
     }
 
+    #[inline(always)]
     pub fn their(&self, piece: Piece) -> Bitboard {
         self.pieces[piece as usize] & self.them()
     }
 
+    #[inline(always)]
     pub fn remove_piece(&mut self, idx: usize) {
         if let Some((piece, color)) = self.piece_map[idx] {
             self.pieces[piece as usize].remove_bit(idx);
@@ -54,6 +61,7 @@ impl Position {
         }
     }
 
+    #[inline(always)]
     pub fn add_piece(&mut self, idx: usize, color: Color, board: Piece) {
         self.pieces[board as usize].set_bit(idx);
         self.all_pieces[color as usize].set_bit(idx);

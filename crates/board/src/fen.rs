@@ -131,10 +131,10 @@ impl Position {
 
         for ch in castle_str.chars() {
             match ch {
-                'K' => rights |= 0b1000, // White kingside
-                'Q' => rights |= 0b0100, // White queenside
-                'k' => rights |= 0b0010, // Black kingside
-                'q' => rights |= 0b0001, // Black queenside
+                'K' => rights |= 0b0001, // White kingside
+                'Q' => rights |= 0b0010, // White queenside
+                'k' => rights |= 0b0100, // Black kingside
+                'q' => rights |= 0b1000, // Black queenside
                 _ => return Err(format!("Invalid castling right: {}", ch)),
             }
         }

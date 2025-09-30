@@ -34,8 +34,6 @@ impl MoveCollector {
     pub fn clear(&mut self) {
         self.count = 0;
     }
-
-        
 }
 
 impl std::ops::Index<usize> for MoveCollector {

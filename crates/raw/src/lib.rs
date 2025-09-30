@@ -6,14 +6,17 @@ use crate::{
         pawns::generate_pawn_attacks,
         rooks::{generate_rook_attacks, generate_rook_masks},
     },
+    paths::{between::generate_between, through::generate_line},
     table_builder::generate_attack_table,
 };
 use std::sync::LazyLock;
 
 mod attacks;
 mod enumerate;
+mod paths;
 mod table_builder;
 
+// Attacks & Masks
 pub static PAWN_ATTACKS: [[u64; 64]; 2] = generate_pawn_attacks();
 pub static KING_ATTACKS: [u64; 64] = generate_king_attacks();
 pub static KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
@@ -23,6 +26,20 @@ pub static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
     LazyLock::new(|| generate_attack_table(generate_rook_attacks, &ROOK_MASKS));
 pub static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
     LazyLock::new(|| generate_attack_table(generate_bishop_attacks, &BISHOP_MASKS));
+
+// Ray between 2 given indices
+pub static BETWEEN: [[u64; 64]; 64] = generate_between();
+pub static LINE: [[u64; 64]; 64] = generate_line();
+
+#[inline(always)]
+pub fn line_between(from: usize, to: usize) -> u64 {
+    BETWEEN[from][to]
+}
+
+#[inline(always)]
+pub fn line_through(sq1: usize, sq2: usize) -> u64 {
+    LINE[sq1][sq2]
+}
 
 pub fn warmup_attack_tables() {
     use std::arch::x86_64::_pext_u64;
