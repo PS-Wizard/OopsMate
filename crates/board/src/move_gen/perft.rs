@@ -22,7 +22,6 @@ impl Position {
             let m = collector[i];
             let new_pos = self.make_move(m);
 
-            // Fixed: Temporarily flip side on a clone to check if own king is left in check
             let mut check_pos = new_pos.clone();
             check_pos.side_to_move = check_pos.side_to_move.flip();
             if check_pos.is_in_check() {

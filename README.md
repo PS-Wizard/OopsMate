@@ -1,13 +1,64 @@
-# Back To Square 1
 
-### Current Problem: Legal Move Gen
+# ♟️ Oops!Mate
 
-##### 1st attempt: 30 nano seconds in perft(1) failed at perft(3) -> Make / Unmake based legality check + 3 buckets for types (Capture, Quiet, Promo) 
-##### 2nd attempt: Failed at perft(6), Failed at Kiwipete(3) -> Constraint based legality check.
-##### 3rd attempt: ONGOING
+```bash
+        ,....,
+      ,::::::<
+     ,::/^\"``.
+    ,::/, `   e`.
+   ,::; |        '.
+   ,::|  \___,-.  c)
+   ;::|     \   '-'
+   ;::|      \
+   ;::|   _.=`\
+   `;:|.=` _.=`\
+     '|_.=`   __\
+     `\_..==`` /
+      .'.___.-'.
+     /          \
+    /'--......--'\
+    `"--......--"
+```
 
-- The Plan:
-    - Make / Unmake Based Legality Check 
-    - [Board;12] -> [Board;6] & [Color;2]
-    - Mailbox for lookups [Option(Piece,Color); 64]
-    - IMA GET PERFT THIS TIME
+**A modular, high-performance (hopefully) chess engine being written in Rust.**  
+Building from the ground up with bitboards, magic, and good ol’ brainpower ( and some AI ... a good some of AI, I cant be reading all the docs myself, we arent in the stone ages anymore).
+
+---
+
+## 🧩 Design Goals
+
+- **Modularity** – each crate has one job and does it well
+- **Performance** – bitboards, magic tricks, and minimal allocations
+- **Clean code** – ergonomic, idiomatic Rust
+- **Extensibility** – easy to tweak, add heuristics, or swap components
+
+---
+
+## 🧪 Testing
+
+All crates will be testable independently:
+```bash
+cargo test -p magics # test magic bitboards
+cargo test -p board # test game state logic
+# etc...
+```
+Worspace wide:
+```bash
+cargo test --workspace
+```
+
+---
+
+## 🚧 WIP
+This engine is under active construction. 
+
+Planned:
+    - [x] Bitboards ( figured it out )
+    - [x] Magic Bitboards ( figured it out ... for the most part, some of it is still magic to me)
+    - FEN / UCI (long algebric notation)
+    - NNUE 
+    - Minimax with alpha-beta
+    - Null Move Pruning
+    - MVV LVA Ordering
+    - Iterative Deepening
+    - Quiescence Search

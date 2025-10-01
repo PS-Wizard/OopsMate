@@ -1,3 +1,11 @@
 [workspace]
 resolver = "3"
 members = [ "crates/board", "crates/raw", "crates/types", "crates/utilities"]
+
+[profile.release]
+opt-level = 3        # max LLVM optimizations
+lto = "fat"          # full link-time optimization
+codegen-units = 1    # single-threaded codegen, better optimization at the cost of compile time
+panic = "abort"      # smaller, faster, no unwinding machinery
+incremental = false  # disable incremental compilation (cleaner codegen)
+strip = "symbols"    # strip debug symbols for smaller binary
