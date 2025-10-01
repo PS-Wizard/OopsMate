@@ -109,8 +109,8 @@ impl Position {
 
         let ep_target = 1u64 << ep_sq;
 
-        // En passant must land on check_mask (blocks or doesn't matter)
-        if (ep_target & check_mask) == 0 {
+        let captured_pawn_bit = 1u64 << captured_pawn_sq;
+        if (ep_target & check_mask) == 0 && (captured_pawn_bit & check_mask) == 0 {
             return;
         }
 
@@ -122,7 +122,7 @@ impl Position {
             let from = pawn_bb.trailing_zeros() as usize;
             pawn_bb &= pawn_bb - 1;
 
-            // Can this pawn capture en passant?
+            // Can this pawn capture en passant
             if (PAWN_ATTACKS[color_idx][from] & ep_target) == 0 {
                 continue;
             }
@@ -265,7 +265,6 @@ mod pawns {
         assert_eq!(11, mc.len());
         mc.clear();
 
-        
         let g =
             Position::new_from_fen("1nb1k1nr/pppppppp/4r3/b7/7q/4P3/2PB1PPP/RN1QKB1R w KQk - 0 1");
         let (pinned, _, check_mask) = get_attack_constraints(&g);
@@ -274,24 +273,23 @@ mod pawns {
         mc.clear();
 
         // enpassant to discovered check, expected moves : 1
-        let g =
-            Position::new_from_fen("1n2k1nr/ppp1pppp/8/b1KpP2q/8/8/3B4/RN1Q1B1R w k - 0 1");
+        let g = Position::new_from_fen("1n2k1nr/ppp1pppp/8/b1KpP2q/8/8/3B4/RN1Q1B1R w k - 0 1");
         let (pinned, _, check_mask) = get_attack_constraints(&g);
         g.generate_pawn_moves(&mut mc, pinned, check_mask);
         assert_eq!(1, mc.len());
         mc.clear();
 
         // Capture on a8 to promotion -> Expected: 4 moves
-        let g =
-            Position::new_from_fen("rn2k1nr/pPp1pppp/8/b2p3q/8/8/3B4/RNKQ1B1R w KQkq - 0 1");
+        let g = Position::new_from_fen("rn2k1nr/pPp1pppp/8/b2p3q/8/8/3B4/RNKQ1B1R w KQkq - 0 1");
         let (pinned, _, check_mask) = get_attack_constraints(&g);
         g.generate_pawn_moves(&mut mc, pinned, check_mask);
         assert_eq!(4, mc.len());
         mc.clear();
 
         // Expected 8 moves:
-        let g =
-            Position::new_from_fen("rn2k1n1/pPp1pppp/4r3/b2p4/6Bq/2P1P3/1P3PP1/RN1QKB1R w KQq - 0 1");
+        let g = Position::new_from_fen(
+            "rn2k1n1/pPp1pppp/4r3/b2p4/6Bq/2P1P3/1P3PP1/RN1QKB1R w KQq - 0 1",
+        );
         let (pinned, _, check_mask) = get_attack_constraints(&g);
         g.generate_pawn_moves(&mut mc, pinned, check_mask);
         assert_eq!(8, mc.len());
