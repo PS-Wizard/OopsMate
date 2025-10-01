@@ -5,3 +5,5 @@ mod knights;
 mod pawns;
 mod queens;
 mod rooks;
+mod copy_make;
+mod perft;

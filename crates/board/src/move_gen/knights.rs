@@ -5,8 +5,13 @@ use types::others::Piece::*;
 
 impl Position {
     #[inline(always)]
-    pub fn generate_knight_moves(&self, collector: &mut MoveCollector) {
-        let mut our_knights = self.our(Knight).0;
+    pub fn generate_knight_moves(
+        &self,
+        collector: &mut MoveCollector,
+        pinned: u64,
+        check_mask: u64,
+    ) {
+        let mut our_knights = self.our(Knight).0 & !pinned;
         let friendly = self.us().0;
         let enemy = self.them().0;
 
@@ -14,7 +19,9 @@ impl Position {
             let from = our_knights.trailing_zeros() as usize;
             our_knights &= our_knights - 1; // Pop LSB
 
-            let attacks = KNIGHT_ATTACKS[from] & !friendly;
+            let mut attacks = KNIGHT_ATTACKS[from] & !friendly;
+
+            attacks &= check_mask;
 
             // Split attacks into captures and quiet moves
             let captures = attacks & enemy;
@@ -43,25 +50,55 @@ impl Position {
 mod knight_moves {
     use types::moves::MoveCollector;
 
-    use crate::Position;
+    use crate::{Position, legality::attack_constraints::get_attack_constraints};
 
     #[test]
     fn generate_knight_moves() {
         // Initial game position should return 4 moves
         let g = Position::new();
         let mut mc = MoveCollector::new();
-        g.generate_knight_moves(&mut mc);
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_knight_moves(&mut mc, pinned, check_mask);
         assert_eq!(mc.len(), 4);
+        mc.clear();
 
         // Expected 7 quiet moves, 3 captures = total 10
-        let g =
-            Position::new_from_fen("rnbqk1nr/ppp2pp1/8/2p1p1p1/8/2N2N2/PP1PPPPP/R1BQKBbb w Qkq - 0 1");
-        mc.clear();
-        g.generate_knight_moves(&mut mc);
+        let g = Position::new_from_fen(
+            "rnbqk1nr/ppp2pp1/8/2p1p1p1/8/2N2N2/PP1PPPPP/R1BQKBbb w Qkq - 0 1",
+        );
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_knight_moves(&mut mc, pinned, check_mask);
         assert_eq!(10, mc.len());
-        for i in 0..mc.len() {
-            let m = mc[i];
-            println!("Move: {}", m);
-        }
+        mc.clear();
+
+        // Expected 3 moves
+        let g = Position::new_from_fen(
+            "rnb1k1n1/ppppqppp/8/5N2/7b/3N2N1/PPPP2PP/r1N1KB1R w Kq - 0 1",
+        );
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_knight_moves(&mut mc, pinned, check_mask);
+        assert_eq!(3, mc.len());
+        mc.clear();
+
+
+
+        // Expected 3 moves
+        let g = Position::new_from_fen(
+            "rnb1k1n1/pppp1ppp/8/8/7b/3NN1NP/PPPP1NP1/r3KB1R w Kq - 0 1",
+        );
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_knight_moves(&mut mc, pinned, check_mask);
+        assert_eq!(3, mc.len());
+        mc.clear();
+
+
+        // Expected 3 moves
+        let g = Position::new_from_fen(
+            "1n2k1n1/pppp1ppp/b2b4/8/1NK1Nr2/2N5/PPPP1NPP/8 w - - 0 1",
+        );
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_knight_moves(&mut mc, pinned, check_mask);
+        assert_eq!(2, mc.len());
+        mc.clear();
     }
 }

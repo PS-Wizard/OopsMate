@@ -1,4 +1,6 @@
-use raw::PAWN_ATTACKS;
+use std::arch::x86_64::_pext_u64;
+
+use raw::{LINE, PAWN_ATTACKS, ROOK_ATTACKS, ROOK_MASKS};
 use types::moves::MoveCollector;
 use types::moves::{Move, MoveType::*};
 use types::others::Color::*;
@@ -7,167 +9,234 @@ use types::others::Piece::*;
 use crate::Position;
 
 impl Position {
-    #[inline(always)]
-    pub fn generate_pawn_moves(&self, collector: &mut MoveCollector) {
+    pub fn generate_pawn_moves(&self, collector: &mut MoveCollector, pinned: u64, check_mask: u64) {
         if self.side_to_move == White {
-            self.generate_white_pawn_moves(collector);
+            self.generate_white_pawn_moves(collector, pinned, check_mask);
         } else {
-            self.generate_black_pawn_moves(collector);
+            self.generate_black_pawn_moves(collector, pinned, check_mask);
         }
     }
 
-    fn generate_white_pawn_moves(&self, collector: &mut MoveCollector) {
-        let pawns = self.our(Pawn).0;
-        let empty = !(self.all_pieces[0].0 | self.all_pieces[1].0);
-        let enemies = self.them().0;
-
-        // Single pushes
-        let push_targets = (pawns << 8) & empty;
-        self.add_pawn_pushes(push_targets, -8, collector);
-
-        // Double pushes (from rank 2 to rank 4)
-        let rank_3 = push_targets & 0x0000000000FF0000;
-        let double_targets = (rank_3 << 8) & empty;
-        self.add_pawn_double_pushes(double_targets, -16, collector);
-
-        // Captures using attack table
-        let mut pawn_bb = pawns;
-        while pawn_bb != 0 {
-            let from = pawn_bb.trailing_zeros() as usize;
-            pawn_bb &= pawn_bb - 1;
-
-            let attacks = PAWN_ATTACKS[0][from] & enemies;
-            self.add_pawn_captures_from_square(attacks, from, collector);
-        }
-
-        // En passant
-        if let Some(ep_sq) = self.en_passant {
-            let ep_target = 1u64 << ep_sq;
-            let mut pawn_bb = pawns;
-            while pawn_bb != 0 {
-                let from = pawn_bb.trailing_zeros() as usize;
-                pawn_bb &= pawn_bb - 1;
-
-                if PAWN_ATTACKS[0][from] & ep_target != 0 {
-                    collector.push(Move::new(from, ep_sq as usize, EnPassant));
-                }
-            }
-        }
-    }
-
-    fn generate_black_pawn_moves(&self, collector: &mut MoveCollector) {
-        let pawns = self.our(Pawn).0;
-        let empty = !(self.all_pieces[0].0 | self.all_pieces[1].0);
-        let enemies = self.them().0;
-
-        // Single pushes
-        let push_targets = (pawns >> 8) & empty;
-        self.add_pawn_pushes(push_targets, 8, collector);
-
-        // Double pushes (from rank 7 to rank 5)
-        let rank_6 = push_targets & 0x0000FF0000000000;
-        let double_targets = (rank_6 >> 8) & empty;
-        self.add_pawn_double_pushes(double_targets, 16, collector);
-
-        // Captures using attack table
-        let mut pawn_bb = pawns;
-        while pawn_bb != 0 {
-            let from = pawn_bb.trailing_zeros() as usize;
-            pawn_bb &= pawn_bb - 1;
-
-            let attacks = PAWN_ATTACKS[1][from] & enemies;
-            self.add_pawn_captures_from_square(attacks, from, collector);
-        }
-
-        // En passant
-        if let Some(ep_sq) = self.en_passant {
-            let ep_target = 1u64 << ep_sq;
-            let mut pawn_bb = pawns;
-            while pawn_bb != 0 {
-                let from = pawn_bb.trailing_zeros() as usize;
-                pawn_bb &= pawn_bb - 1;
-
-                if PAWN_ATTACKS[1][from] & ep_target != 0 {
-                    collector.push(Move::new(from, ep_sq as usize, EnPassant));
-                }
-            }
-        }
-    }
-
-    // Helper: add pushes (with promotions on rank 8/1)
-    fn add_pawn_pushes(&self, targets: u64, offset: i32, collector: &mut MoveCollector) {
-        let promo_rank = if self.side_to_move == White {
-            0xFF00000000000000
-        } else {
-            0x00000000000000FF
-        };
-        let promotions = targets & promo_rank;
-        let non_promotions = targets & !promo_rank;
-
-        // Regular pushes
-        let mut bb = non_promotions;
-        while bb != 0 {
-            let to = bb.trailing_zeros() as usize;
-            bb &= bb - 1;
-            let from = (to as i32 + offset) as usize;
-            collector.push(Move::new(from, to, Quiet));
-        }
-
-        // Promotion pushes
-        let mut bb = promotions;
-        while bb != 0 {
-            let to = bb.trailing_zeros() as usize;
-            bb &= bb - 1;
-            let from = (to as i32 + offset) as usize;
-            collector.push(Move::new(from, to, PromotionQueen));
-            collector.push(Move::new(from, to, PromotionRook));
-            collector.push(Move::new(from, to, PromotionBishop));
-            collector.push(Move::new(from, to, PromotionKnight));
-        }
-    }
-
-    // Helper: add double pushes
-    fn add_pawn_double_pushes(&self, mut targets: u64, offset: i32, collector: &mut MoveCollector) {
-        while targets != 0 {
-            let to = targets.trailing_zeros() as usize;
-            targets &= targets - 1;
-            let from = (to as i32 + offset) as usize;
-            collector.push(Move::new(from, to, DoublePush));
-        }
-    }
-
-    // Helper: add captures from a single square (with promotions)
-    fn add_pawn_captures_from_square(
+    fn generate_white_pawn_moves(
         &self,
-        targets: u64,
-        from: usize,
         collector: &mut MoveCollector,
+        pinned: u64,
+        check_mask: u64,
     ) {
-        let promo_rank = if self.side_to_move == White {
-            0xFF00000000000000
-        } else {
-            0x00000000000000FF
-        };
-        let promotions = targets & promo_rank;
-        let non_promotions = targets & !promo_rank;
+        let king_sq = self.our(King).0.trailing_zeros() as usize;
+        let pawns = self.our(Pawn).0;
+        let empty = !(self.all_pieces[0].0 | self.all_pieces[1].0);
+        let enemies = self.them().0;
 
-        // Regular captures
-        let mut bb = non_promotions;
-        while bb != 0 {
-            let to = bb.trailing_zeros() as usize;
-            bb &= bb - 1;
-            collector.push(Move::new(from, to, Capture));
+        // Process each pawn individually to handle pins
+        let mut pawn_bb = pawns;
+        while pawn_bb != 0 {
+            let from = pawn_bb.trailing_zeros() as usize;
+            pawn_bb &= pawn_bb - 1;
+
+            let is_pinned = (pinned >> from) & 1 != 0;
+            let pin_ray = if is_pinned {
+                LINE[king_sq][from]
+            } else {
+                0xFFFFFFFFFFFFFFFFu64
+            };
+
+            // Single push
+            let push_to = from + 8;
+            if push_to < 64 && (empty >> push_to) & 1 != 0 {
+                let push_target = 1u64 << push_to;
+                if (push_target & pin_ray & check_mask) != 0 {
+                    if push_to >= 56 {
+                        // Promotion
+                        collector.push(Move::new(from, push_to, PromotionQueen));
+                        collector.push(Move::new(from, push_to, PromotionRook));
+                        collector.push(Move::new(from, push_to, PromotionBishop));
+                        collector.push(Move::new(from, push_to, PromotionKnight));
+                    } else {
+                        collector.push(Move::new(from, push_to, Quiet));
+                    }
+                }
+
+                // Double push (only if single push was legal and pawn is on rank 2)
+                if from >= 8 && from < 16 && push_to < 64 {
+                    let double_to = from + 16;
+                    let double_target = 1u64 << double_to;
+                    if (empty >> double_to) & 1 != 0 && (double_target & pin_ray & check_mask) != 0
+                    {
+                        collector.push(Move::new(from, double_to, DoublePush));
+                    }
+                }
+            }
+
+            // Captures
+            let attacks = PAWN_ATTACKS[0][from] & enemies;
+            let mut legal_attacks = attacks & pin_ray & check_mask;
+            while legal_attacks != 0 {
+                let to = legal_attacks.trailing_zeros() as usize;
+                legal_attacks &= legal_attacks - 1;
+
+                if to >= 56 {
+                    // Capture promotion
+                    collector.push(Move::new(from, to, CapturePromotionQueen));
+                    collector.push(Move::new(from, to, CapturePromotionRook));
+                    collector.push(Move::new(from, to, CapturePromotionBishop));
+                    collector.push(Move::new(from, to, CapturePromotionKnight));
+                } else {
+                    collector.push(Move::new(from, to, Capture));
+                }
+            }
         }
 
-        // Capture promotions
-        let mut bb = promotions;
-        while bb != 0 {
-            let to = bb.trailing_zeros() as usize;
-            bb &= bb - 1;
-            collector.push(Move::new(from, to, CapturePromotionQueen));
-            collector.push(Move::new(from, to, CapturePromotionRook));
-            collector.push(Move::new(from, to, CapturePromotionBishop));
-            collector.push(Move::new(from, to, CapturePromotionKnight));
+        // En passant - THE TRICKY PART
+        if let Some(ep_sq) = self.en_passant {
+            self.generate_en_passant_moves(collector, pinned, check_mask, ep_sq as usize);
+        }
+    }
+
+    fn generate_en_passant_moves(
+        &self,
+        collector: &mut MoveCollector,
+        pinned: u64,
+        check_mask: u64,
+        ep_sq: usize,
+    ) {
+        let king_sq = self.our(King).0.trailing_zeros() as usize;
+        let captured_pawn_sq = if self.side_to_move == White {
+            ep_sq - 8
+        } else {
+            ep_sq + 8
+        };
+
+        let ep_target = 1u64 << ep_sq;
+
+        // En passant must land on check_mask (blocks or doesn't matter)
+        if (ep_target & check_mask) == 0 {
+            return;
+        }
+
+        let pawns = self.our(Pawn).0;
+        let color_idx = self.side_to_move as usize;
+
+        let mut pawn_bb = pawns;
+        while pawn_bb != 0 {
+            let from = pawn_bb.trailing_zeros() as usize;
+            pawn_bb &= pawn_bb - 1;
+
+            // Can this pawn capture en passant?
+            if (PAWN_ATTACKS[color_idx][from] & ep_target) == 0 {
+                continue;
+            }
+
+            // Check if pawn is pinned - en passant must be along pin ray
+            let is_pinned = (pinned >> from) & 1 != 0;
+            if is_pinned {
+                let pin_ray = LINE[king_sq][from];
+                if (ep_target & pin_ray) == 0 {
+                    continue; // En passant not along pin ray
+                }
+            }
+
+            // Does en passant expose king to horizontal attack?
+            // This is the most complex case - removing both pawns might expose king
+            let everyone = self.all_pieces[0].0 | self.all_pieces[1].0;
+            let after_ep = everyone & !(1u64 << from) & !(1u64 << captured_pawn_sq) | ep_target;
+
+            // Check for discovered attacks on king's rank (most common ep discovery)
+            let king_rank = king_sq / 8;
+            let from_rank = from / 8;
+
+            if king_rank == from_rank && from_rank == captured_pawn_sq / 8 {
+                // All on same rank - check for rook/queen attacks
+                let rook_idx = unsafe { _pext_u64(after_ep, ROOK_MASKS[king_sq]) as usize };
+                let rook_attacks = ROOK_ATTACKS[king_sq][rook_idx];
+                let enemy_rooks_queens = self.their(Rook).0 | self.their(Queen).0;
+
+                if (rook_attacks & enemy_rooks_queens) != 0 {
+                    continue; // En passant would expose king
+                }
+            }
+
+            collector.push(Move::new(from, ep_sq, EnPassant));
+        }
+    }
+    fn generate_black_pawn_moves(
+        &self,
+        collector: &mut MoveCollector,
+        pinned: u64,
+        check_mask: u64,
+    ) {
+        let king_sq = self.our(King).0.trailing_zeros() as usize;
+        let pawns = self.our(Pawn).0;
+        let empty = !(self.all_pieces[0].0 | self.all_pieces[1].0);
+        let enemies = self.them().0;
+
+        // Process each pawn individually to handle pins
+        let mut pawn_bb = pawns;
+        while pawn_bb != 0 {
+            let from = pawn_bb.trailing_zeros() as usize;
+            pawn_bb &= pawn_bb - 1;
+
+            let is_pinned = (pinned >> from) & 1 != 0;
+            let pin_ray = if is_pinned {
+                LINE[king_sq][from]
+            } else {
+                0xFFFFFFFFFFFFFFFFu64
+            };
+
+            // Single push (black pawns move down: from - 8)
+            if from >= 8 {
+                let push_to = from - 8;
+                if (empty >> push_to) & 1 != 0 {
+                    let push_target = 1u64 << push_to;
+                    if (push_target & pin_ray & check_mask) != 0 {
+                        if push_to < 8 {
+                            // Promotion (rank 1)
+                            collector.push(Move::new(from, push_to, PromotionQueen));
+                            collector.push(Move::new(from, push_to, PromotionRook));
+                            collector.push(Move::new(from, push_to, PromotionBishop));
+                            collector.push(Move::new(from, push_to, PromotionKnight));
+                        } else {
+                            collector.push(Move::new(from, push_to, Quiet));
+                        }
+                    }
+
+                    // Double push (only if single push was legal and pawn is on rank 7)
+                    if from >= 48 && from < 56 {
+                        let double_to = from - 16;
+                        let double_target = 1u64 << double_to;
+                        if (empty >> double_to) & 1 != 0
+                            && (double_target & pin_ray & check_mask) != 0
+                        {
+                            collector.push(Move::new(from, double_to, DoublePush));
+                        }
+                    }
+                }
+            }
+
+            // Captures
+            let attacks = PAWN_ATTACKS[1][from] & enemies;
+            let legal_attacks = attacks & pin_ray & check_mask;
+
+            let mut attack_bb = legal_attacks;
+            while attack_bb != 0 {
+                let to = attack_bb.trailing_zeros() as usize;
+                attack_bb &= attack_bb - 1;
+
+                if to < 8 {
+                    // Capture promotion (rank 1)
+                    collector.push(Move::new(from, to, CapturePromotionQueen));
+                    collector.push(Move::new(from, to, CapturePromotionRook));
+                    collector.push(Move::new(from, to, CapturePromotionBishop));
+                    collector.push(Move::new(from, to, CapturePromotionKnight));
+                } else {
+                    collector.push(Move::new(from, to, Capture));
+                }
+            }
+        }
+
+        // En passant
+        if let Some(ep_sq) = self.en_passant {
+            self.generate_en_passant_moves(collector, pinned, check_mask, ep_sq as usize);
         }
     }
 }
@@ -176,36 +245,56 @@ impl Position {
 mod pawns {
     use types::moves::MoveCollector;
 
-    use crate::Position;
+    use crate::{Position, legality::attack_constraints::get_attack_constraints};
 
     #[test]
     fn test() {
+        // initial position should be 16 moves
         let g = Position::new();
         let mut mc = MoveCollector::new();
-        g.generate_pawn_moves(&mut mc);
-        // initial position should be 16 moves
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_pawn_moves(&mut mc, pinned, check_mask);
         assert_eq!(16, mc.len());
         mc.clear();
 
         // enpassant on b6, expected 11 moves
         let g =
             Position::new_from_fen("rn2k1nr/p1ppp1pp/8/1pP5/8/7P/PP2P1P1/RNBQK2R w KQkq b6 0 1");
-        g.generate_pawn_moves(&mut mc);
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_pawn_moves(&mut mc, pinned, check_mask);
         assert_eq!(11, mc.len());
         mc.clear();
 
-        // enpassant on b6, available promotion, so capture on h8 -> 4 moves, promo to a queen,
-        // bishop, knight, rook: expected 14 moves
+        
         let g =
-            Position::new_from_fen("rn2k1nr/p1ppp1Pp/8/1pP5/8/8/PP2P1P1/RNBQKp1R w KQkq b6 0 1");
-        g.generate_pawn_moves(&mut mc);
-        assert_eq!(14, mc.len());
+            Position::new_from_fen("1nb1k1nr/pppppppp/4r3/b7/7q/4P3/2PB1PPP/RN1QKB1R w KQk - 0 1");
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_pawn_moves(&mut mc, pinned, check_mask);
+        assert_eq!(6, mc.len());
         mc.clear();
 
-        let g = Position::new_from_fen(
-            "rnbqkbnr/pp4pp/2p5/2PpppP1/8/8/PP1P1P1P/RNBQKBNR w KQkq f6 0 2",
-        );
-        g.generate_pawn_moves(&mut mc);
-        assert_eq!(12, mc.len());
+        // enpassant to discovered check, expected moves : 1
+        let g =
+            Position::new_from_fen("1n2k1nr/ppp1pppp/8/b1KpP2q/8/8/3B4/RN1Q1B1R w k - 0 1");
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_pawn_moves(&mut mc, pinned, check_mask);
+        assert_eq!(1, mc.len());
+        mc.clear();
+
+        // Capture on a8 to promotion -> Expected: 4 moves
+        let g =
+            Position::new_from_fen("rn2k1nr/pPp1pppp/8/b2p3q/8/8/3B4/RNKQ1B1R w KQkq - 0 1");
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_pawn_moves(&mut mc, pinned, check_mask);
+        assert_eq!(4, mc.len());
+        mc.clear();
+
+        // Expected 8 moves:
+        let g =
+            Position::new_from_fen("rn2k1n1/pPp1pppp/4r3/b2p4/6Bq/2P1P3/1P3PP1/RN1QKB1R w KQq - 0 1");
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_pawn_moves(&mut mc, pinned, check_mask);
+        assert_eq!(8, mc.len());
+        mc.clear();
     }
 }

@@ -6,9 +6,10 @@ use types::{
 };
 
 mod fen;
-mod move_gen;
 mod legality;
+mod move_gen;
 
+#[derive(Clone)]
 pub struct Position {
     pieces: [Bitboard; 6],
     all_pieces: [Bitboard; 2],

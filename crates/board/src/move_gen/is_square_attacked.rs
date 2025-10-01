@@ -37,7 +37,6 @@ impl Position {
             return true;
         }
 
-        // Pawn attacks - use your existing attack tables
         if PAWN_ATTACKS[self.side_to_move as usize][sq] & self.their(Pawn).0 != 0 {
             return true;
         }

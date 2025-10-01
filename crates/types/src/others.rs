@@ -58,7 +58,32 @@ impl CastleRights {
     }
 
     #[inline(always)]
-    pub fn remove(&mut self, rights: CastleRights) {
-        self.0 &= !rights.0;
+    pub fn remove_white_castling(&mut self) {
+        self.0 &= !(Self::WHITE_KING.0 | Self::WHITE_QUEEN.0);
+    }
+
+    #[inline(always)]
+    pub fn remove_black_castling(&mut self) {
+        self.0 &= !(Self::BLACK_KING.0 | Self::BLACK_QUEEN.0);
+    }
+
+    #[inline(always)]
+    pub fn remove_white_kingside(&mut self) {
+        self.0 &= !Self::WHITE_KING.0;
+    }
+
+    #[inline(always)]
+    pub fn remove_white_queenside(&mut self) {
+        self.0 &= !Self::WHITE_QUEEN.0;
+    }
+
+    #[inline(always)]
+    pub fn remove_black_kingside(&mut self) {
+        self.0 &= !Self::BLACK_KING.0;
+    }
+
+    #[inline(always)]
+    pub fn remove_black_queenside(&mut self) {
+        self.0 &= !Self::BLACK_QUEEN.0;
     }
 }
