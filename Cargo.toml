@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = [ "crates/board", "crates/raw", "crates/types", "crates/utilities"]
+members = [ "crates/board", "crates/evaluation", "crates/raw", "crates/types", "crates/utilities"]
 
 [profile.release]
 opt-level = 3        # max LLVM optimizations

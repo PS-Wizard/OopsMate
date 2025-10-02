@@ -12,6 +12,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "evaluation"
+version = "0.1.0"
+dependencies = [
+ "board",
+ "types",
+]
+
+[[package]]
 name = "raw"
 version = "0.1.0"
 dependencies = [
