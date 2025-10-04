@@ -9,17 +9,17 @@ mod fen;
 mod legality;
 mod move_gen;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Position {
-    pieces: [Bitboard; 6],
-    all_pieces: [Bitboard; 2],
-    piece_map: [Option<(Piece, Color)>; 64],
-    side_to_move: Color,
-    castling_rights: CastleRights,
-    en_passant: Option<u8>,
-    half_clock: u8,
-    full_clock: u16,
-    hash: u64, // Zobrist Hash Later On
+    pub pieces: [Bitboard; 6],
+    pub all_pieces: [Bitboard; 2],
+    pub piece_map: [Option<(Piece, Color)>; 64],
+    pub side_to_move: Color,
+    pub castling_rights: CastleRights,
+    pub en_passant: Option<u8>,
+    pub half_clock: u8,
+    pub full_clock: u16,
+    pub hash: u64, // Zobrist Hash Later On
 }
 
 impl Position {

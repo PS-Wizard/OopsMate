@@ -100,3 +100,26 @@ impl Algebraic for u64 {
         result
     }
 }
+
+impl Algebraic for usize {
+    fn notation(&self) -> String {
+        let mut result = String::new();
+        let mut bb = *self;
+
+        while bb != 0 {
+            let sq = bb.trailing_zeros() as u64;
+            bb &= bb - 1;
+
+            let file = (sq % 8) as u8;
+            let rank = (sq / 8) as u8;
+
+            if !result.is_empty() {
+                result.push(',');
+            }
+            result.push((b'a' + file) as char);
+            result.push((b'1' + rank) as char);
+        }
+
+        result
+    }
+}

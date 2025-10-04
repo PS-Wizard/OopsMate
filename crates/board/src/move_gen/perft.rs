@@ -66,7 +66,7 @@ impl Position {
     }
 
     /// Generate all pseudo-legal moves
-    fn generate_moves(&self, collector: &mut MoveCollector) {
+    pub fn generate_moves(&self, collector: &mut MoveCollector) {
         let (pinned, _checking, check_mask) =
             crate::legality::attack_constraints::get_attack_constraints(self);
 

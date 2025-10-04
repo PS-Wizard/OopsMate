@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
-use std::{ops::{BitAnd, BitOr, BitOrAssign}};
+use std::ops::{BitAnd, BitOr, BitOrAssign};
 
 /// A Tuple struct, just a wrapper around a u64, it is a transparently represented, just incase
 /// i have to do FFI with some other language.
 #[repr(transparent)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Bitboard(pub u64);
 impl Bitboard {
     /// Returns a new empty Bitboard
@@ -49,4 +49,3 @@ impl BitAnd for Bitboard {
         Bitboard(self.0 & rhs.0)
     }
 }
-

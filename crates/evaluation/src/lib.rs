@@ -2,7 +2,8 @@ use crate::pst::{api::GamePhase, *};
 use board::Position;
 use types::others::Piece::{self, *};
 
-mod pst;
+pub mod negamax;
+pub mod pst;
 /// Trait for evaluating chess positions
 pub trait Evaluator {
     /// Evaluate the position from the side to move's perspective
@@ -40,14 +41,8 @@ impl Evaluator for Position {
         let phase = self.game_phase();
         let mg_score = self.evaluate_material_and_pst(true);
         let eg_score = self.evaluate_material_and_pst(false);
-        println!(
-            "Got: Middle_game_score: {}, endgame_score: {}",
-            mg_score, eg_score
-        );
-
         // Tapered eval: interpolate between middlegame and endgame
         let score = (mg_score * phase + eg_score * (24 - phase)) / 24;
-        println!("Got: score: {}", score);
         score
     }
 
@@ -125,7 +120,7 @@ impl Evaluator for Position {
         let mut pieces = bb.0;
         while pieces != 0 {
             let sq = pieces.trailing_zeros() as usize;
-            pieces &= pieces - 1; // Clear the bit
+            pieces &= pieces - 1;
 
             // Flip square for black pieces (PST is from white's perspective)
             let pst_sq = if is_opponent { sq ^ 56 } else { sq };

@@ -12,6 +12,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine"
+version = "0.1.0"
+dependencies = [
+ "uci",
+]
+
+[[package]]
 name = "evaluation"
 version = "0.1.0"
 dependencies = [
@@ -29,6 +36,15 @@ dependencies = [
 [[package]]
 name = "types"
 version = "0.1.0"
+
+[[package]]
+name = "uci"
+version = "0.1.0"
+dependencies = [
+ "board",
+ "evaluation",
+ "types",
+]
 
 [[package]]
 name = "utilities"
