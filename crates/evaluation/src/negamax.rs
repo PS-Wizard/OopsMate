@@ -27,16 +27,15 @@ impl Searcher for Position {
 
         for i in 0..collector.len() {
             let m = collector[i];
+            // make move flips the turns so
             let new_pos = self.make_move(m);
 
-            // Skip illegal moves (king left in check)
-            let mut check_pos = new_pos.clone();
-            check_pos.side_to_move = check_pos.side_to_move.flip();
-            if check_pos.is_in_check() {
+            // the enemy rn is the one that just made the move, and as such we gota check if the
+            // one that just made the move is in check, cause if so that is illegal dwag. 
+            if new_pos.is_enemy_in_check() {
                 continue;
             }
 
-            // Search this move
             let score = -new_pos.negamax(depth - 1, -INFINITY, INFINITY);
 
             if score > best_score {

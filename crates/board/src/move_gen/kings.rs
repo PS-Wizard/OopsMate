@@ -138,6 +138,12 @@ impl Position {
         let king_sq = self.our(King).0.trailing_zeros() as usize;
         self.is_square_attacked(king_sq)
     }
+
+    #[inline(always)]
+    pub fn is_enemy_in_check(&self) -> bool {
+        let king_sq = self.their(King).0.trailing_zeros() as usize;
+        self.is_square_attacked_by(king_sq, self.side_to_move)
+    }
 }
 
 #[cfg(test)]

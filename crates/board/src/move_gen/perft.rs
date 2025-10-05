@@ -1,5 +1,4 @@
 use types::moves::MoveCollector;
-use types::others::Piece::*;
 
 use crate::Position;
 
@@ -21,12 +20,15 @@ impl Position {
         for i in 0..collector.len() {
             let m = collector[i];
             let new_pos = self.make_move(m);
-
-            let mut check_pos = new_pos.clone();
-            check_pos.side_to_move = check_pos.side_to_move.flip();
-            if check_pos.is_in_check() {
+            if new_pos.is_enemy_in_check() {
                 continue;
             }
+
+            // let mut check_pos = new_pos.clone();
+            // check_pos.side_to_move = check_pos.side_to_move.flip();
+            // if check_pos.is_in_check() {
+            //     continue;
+            // }
 
             nodes += new_pos.perft(depth - 1);
         }
@@ -45,7 +47,6 @@ impl Position {
             let m = collector[i];
             let new_pos = self.make_move(m);
 
-            // Fixed: Temporarily flip side on a clone to check if own king is left in check
             let mut check_pos = new_pos.clone();
             check_pos.side_to_move = check_pos.side_to_move.flip();
             if check_pos.is_in_check() {
@@ -76,11 +77,6 @@ impl Position {
         self.generate_rook_moves(collector, pinned, check_mask);
         self.generate_queen_moves(collector, pinned, check_mask);
         self.generate_king_moves(collector);
-    }
-
-    pub fn is_other_side_in_check(&self) -> bool {
-        let king_sq = self.their(King).0.trailing_zeros() as usize;
-        self.is_square_attacked(king_sq)
     }
 }
 
@@ -131,7 +127,7 @@ mod perft_tests {
         perft_with_timing(&pos, 2, 2_039);
         perft_with_timing(&pos, 3, 97_862);
         perft_with_timing(&pos, 4, 4_085_603);
-        // perft_with_timing(&pos, 5, 193_690_690); // Takes longer
+        perft_with_timing(&pos, 5, 193_690_690); // Takes longer
     }
 
     #[test]
