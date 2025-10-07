@@ -1,11 +1,7 @@
 #![allow(dead_code, unused_variables)]
-use std::arch::x86_64::_pext_u64;
 
 use crate::Position;
-use raw::{
-    BISHOP_ATTACKS, BISHOP_MASKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS, ROOK_MASKS,
-    line_between,
-};
+use raw::{BISHOP_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS, line_between};
 use types::others::Piece::*;
 
 /// Returns a tuple of (pinned, checking, check_mask) pieces
@@ -18,11 +14,8 @@ pub fn get_attack_constraints(g: &Position) -> (u64, u64, u64) {
     let mut pinned_pieces = 0u64;
     let mut checking_pieces = 0u64;
 
-    // Get all potential pinners/checkers (use EMPTY board to see all sliders)
-    let rook_mask_idx_empty = unsafe { _pext_u64(0, ROOK_MASKS[king_sq]) as usize };
-    let bishop_mask_idx_empty = unsafe { _pext_u64(0, BISHOP_MASKS[king_sq]) as usize };
-    let rook_rays = ROOK_ATTACKS[king_sq][rook_mask_idx_empty];
-    let bishop_rays = BISHOP_ATTACKS[king_sq][bishop_mask_idx_empty];
+    let rook_rays = ROOK_ATTACKS[king_sq][0];
+    let bishop_rays = BISHOP_ATTACKS[king_sq][0];
 
     let enemy_rooks_queens = g.their(Rook).0 | g.their(Queen).0;
     let enemy_bishops_queens = g.their(Bishop).0 | g.their(Queen).0;

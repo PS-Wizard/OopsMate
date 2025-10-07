@@ -1,5 +1,5 @@
 use crate::Position;
-use raw::{BISHOP_ATTACKS, BISHOP_MASKS, LINE};
+use raw::{BISHOP_ATTACKS, BISHOP_MASKS, THROUGH};
 use std::arch::x86_64::_pext_u64;
 use types::moves::{Move, MoveCollector, MoveType::*};
 use types::others::Piece::*;
@@ -28,7 +28,7 @@ impl Position {
             if (pinned >> from) & 1 != 0 {
                 // The bishop is pinned, limit its movement to between the king and itself because
                 // a bishop pinned can only move between the king and itself diagonally
-                attacks &= LINE[king_sq][from];
+                attacks &= THROUGH[king_sq][from];
             }
 
             // Apply check mask (must block or capture checker)
@@ -95,8 +95,8 @@ mod bishop_moves {
         assert_eq!(mc.len(), 0);
         mc.clear();
         println!("=============");
-        
-        // Position too compilcated to describe just throw it in lichess board editor, but 
+
+        // Position too compilcated to describe just throw it in lichess board editor, but
         // expectd: 5 moves
         println!("=============");
         let g = Position::new_from_fen("rnb1k1n1/pppp1ppp/8/8/3q3b/7P/PP1BrBP1/RN1KR3 w KQq - 0 1");
@@ -109,7 +109,7 @@ mod bishop_moves {
         println!("=============");
 
         println!("=============");
-        // Position too compilcated to describe just throw it in lichess board editor, but 
+        // Position too compilcated to describe just throw it in lichess board editor, but
         // expectd: 13 moves
         let g = Position::new_from_fen("rnb1k1n1/pppp1ppp/8/q7/7b/2B4P/PP1B1BP1/R3K3 w Qq - 0 1");
         let (pinned, _, check_mask) = get_attack_constraints(&g);
@@ -119,6 +119,5 @@ mod bishop_moves {
         assert_eq!(mc.len(), 13);
         mc.clear();
         println!("=============");
-
     }
 }

@@ -1,6 +1,6 @@
 use std::arch::x86_64::_pext_u64;
 
-use raw::{LINE, PAWN_ATTACKS, ROOK_ATTACKS, ROOK_MASKS};
+use raw::{PAWN_ATTACKS, ROOK_ATTACKS, ROOK_MASKS, THROUGH};
 use types::moves::MoveCollector;
 use types::moves::{Move, MoveType::*};
 use types::others::Color::*;
@@ -36,7 +36,7 @@ impl Position {
 
             let is_pinned = (pinned >> from) & 1 != 0;
             let pin_ray = if is_pinned {
-                LINE[king_sq][from]
+                THROUGH[king_sq][from]
             } else {
                 0xFFFFFFFFFFFFFFFFu64
             };
@@ -130,7 +130,7 @@ impl Position {
             // Check if pawn is pinned - en passant must be along pin ray
             let is_pinned = (pinned >> from) & 1 != 0;
             if is_pinned {
-                let pin_ray = LINE[king_sq][from];
+                let pin_ray = THROUGH[king_sq][from];
                 if (ep_target & pin_ray) == 0 {
                     continue; // En passant not along pin ray
                 }
@@ -141,7 +141,7 @@ impl Position {
             let everyone = self.all_pieces[0].0 | self.all_pieces[1].0;
             let after_ep = everyone & !(1u64 << from) & !(1u64 << captured_pawn_sq) | ep_target;
 
-            // Check for discovered attacks on king's rank (most common ep discovery)
+            // Check for horizontal discovered attacks
             let king_rank = king_sq / 8;
             let from_rank = from / 8;
 
@@ -178,7 +178,7 @@ impl Position {
 
             let is_pinned = (pinned >> from) & 1 != 0;
             let pin_ray = if is_pinned {
-                LINE[king_sq][from]
+                THROUGH[king_sq][from]
             } else {
                 0xFFFFFFFFFFFFFFFFu64
             };
@@ -293,6 +293,20 @@ mod pawns {
         let (pinned, _, check_mask) = get_attack_constraints(&g);
         g.generate_pawn_moves(&mut mc, pinned, check_mask);
         assert_eq!(8, mc.len());
+        mc.clear();
+
+        // Expected 0 moves: Diagonal Pin
+        let g = Position::new_from_fen("8/6b1/8/3pP3/3K3k/8/8/8 w - - 0 1");
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_pawn_moves(&mut mc, pinned, check_mask);
+        assert_eq!(0, mc.len());
+        mc.clear();
+
+        // Expected 1 moves: Vertical Pin
+        let g = Position::new_from_fen("4r3/8/8/3pP3/7k/4K3/8/8 w - - 0 1");
+        let (pinned, _, check_mask) = get_attack_constraints(&g);
+        g.generate_pawn_moves(&mut mc, pinned, check_mask);
+        assert_eq!(1, mc.len());
         mc.clear();
     }
 }

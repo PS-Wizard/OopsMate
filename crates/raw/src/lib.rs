@@ -29,7 +29,7 @@ pub static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
 
 // Ray between 2 given indices
 pub static BETWEEN: [[u64; 64]; 64] = generate_between();
-pub static LINE: [[u64; 64]; 64] = generate_line();
+pub static THROUGH: [[u64; 64]; 64] = generate_line();
 
 #[inline(always)]
 pub fn line_between(from: usize, to: usize) -> u64 {
@@ -38,7 +38,7 @@ pub fn line_between(from: usize, to: usize) -> u64 {
 
 #[inline(always)]
 pub fn line_through(sq1: usize, sq2: usize) -> u64 {
-    LINE[sq1][sq2]
+    THROUGH[sq1][sq2]
 }
 
 pub fn warmup_attack_tables() {

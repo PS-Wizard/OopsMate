@@ -32,7 +32,7 @@ impl Position {
             temp &= temp - 1;
 
             // Only move to safe squares
-            if !self.is_square_under_attack(to, all_pieces_without_king) {
+            if !self.is_square_under_attack_with_blockers(to, all_pieces_without_king) {
                 if (1u64 << to) & enemy != 0 {
                     collector.push(Move::new(king_sq, to, Capture));
                 } else {
@@ -45,7 +45,7 @@ impl Position {
         self.generate_castling_moves(collector);
     }
 
-    fn is_square_under_attack(&self, target_sq: usize, blockers: u64) -> bool {
+    pub fn is_square_under_attack_with_blockers(&self, target_sq: usize, blockers: u64) -> bool {
         // Pawn attacks
         if (PAWN_ATTACKS[self.side_to_move as usize][target_sq] & self.their(Pawn).0) != 0 {
             return true;

@@ -1,4 +1,4 @@
-use crate::{BETWEEN, LINE};
+use crate::{BETWEEN, THROUGH};
 
 // Add this to your statics
 pub const fn generate_line() -> [[u64; 64]; 64] {
@@ -110,7 +110,7 @@ const fn extend_ray_bidirectional(from: usize, to: usize) -> u64 {
 
 #[inline(always)]
 pub fn ray_through(sq1: usize, sq2: usize) -> u64 {
-    LINE[sq1][sq2]
+    THROUGH[sq1][sq2]
 }
 
 #[cfg(test)]
@@ -125,5 +125,6 @@ mod line {
         line_through("e1".idx(), "e2".idx()).print();
         line_through("e1".idx(), "f2".idx()).print();
         line_through("e4".idx(), "c3".idx()).print();
+        line_through("a1".idx(), "b1".idx()).print();
     }
 }

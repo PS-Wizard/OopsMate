@@ -130,16 +130,9 @@ impl UCIEngine {
                 };
 
                 if *move_str == move_string || *move_str == expected_move {
-                    // Verify legality
-                    let new_pos = self.position.make_move(m);
-                    let mut check_pos = new_pos.clone();
-                    check_pos.side_to_move = check_pos.side_to_move.flip();
-
-                    if !check_pos.is_in_check() {
-                        self.position = new_pos;
-                        found = true;
-                        break;
-                    }
+                    self.position = self.position.make_move(m);
+                    found = true;
+                    break;
                 }
             }
 

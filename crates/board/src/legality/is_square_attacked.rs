@@ -10,40 +10,6 @@ use crate::Position;
 
 impl Position {
     #[inline(always)]
-    // pub fn is_square_attacked(&self, sq: usize) -> bool {
-    //     let blockers = self.all_pieces[0] | self.all_pieces[1];
-    //
-    //     // Check if a knight is attackin the king
-    //     if KNIGHT_ATTACKS[sq] & self.their(Knight).0 != 0 {
-    //         return true;
-    //     };
-    //
-    //     // check if a king is attacking
-    //     if KING_ATTACKS[sq] & self.their(King).0 != 0 {
-    //         return true;
-    //     }
-    //
-    //     // check if bishops / queens are attackin
-    //     let bishop_mask_idx = unsafe { _pext_u64(blockers.0, BISHOP_MASKS[sq]) as usize };
-    //     let bishop_attacks = BISHOP_ATTACKS[sq][bishop_mask_idx];
-    //     if bishop_attacks & (self.their(Bishop).0 | self.their(Queen).0) != 0 {
-    //         return true;
-    //     }
-    //
-    //     // check if rook / queens are attackin
-    //     let rook_mask_idx = unsafe { _pext_u64(blockers.0, ROOK_MASKS[sq]) as usize };
-    //     let rook_attacks = ROOK_ATTACKS[sq][rook_mask_idx];
-    //     if rook_attacks & (self.their(Rook).0 | self.their(Queen).0) != 0 {
-    //         return true;
-    //     }
-    //
-    //     if PAWN_ATTACKS[self.side_to_move as usize][sq] & self.their(Pawn).0 != 0 {
-    //         return true;
-    //     }
-    //
-    //     false
-    // }
-
     pub fn is_square_attacked_by(&self, sq: usize, attacker: Color) -> bool {
         let blockers = self.all_pieces[0] | self.all_pieces[1];
 

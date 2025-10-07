@@ -11,11 +11,6 @@ use types::others::{
 use crate::Position;
 
 impl Position {
-    #[inline(always)]
-    pub fn piece_at(&self, idx: usize) -> Option<(Piece, Color)> {
-        self.piece_map[idx]
-    }
-
     pub fn make_move(&self, m: Move) -> Position {
         let mut new_pos = self.clone();
         new_pos.apply_move(m);

@@ -3,7 +3,6 @@
 #[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 /// White / Black Color Enum, maps to the same order stored in the side, in `Position` struct
-///
 pub enum Color {
     White,
     Black,

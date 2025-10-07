@@ -69,9 +69,16 @@ impl Position {
         self.piece_map[idx] = Some((board, color));
     }
 
+    #[inline(always)]
     pub fn is_square_attacked(&self, sq: usize) -> bool {
         self.is_square_attacked_by(sq, self.side_to_move.flip())
     }
+
+    #[inline(always)]
+    pub fn piece_at(&self, idx: usize) -> Option<(Piece, Color)> {
+        self.piece_map[idx]
+    }
+
 }
 
 #[cfg(test)]

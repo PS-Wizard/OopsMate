@@ -1,7 +1,7 @@
 use std::arch::x86_64::_pext_u64;
 
 use crate::Position;
-use raw::{LINE, ROOK_ATTACKS, ROOK_MASKS};
+use raw::{ROOK_ATTACKS, ROOK_MASKS, THROUGH};
 use types::moves::{Move, MoveCollector, MoveType::*};
 use types::others::Piece::*;
 
@@ -26,7 +26,7 @@ impl Position {
             // So when thy rook is pinned the path it can take is very trecherous,
             // limited to facing the opponent that is threatening the kings life.
             if (pinned >> from) & 1 != 0 {
-                attacks &= LINE[king_sq][from];
+                attacks &= THROUGH[king_sq][from];
             }
 
             // Always apply the checkmask cause ... breh .. it just do be like that

@@ -1,7 +1,7 @@
 use std::arch::x86_64::_pext_u64;
 
 use crate::Position;
-use raw::{BISHOP_ATTACKS, BISHOP_MASKS, LINE, ROOK_ATTACKS, ROOK_MASKS};
+use raw::{BISHOP_ATTACKS, BISHOP_MASKS, ROOK_ATTACKS, ROOK_MASKS, THROUGH};
 use types::moves::{Move, MoveCollector, MoveType::*};
 use types::others::Piece::*;
 
@@ -30,7 +30,7 @@ impl Position {
 
             // Handle pin restriction
             if (pinned >> from) & 1 != 0 {
-                attacks &= LINE[king_sq][from];
+                attacks &= THROUGH[king_sq][from];
             }
 
             // Apply check mask

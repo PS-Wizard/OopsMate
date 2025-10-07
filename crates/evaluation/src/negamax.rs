@@ -27,17 +27,8 @@ impl Searcher for Position {
 
         for i in 0..collector.len() {
             let m = collector[i];
-            // make move flips the turns so
             let new_pos = self.make_move(m);
-
-            // the enemy rn is the one that just made the move, and as such we gota check if the
-            // one that just made the move is in check, cause if so that is illegal dwag. 
-            if new_pos.is_enemy_in_check() {
-                continue;
-            }
-
             let score = -new_pos.negamax(depth - 1, -INFINITY, INFINITY);
-
             if score > best_score {
                 best_score = score;
                 best_move = Some(m);
@@ -47,8 +38,7 @@ impl Searcher for Position {
         (best_move, best_score)
     }
 
-    fn negamax(&self, depth: u8, _alpha: f32, _beta: f32) -> f32 {
-        // Base case: leaf node
+    fn negamax(&self, depth: u8, alpha: f32, beta: f32) -> f32 {
         if depth == 0 {
             return self.evaluate() as f32;
         }
@@ -58,14 +48,10 @@ impl Searcher for Position {
 
         // No legal moves - checkmate or stalemate
         if collector.len() == 0 {
-            // Check if we're in check (checkmate) or not (stalemate)
             if self.is_in_check() {
-                // Checkmate - return a very bad score
-                // Use depth to prefer shorter mates
-                return -100000.0 + depth as f32;
+                return -100000.0 + depth as f32; // Checkmate
             } else {
-                // Stalemate - return draw score
-                return 0.0;
+                return 0.0; // Stalemate
             }
         }
 
@@ -75,28 +61,9 @@ impl Searcher for Position {
             let m = collector[i];
             let new_pos = self.make_move(m);
 
-            // Skip illegal moves (king left in check)
-            let mut check_pos = new_pos.clone();
-            check_pos.side_to_move = check_pos.side_to_move.flip();
-            if check_pos.is_in_check() {
-                continue;
-            }
-
-            // Recursively search
-            let score = -new_pos.negamax(depth - 1, -INFINITY, -INFINITY);
-
-            if score > best_score {
-                best_score = score;
-            }
-        }
-
-        // Handle case where all moves were illegal
-        if best_score == -INFINITY {
-            if self.is_in_check() {
-                return -100000.0 + depth as f32;
-            } else {
-                return 0.0;
-            }
+            // No check needed - all moves are legal!
+            let score = -new_pos.negamax(depth - 1, -beta, -alpha);
+            best_score = best_score.max(score);
         }
 
         best_score

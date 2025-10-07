@@ -164,7 +164,6 @@ impl Position {
     }
 }
 
-// Example usage:
 #[cfg(test)]
 mod fen {
     use types::others::Color::*;
