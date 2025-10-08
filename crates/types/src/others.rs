@@ -28,7 +28,7 @@ pub enum Piece {
     King,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 /// Castling rights as bitflags
 /// bits: WK, WQ, BK, BQ
 pub struct CastleRights(pub u8);

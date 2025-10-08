@@ -9,7 +9,7 @@ mod fen;
 mod legality;
 mod move_gen;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Position {
     pub pieces: [Bitboard; 6],
     pub all_pieces: [Bitboard; 2],

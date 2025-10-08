@@ -5,7 +5,7 @@ use std::ops::{BitAnd, BitOr, BitOrAssign};
 /// A Tuple struct, just a wrapper around a u64, it is a transparently represented, just incase
 /// i have to do FFI with some other language.
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bitboard(pub u64);
 impl Bitboard {
     /// Returns a new empty Bitboard

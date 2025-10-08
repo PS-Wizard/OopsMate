@@ -1,11 +1,10 @@
 #![allow(dead_code)]
+use crate::evaluation::evaluate::Evaluator;
 use std::f32::INFINITY;
 use types::moves::MoveCollector;
 
 use board::Position;
 use types::moves::Move;
-
-use crate::Evaluator;
 
 /// Trait for searching chess positions
 pub trait Searcher {
@@ -28,7 +27,20 @@ impl Searcher for Position {
         for i in 0..collector.len() {
             let m = collector[i];
             let new_pos = self.make_move(m);
-            let score = -new_pos.negamax(depth - 1, -INFINITY, INFINITY);
+            let mut score = -new_pos.negamax(depth - 1, -INFINITY, INFINITY);
+
+            // Penalize Repetitions
+            if new_pos == *self {
+                score -= 50.0;
+            }
+
+            // If we're winning big (likely mate), prefer checks
+            if score > 50000.0 {
+                if new_pos.is_in_check() {
+                    score += 1.0; // Tiny bonus for giving check
+                }
+            }
+
             if score > best_score {
                 best_score = score;
                 best_move = Some(m);
@@ -49,7 +61,7 @@ impl Searcher for Position {
         // No legal moves - checkmate or stalemate
         if collector.len() == 0 {
             if self.is_in_check() {
-                return -100000.0 + depth as f32; // Checkmate
+                return -100000.0 - depth as f32; // Checkmate
             } else {
                 return 0.0; // Stalemate
             }
@@ -61,7 +73,6 @@ impl Searcher for Position {
             let m = collector[i];
             let new_pos = self.make_move(m);
 
-            // No check needed - all moves are legal!
             let score = -new_pos.negamax(depth - 1, -beta, -alpha);
             best_score = best_score.max(score);
         }
@@ -72,8 +83,11 @@ impl Searcher for Position {
 
 #[cfg(test)]
 mod negamax_tests {
-    use crate::{Position, negamax::Searcher};
     use std::time::Instant;
+
+    use board::Position;
+
+    use crate::search::negamax::Searcher;
 
     #[test]
     fn test_search_starting_position() {
