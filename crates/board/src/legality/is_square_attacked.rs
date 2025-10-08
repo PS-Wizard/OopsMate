@@ -10,6 +10,8 @@ use crate::Position;
 
 impl Position {
     #[inline(always)]
+    /// The underlying function behind is_square_attacked, is_in_check. Uses the raw attacks from
+    /// PEXT attack tables to determine if a square is attacked
     pub fn is_square_attacked_by(&self, sq: usize, attacker: Color) -> bool {
         let blockers = self.all_pieces[0] | self.all_pieces[1];
 

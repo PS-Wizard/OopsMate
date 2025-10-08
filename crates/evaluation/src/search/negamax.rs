@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use crate::evaluation::evaluate::Evaluator;
 use std::f32::INFINITY;
 use types::moves::MoveCollector;
@@ -12,7 +11,7 @@ pub trait Searcher {
     /// Returns (best_move, score)
     fn search(&self, depth: u8) -> (Option<Move>, f32);
 
-    /// Negamax search with alpha-beta pruning
+    /// Classic negamax search with no alpha beta pruning atm.
     fn negamax(&self, depth: u8, _alpha: f32, _beta: f32) -> f32;
 }
 

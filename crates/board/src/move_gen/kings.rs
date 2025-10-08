@@ -13,6 +13,7 @@ use utilities::algebraic::Algebraic;
 
 impl Position {
     #[inline(always)]
+    /// Generates all valid moves for the king.
     pub fn generate_king_moves(&self, collector: &mut MoveCollector) {
         let king_sq = self.our(King).0.trailing_zeros() as usize;
         let friendly = self.us().0;
@@ -45,6 +46,8 @@ impl Position {
         self.generate_castling_moves(collector);
     }
 
+    /// Similar to the is_square_attacked function but this time it allows to explicitly pass in
+    /// the blockers
     pub fn is_square_under_attack_with_blockers(&self, target_sq: usize, blockers: u64) -> bool {
         // Pawn attacks
         if (PAWN_ATTACKS[self.side_to_move as usize][target_sq] & self.their(Pawn).0) != 0 {
@@ -78,6 +81,8 @@ impl Position {
         false
     }
 
+    /// Generats castling moves by parsing the castling rights, and seeing if castling is valid or
+    /// not
     fn generate_castling_moves(&self, collector: &mut MoveCollector) {
         // Can't castle if in check
         if self.is_in_check() {
@@ -134,12 +139,14 @@ impl Position {
     }
 
     #[inline(always)]
+    /// Checks if the current side to move king's in check
     pub fn is_in_check(&self) -> bool {
         let king_sq = self.our(King).0.trailing_zeros() as usize;
         self.is_square_attacked(king_sq)
     }
 
     #[inline(always)]
+    /// Checks if the enemy's king in check
     pub fn is_enemy_in_check(&self) -> bool {
         let king_sq = self.their(King).0.trailing_zeros() as usize;
         self.is_square_attacked_by(king_sq, self.side_to_move)

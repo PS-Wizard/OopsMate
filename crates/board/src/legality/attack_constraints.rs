@@ -1,10 +1,8 @@
-#![allow(dead_code, unused_variables)]
-
 use crate::Position;
 use raw::{BISHOP_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS, line_between};
 use types::others::Piece::*;
 
-/// Returns a tuple of (pinned, checking, check_mask) pieces
+/// Returns a tuple of (pinned, checking, check_mask) constraints. 
 pub fn get_attack_constraints(g: &Position) -> (u64, u64, u64) {
     let king_sq = g.our(King).0.trailing_zeros() as usize;
     let friendly_pieces = g.us();

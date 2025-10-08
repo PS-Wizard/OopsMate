@@ -1,9 +1,8 @@
-#![allow(dead_code)]
 
 use std::ops::{BitAnd, BitOr, BitOrAssign};
 
 /// A Tuple struct, just a wrapper around a u64, it is a transparently represented, just incase
-/// i have to do FFI with some other language.
+/// We have to do FFI
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bitboard(pub u64);
@@ -13,6 +12,7 @@ impl Bitboard {
         Bitboard(0)
     }
 
+    /// Set bitboard from a raw u64
     pub fn from_raw(value: u64) -> Self {
         Bitboard(value)
     }
@@ -28,6 +28,7 @@ impl Bitboard {
     }
 }
 
+/// Support OR-ing this custom Bitboard type
 impl BitOr for Bitboard {
     type Output = Self;
 
@@ -36,12 +37,14 @@ impl BitOr for Bitboard {
     }
 }
 
+/// Support shorthand OR-ing and assigning this custom Bitboard type
 impl BitOrAssign for Bitboard {
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
     }
 }
 
+/// Support AND-ing this custom Bitboard type
 impl BitAnd for Bitboard {
     type Output = Self;
 

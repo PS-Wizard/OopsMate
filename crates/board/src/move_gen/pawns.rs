@@ -9,6 +9,9 @@ use types::others::Piece::*;
 use crate::Position;
 
 impl Position {
+    #[inline(always)]
+    /// Takes in a pin mask, a check mask and a mutable reference to the move collector, generats
+    /// all valid **legal** moves for the pawns
     pub fn generate_pawn_moves(&self, collector: &mut MoveCollector, pinned: u64, check_mask: u64) {
         if self.side_to_move == White {
             self.generate_white_pawn_moves(collector, pinned, check_mask);
@@ -17,6 +20,8 @@ impl Position {
         }
     }
 
+    /// Generats all pawn moves for the white side, seperated because white's and black's pawn
+    /// moves are different
     fn generate_white_pawn_moves(
         &self,
         collector: &mut MoveCollector,
@@ -93,6 +98,8 @@ impl Position {
         }
     }
 
+    /// Takes in a pin mask, a check mask and an enpassant square and generates enpassant move if
+    /// it is valid and legal. Handles edge cases as leaving the king in check after enpassant.
     fn generate_en_passant_moves(
         &self,
         collector: &mut MoveCollector,
@@ -159,6 +166,8 @@ impl Position {
             collector.push(Move::new(from, ep_sq, EnPassant));
         }
     }
+
+    /// Mirror of the white pawn moves, generates all valid moves for black pawns
     fn generate_black_pawn_moves(
         &self,
         collector: &mut MoveCollector,

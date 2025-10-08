@@ -6,6 +6,8 @@ pub trait GamePhase {
 }
 
 impl GamePhase for Position {
+    /// Determines the game phase used for tapered evaluation of the PST going from middle games to
+    /// end games
     fn game_phase(&self) -> i32 {
         const KNIGHT_PHASE: i32 = 1;
         const BISHOP_PHASE: i32 = 1;

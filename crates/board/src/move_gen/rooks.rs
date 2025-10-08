@@ -7,6 +7,8 @@ use types::others::Piece::*;
 
 impl Position {
     #[inline(always)]
+    /// Takes in a mutable reference to the move collector, a pin mask and a check mask, and
+    /// generates all valid moves for the rooks.
     pub fn generate_rook_moves(&self, collector: &mut MoveCollector, pinned: u64, check_mask: u64) {
         let king_sq = self.our(King).0.trailing_zeros() as usize;
         let mut our_rooks = self.our(Rook).0;

@@ -1,5 +1,5 @@
-#![allow(dead_code)]
 pub mod api;
+
 // PAWN TABLES
 pub static PAWN_PST_MG: [i32; 64] = [
     0, 0, 0, 0, 0, 0, 0, 0, 98, 134, 61, 95, 68, 126, 34, -11, -6, 7, 26, 31, 65, 56, 25, -20, -14,

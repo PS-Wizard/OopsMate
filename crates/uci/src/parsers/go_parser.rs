@@ -1,8 +1,10 @@
 use crate::time::TimeControl;
 
+/// Struct to prase the go command
 pub struct GoParser;
 
 impl GoParser {
+    /// Take in parts of the UCI command and parses the one for the "go"
     pub fn parse(parts: &[&str]) -> TimeControl {
         let mut tc = TimeControl::new();
         let mut i = 0;
@@ -61,7 +63,7 @@ impl GoParser {
 
         tc
     }
-
+    
     fn parse_next_u8(parts: &[&str], i: usize) -> Option<u8> {
         parts.get(i + 1).and_then(|s| s.parse().ok())
     }

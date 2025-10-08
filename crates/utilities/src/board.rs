@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 /// A trait for printing a `u64` as a chessboard.
 ///

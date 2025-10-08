@@ -7,6 +7,9 @@ use types::others::Piece::*;
 
 impl Position {
     #[inline(always)]
+    /// Takes in a mutable reference to the move collector, a pin mask and a check mask, and
+    /// generates all valid moves for the queens. Utilized the PEXT attack tables for Rooks and
+    /// bishops under the hood
     pub fn generate_queen_moves(
         &self,
         collector: &mut MoveCollector,

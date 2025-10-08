@@ -1,3 +1,4 @@
+/// Stuct to parse the time control from UCI
 pub struct TimeControl {
     pub wtime: Option<u64>,
     pub btime: Option<u64>,
@@ -10,6 +11,7 @@ pub struct TimeControl {
 }
 
 impl TimeControl {
+    /// Returns a new time control with empty values
     pub fn new() -> Self {
         Self {
             wtime: None,
@@ -53,6 +55,7 @@ impl TimeControl {
         self.depth_from_time(time_for_move)
     }
 
+    /// Returns a fixed number of depth given the remaining time
     fn depth_from_time(&self, time_ms: u64) -> u8 {
         match time_ms {
             t if t > 10000 => 6,

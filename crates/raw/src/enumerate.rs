@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 /// A trait intended to be used on a integer (binary) to generate every possible variation of it.
 pub trait EnumerateVariations {
     /// A carry rippler function that generates all variations for a given binary.

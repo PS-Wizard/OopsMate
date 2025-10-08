@@ -1,6 +1,7 @@
-use crate::{BETWEEN, THROUGH};
+use crate::BETWEEN;
 
-// Add this to your statics
+/// Generates a 2d array that returns the entire rank, file, or diagonal given any 2 squares that
+/// fall on it
 pub const fn generate_line() -> [[u64; 64]; 64] {
     let mut line = [[0u64; 64]; 64];
     let mut from = 0;
@@ -17,8 +18,9 @@ pub const fn generate_line() -> [[u64; 64]; 64] {
     line
 }
 
+/// function actually responsible for calculating and generating
 const fn calculate_line(from: usize, to: usize) -> u64 {
-    let between = BETWEEN[from][to]; // Your existing function
+    let between = BETWEEN[from][to];
 
     if between == 0 && from != to {
         // Check if they're adjacent on a line
@@ -106,11 +108,6 @@ const fn extend_ray_bidirectional(from: usize, to: usize) -> u64 {
     }
 
     result
-}
-
-#[inline(always)]
-pub fn ray_through(sq1: usize, sq2: usize) -> u64 {
-    THROUGH[sq1][sq2]
 }
 
 #[cfg(test)]

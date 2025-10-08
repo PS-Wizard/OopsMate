@@ -32,15 +32,22 @@ pub static BETWEEN: [[u64; 64]; 64] = generate_between();
 pub static THROUGH: [[u64; 64]; 64] = generate_line();
 
 #[inline(always)]
+/// Gets all indices containing to given square, i.e
+/// 
+/// line_between("a2","c2") -> "b2"
 pub fn line_between(from: usize, to: usize) -> u64 {
     BETWEEN[from][to]
 }
 
 #[inline(always)]
+/// Gets all indices containing to given square, i.e
+/// 
+/// line_through("a1","b1") -> "a1,b1,c1,d1,e1,...,h1"
 pub fn line_through(sq1: usize, sq2: usize) -> u64 {
     THROUGH[sq1][sq2]
 }
 
+/// Function to warm up attack tables, move stuff into cpu cache
 pub fn warmup_attack_tables() {
     use std::arch::x86_64::_pext_u64;
 

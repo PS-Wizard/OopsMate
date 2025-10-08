@@ -1,5 +1,6 @@
-#![allow(dead_code)]
 
+/// generates a 2D array that contains exclusive ranges between any 2 given square. 
+/// Array is 0 if the 2 given squares are not in the same rank, file or diagonal
 pub const fn generate_between() -> [[u64; 64]; 64] {
     let mut between = [[0u64; 64]; 64];
 
@@ -18,6 +19,7 @@ pub const fn generate_between() -> [[u64; 64]; 64] {
     between
 }
 
+/// Function responsible to calculate ranges between 2 given squares
 const fn calculate_between(from: usize, to: usize) -> u64 {
     let from_rank = from / 8;
     let from_file = from % 8;

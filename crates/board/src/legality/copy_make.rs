@@ -11,12 +11,14 @@ use types::others::{
 use crate::Position;
 
 impl Position {
+    /// Takes in a move and applies it on a copy of the position
     pub fn make_move(&self, m: Move) -> Position {
         let mut new_pos = self.clone();
         new_pos.apply_move(m);
         new_pos
     }
 
+    /// Applies a move on a copy of the Position 
     fn apply_move(&mut self, m: Move) {
         let from = m.from();
         let to = m.to();
@@ -121,6 +123,7 @@ impl Position {
         }
     }
 
+    /// Helper function to get the promotion piece depending on the flag
     fn get_promotion_piece(&self, move_type: MoveType) -> Piece {
         match move_type {
             PromotionQueen | CapturePromotionQueen => Queen,
@@ -131,6 +134,7 @@ impl Position {
         }
     }
 
+    /// Updates castling rights depending on if the king moved or the rooks did
     fn update_castling_rights(&mut self, from: usize, to: usize, piece: Piece, color: Color) {
         // King moves lose all castling rights for that color
         if piece == King {

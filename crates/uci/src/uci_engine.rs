@@ -5,17 +5,20 @@ use types::others::Color;
 
 use crate::parsers::{go_parser::GoParser, move_parser::MoveParser};
 
+/// Struct To handle UCI communication
 pub struct UCIEngine {
     position: Position,
 }
 
 impl UCIEngine {
+    /// Returns a new UCIEngine with default values
     pub fn new() -> Self {
         Self {
             position: Position::new(),
         }
     }
 
+    /// Handles the UCI Loop
     pub fn run(&mut self) {
         let stdin = io::stdin();
         let mut reader = stdin.lock();
@@ -38,6 +41,7 @@ impl UCIEngine {
         }
     }
 
+    /// Handles parsing the UCI command
     fn handle_command(&mut self, command: &str) -> bool {
         let parts: Vec<&str> = command.split_whitespace().collect();
         if parts.is_empty() {
@@ -58,20 +62,24 @@ impl UCIEngine {
         true
     }
 
+    /// Responds to the initial "uci" commmand
     fn cmd_uci(&self) {
         println!("id name Oops!Mate");
         println!("id author Wizard");
         println!("uciok");
     }
 
+    /// Responds to the initial "isready" commmand
     fn cmd_isready(&self) {
         println!("readyok");
     }
 
+    /// Creates a new default Position as a result of the `ucinewgame` command
     fn cmd_ucinewgame(&mut self) {
         self.position = Position::new();
     }
 
+    /// Handles parsing custom fen position
     fn cmd_position(&mut self, parts: &[&str]) {
         if parts.is_empty() {
             return;
@@ -110,6 +118,7 @@ impl UCIEngine {
     }
 
     // TODO: Iterative Deepening Here
+    /// Handles search upto a given depth, if specified or implicitly calculated
     fn cmd_go(&mut self, parts: &[&str]) {
         let time_control = GoParser::parse(parts);
 
@@ -126,6 +135,7 @@ impl UCIEngine {
         }
     }
 
+    /// Handles the "d" or "display" command
     fn cmd_display(&self) {
         println!("Current position:");
         println!("{:?}", self.position);

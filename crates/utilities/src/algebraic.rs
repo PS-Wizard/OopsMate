@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 /// Trait intended to provide some niceties for `&str` types to help when working with some of the
 /// algebric notation stuff
 pub trait Algebraic {

@@ -12,6 +12,7 @@ impl MoveParser {
         Ok(())
     }
 
+    /// Applies a single move on the Position
     fn apply_single_move(position: &mut Position, move_str: &str) -> Result<(), String> {
         let mut collector = MoveCollector::new();
         position.generate_moves(&mut collector);
@@ -28,6 +29,7 @@ impl MoveParser {
         Err(format!("Illegal or invalid move: {}", move_str))
     }
 
+    /// Checks if the a move matches the one passed in as a notation from the UCI
     fn move_matches(m: Move, move_str: &str) -> bool {
         let from = m.from();
         let to = m.to();

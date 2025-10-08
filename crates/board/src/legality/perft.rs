@@ -58,6 +58,7 @@ impl Position {
 
 #[cfg(test)]
 mod perft_tests {
+
     use crate::Position;
     use std::time::Instant;
 

@@ -5,6 +5,8 @@ use types::others::Piece::*;
 
 impl Position {
     #[inline(always)]
+    /// Takes in a pin mask, a check mask and a mutable reference to the move collector, generats
+    /// all valid **legal** moves for the knights
     pub fn generate_knight_moves(
         &self,
         collector: &mut MoveCollector,

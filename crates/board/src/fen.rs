@@ -5,6 +5,8 @@ use types::{
 };
 
 impl Position {
+    /// Takes in a `&str` and returns a Optional `Position` with the bitboards set to whatever the
+    /// fen string represents
     pub fn from_fen(fen: &str) -> Result<Self, String> {
         let parts: Vec<&str> = fen.trim().split_whitespace().collect();
 
@@ -46,6 +48,8 @@ impl Position {
         Ok(position)
     }
 
+    /// Takes in a mutable reference to the position and parses out the piece placement form the
+    /// fen
     fn parse_piece_placement(position: &mut Position, placement: &str) -> Result<(), String> {
         let ranks: Vec<&str> = placement.split('/').collect();
 
@@ -94,6 +98,8 @@ impl Position {
         Ok(())
     }
 
+    /// A function to basically map all the piece characters to their respective pieces, i.e
+    /// capitals for white and smalls for black
     fn char_to_piece(ch: char) -> Result<(Piece, Color), String> {
         let (piece, color) = match ch {
             'P' => (Piece::Pawn, Color::White),
@@ -114,6 +120,7 @@ impl Position {
         Ok((piece, color))
     }
 
+    /// Parses the side to move from the provided string 
     fn parse_side_to_move(side_str: &str) -> Result<Color, String> {
         match side_str {
             "w" => Ok(Color::White),
@@ -122,6 +129,7 @@ impl Position {
         }
     }
 
+    /// Parses castling rights form the castling right's part of the fen string
     fn parse_castling_rights(castle_str: &str) -> Result<CastleRights, String> {
         if castle_str == "-" {
             return Ok(CastleRights(0));
@@ -142,6 +150,7 @@ impl Position {
         Ok(CastleRights(rights))
     }
 
+    /// Parses enpassant square form the provided part of the fen string
     fn parse_en_passant(ep_str: &str) -> Result<Option<u8>, String> {
         if ep_str == "-" {
             return Ok(None);
