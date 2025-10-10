@@ -2,7 +2,7 @@ use crate::Position;
 use types::moves::MoveCollector;
 
 impl Position {
-    pub fn perft(&self, depth: u8) -> u64 {
+    pub fn perft(&mut self, depth: u8) -> u64 {
         if depth == 0 {
             return 1;
         }
@@ -17,25 +17,24 @@ impl Position {
         let mut nodes = 0u64;
         for i in 0..collector.len() {
             let m = collector[i];
-            let new_pos = self.make_move(m);
-            nodes += new_pos.perft(depth - 1);
+            let undo = self.make_move(m);
+            nodes += self.perft(depth - 1);
+            self.unmake_move(m, undo);
         }
         nodes
     }
 
-    pub fn perft_divide(&self, depth: u8) {
+    pub fn perft_divide(&mut self, depth: u8) {
         let mut collector = MoveCollector::new();
         self.generate_moves(&mut collector);
         let mut total = 0u64;
 
         for i in 0..collector.len() {
             let m = collector[i];
-            let new_pos = self.make_move(m);
-            let count = if depth <= 1 {
-                1
-            } else {
-                new_pos.perft(depth - 1)
-            };
+            let undo = self.make_move(m);
+            let count = if depth <= 1 { 1 } else { self.perft(depth - 1) };
+            self.unmake_move(m, undo);
+
             println!("{}: {}", m, count);
             total += count;
         }
@@ -109,7 +108,7 @@ mod perft_tests {
 
         for test in PERFT_SUITE {
             println!("Position: {}", test.name);
-            let pos = Position::from_fen(test.fen).unwrap();
+            let mut pos = Position::from_fen(test.fen).unwrap();
 
             for &(depth, expected) in test.depths {
                 let nodes = pos.perft(depth);
@@ -156,7 +155,7 @@ mod perft_tests {
 
         for (name, fen, depth) in test_positions {
             println!("Testing: {} (depth {})", name, depth);
-            let pos = Position::from_fen(fen).unwrap();
+            let mut pos = Position::from_fen(fen).unwrap();
 
             let start = Instant::now();
             let nodes = pos.perft(depth);
@@ -187,7 +186,7 @@ mod perft_tests {
         println!("║       SINGLE POSITION BENCHMARK            ║");
         println!("╚════════════════════════════════════════════╝\n");
 
-        let pos = Position::from_fen(
+        let mut pos = Position::from_fen(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         )
         .unwrap();
@@ -227,7 +226,7 @@ mod perft_tests {
     #[ignore]
     fn divide_debug() {
         println!("\n=== Divide Debug ===");
-        let pos = Position::from_fen(
+        let mut pos = Position::from_fen(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         )
         .unwrap();
