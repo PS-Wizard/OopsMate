@@ -215,7 +215,7 @@ mod perft_tests {
         let avg_time = times.iter().sum::<f64>() / runs as f64;
         let avg_nps = (nodes_result as f64 / avg_time) as u64;
 
-        println!("\n────────────────────────────────────────────");
+        println!("\n=========================================");
         println!("Average: {:.3}s", avg_time);
         println!("Average NPS: {}", format_num(avg_nps));
         println!("Total nodes: {}", format_num(nodes_result));

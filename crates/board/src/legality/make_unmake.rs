@@ -17,6 +17,7 @@ pub struct UndoInfo {
     pub castling_rights: types::others::CastleRights,
     pub en_passant: Option<u8>,
     pub half_clock: u8,
+
     // Store the captured square for en passant (different from move.to())
     pub ep_capture_square: Option<usize>,
 }

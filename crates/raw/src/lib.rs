@@ -33,7 +33,7 @@ pub static THROUGH: [[u64; 64]; 64] = generate_line();
 
 #[inline(always)]
 /// Gets all indices containing to given square, i.e
-/// 
+///
 /// line_between("a2","c2") -> "b2"
 pub fn line_between(from: usize, to: usize) -> u64 {
     BETWEEN[from][to]
@@ -41,7 +41,7 @@ pub fn line_between(from: usize, to: usize) -> u64 {
 
 #[inline(always)]
 /// Gets all indices containing to given square, i.e
-/// 
+///
 /// line_through("a1","b1") -> "a1,b1,c1,d1,e1,...,h1"
 pub fn line_through(sq1: usize, sq2: usize) -> u64 {
     THROUGH[sq1][sq2]
@@ -109,7 +109,7 @@ mod test {
 
     #[test]
     fn test_attacks() {
-        let sq = "a1".idx() as usize;
+        let sq = "e4".idx() as usize;
 
         // rook attack
         let pext_r = unsafe { _pext_u64("a2".place(), ROOK_MASKS[sq]) };
@@ -127,6 +127,7 @@ mod test {
 
         // knight attack
         let knight_attack = KNIGHT_ATTACKS[sq];
+        println!("{}", knight_attack);
         knight_attack.print();
     }
 
