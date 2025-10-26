@@ -50,15 +50,4 @@ cargo test --workspace
 ---
 
 ## 🚧 WIP
-This engine is under active construction. 
-
-Planned:
-    - [x] Bitboards ( figured it out )
-    - [x] Magic Bitboards ( figured it out ... for the most part, some of it is still magic to me)
-    - FEN / UCI (long algebric notation)
-    - NNUE 
-    - Minimax with alpha-beta
-    - Null Move Pruning
-    - MVV LVA Ordering
-    - Iterative Deepening
-    - Quiescence Search
+The engine is fully functional, but it’s still under active development with many enhancements to come. 
