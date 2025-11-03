@@ -10,7 +10,7 @@ pub trait Searcher {
     /// Returns (best_move, score in centipawns)
     fn search(&mut self, depth: u8) -> (Option<Move>, i32);
 
-    /// Classic negamax search with no alpha beta pruning atm.
+    /// Negamax search with alpha-beta pruning
     fn negamax(&mut self, depth: u8, alpha: i32, beta: i32) -> i32;
 }
 
@@ -18,6 +18,8 @@ impl Searcher for Position {
     fn search(&mut self, depth: u8) -> (Option<Move>, i32) {
         let mut best_move = None;
         let mut best_score = i32::MIN;
+        let mut alpha = i32::MIN + 1;
+        let beta = i32::MAX;
 
         let mut collector = MoveCollector::new();
         self.generate_moves(&mut collector);
@@ -25,16 +27,8 @@ impl Searcher for Position {
         for i in 0..collector.len() {
             let m = collector[i];
 
-            // Store original position for repetition detection
-            let original = self.clone();
-
             let undo = self.make_move(m);
-            let mut score = -self.negamax(depth - 1, i32::MIN + 1, i32::MAX);
-
-            // Penalize Repetitions (50 centipawns = 0.5 pawns)
-            if *self == original {
-                score -= 5000;
-            }
+            let mut score = -self.negamax(depth - 1, -beta, -alpha);
 
             // If we're winning big (likely mate), prefer checks
             if score > 50000 {
@@ -48,13 +42,14 @@ impl Searcher for Position {
             if score > best_score {
                 best_score = score;
                 best_move = Some(m);
+                alpha = alpha.max(score);
             }
         }
 
         (best_move, best_score)
     }
 
-    fn negamax(&mut self, depth: u8, alpha: i32, beta: i32) -> i32 {
+    fn negamax(&mut self, depth: u8, mut alpha: i32, beta: i32) -> i32 {
         if depth == 0 {
             return self.evaluate();
         }
@@ -81,6 +76,12 @@ impl Searcher for Position {
             best_score = best_score.max(score);
 
             self.unmake_move(m, undo);
+
+            // Alpha-beta pruning
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                break; // Beta cutoff
+            }
         }
 
         best_score
@@ -242,6 +243,8 @@ mod search_benchmarks {
 
         let mut best_move = None;
         let mut best_score = i32::MIN;
+        let mut alpha = i32::MIN + 1;
+        let beta = i32::MAX;
 
         let mut collector = MoveCollector::new();
         pos.generate_moves(&mut collector);
@@ -249,12 +252,13 @@ mod search_benchmarks {
         for i in 0..collector.len() {
             let m = collector[i];
             let undo = pos.make_move(m);
-            let score = -negamax_with_count(pos, depth - 1, i32::MIN + 1, i32::MAX, node_count);
+            let score = -negamax_with_count(pos, depth - 1, -beta, -alpha, node_count);
             pos.unmake_move(m, undo);
 
             if score > best_score {
                 best_score = score;
                 best_move = Some(m);
+                alpha = alpha.max(score);
             }
         }
 
@@ -264,8 +268,8 @@ mod search_benchmarks {
     fn negamax_with_count(
         pos: &mut Position,
         depth: u8,
-        _alpha: i32,
-        _beta: i32,
+        mut alpha: i32,
+        beta: i32,
         node_count: &mut u64,
     ) -> i32 {
         use crate::evaluation::evaluate::Evaluator;
@@ -293,10 +297,16 @@ mod search_benchmarks {
         for i in 0..collector.len() {
             let m = collector[i];
             let undo = pos.make_move(m);
-            let score = -negamax_with_count(pos, depth - 1, -_beta, -_alpha, node_count);
+            let score = -negamax_with_count(pos, depth - 1, -beta, -alpha, node_count);
             pos.unmake_move(m, undo);
 
             best_score = best_score.max(score);
+
+            // Alpha-beta pruning
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                break; // Beta cutoff
+            }
         }
 
         best_score

@@ -1,6 +1,7 @@
 use std::arch::x86_64::_pext_u64;
 
-use raw::{PAWN_ATTACKS, ROOK_ATTACKS, ROOK_MASKS, THROUGH};
+use raw::THROUGH;
+use raw::{PAWN_ATTACKS, ROOK_ATTACKS, ROOK_MASKS};
 use types::moves::MoveCollector;
 use types::moves::{Move, MoveType::*};
 use types::others::Color::*;
@@ -316,6 +317,5 @@ mod pawns {
         let (pinned, _, check_mask) = get_attack_constraints(&g);
         g.generate_pawn_moves(&mut mc, pinned, check_mask);
         assert_eq!(1, mc.len());
-        mc.clear();
     }
 }

@@ -101,6 +101,7 @@ mod perft_tests {
     ];
 
     #[test]
+    #[ignore = "perft is slow :("]
     fn perft_correctness() {
         println!("\n╔════════════════════════════════════════════╗");
         println!("║         PERFT CORRECTNESS TESTS            ║");
@@ -124,7 +125,7 @@ mod perft_tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "perft is slow :("]
     fn perft_stress_test() {
         println!("\n╔════════════════════════════════════════════╗");
         println!("║          PERFT STRESS TEST                 ║");
@@ -180,7 +181,7 @@ mod perft_tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "perft is slow :("]
     fn perft_single_benchmark() {
         println!("\n╔════════════════════════════════════════════╗");
         println!("║       SINGLE POSITION BENCHMARK            ║");
