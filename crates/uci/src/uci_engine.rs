@@ -1,11 +1,11 @@
 use board::Position;
-use evaluation::search::negamax::Searcher;
+use evaluation::search::iterative_deepening::IterativeSearcher;
 use std::io::{self, BufRead};
 use types::others::Color;
 
 use crate::parsers::{go_parser::GoParser, move_parser::MoveParser};
 
-/// Struct To handle UCI communication
+/// Struct to handle UCI communication
 pub struct UCIEngine {
     position: Position,
 }
@@ -62,14 +62,14 @@ impl UCIEngine {
         true
     }
 
-    /// Responds to the initial "uci" commmand
+    /// Responds to the initial "uci" command
     fn cmd_uci(&self) {
         println!("id name Oops!Mate");
         println!("id author Wizard");
         println!("uciok");
     }
 
-    /// Responds to the initial "isready" commmand
+    /// Responds to the initial "isready" command
     fn cmd_isready(&self) {
         println!("readyok");
     }
@@ -117,18 +117,18 @@ impl UCIEngine {
         }
     }
 
-    // TODO: Iterative Deepening Here
-    /// Handles search upto a given depth, if specified or implicitly calculated
+    /// Handles search with iterative deepening
     fn cmd_go(&mut self, parts: &[&str]) {
         let time_control = GoParser::parse(parts);
-
         let is_white = matches!(self.position.side_to_move, Color::White);
-        let search_depth = time_control.calculate_depth(is_white);
 
-        let (best_move, score) = self.position.search(search_depth);
+        // Convert time control to search limits
+        let limits = time_control.to_search_limits(is_white);
 
-        if let Some(m) = best_move {
-            println!("info depth {} score cp {}", search_depth, score as i32);
+        // Run iterative deepening search
+        let result = self.position.search_iterative(limits);
+
+        if let Some(m) = result.best_move {
             println!("bestmove {}", m);
         } else {
             println!("bestmove 0000");

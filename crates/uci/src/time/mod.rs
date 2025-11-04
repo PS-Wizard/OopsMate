@@ -1,4 +1,6 @@
-/// Stuct to parse the time control from UCI
+use evaluation::search::iterative_deepening::SearchLimits;
+
+/// Struct to parse the time control from UCI
 pub struct TimeControl {
     pub wtime: Option<u64>,
     pub btime: Option<u64>,
@@ -25,24 +27,25 @@ impl TimeControl {
         }
     }
 
-    /// Calculate search depth based on time control
-    pub fn calculate_depth(&self, is_white: bool) -> u8 {
-        // If depth is explicitly set, use it
+    /// Convert UCI time control to search limits
+    pub fn to_search_limits(&self, is_white: bool) -> SearchLimits {
+        // Explicit depth
         if let Some(d) = self.depth {
-            return d;
+            return SearchLimits::from_depth(d);
         }
 
-        // If infinite search
+        // Infinite search
         if self.infinite {
-            return 6; // Or some max depth
+            return SearchLimits::infinite();
         }
 
-        // If movetime is set
+        // Fixed move time
         if let Some(mt) = self.movetime {
-            return self.depth_from_time(mt);
+            let hard = mt + (mt / 10); // 10% buffer for hard limit
+            return SearchLimits::from_time(mt, hard);
         }
 
-        // Use remaining time
+        // Calculate time from remaining clock
         let our_time = if is_white {
             self.wtime.unwrap_or(30000)
         } else {
@@ -51,17 +54,20 @@ impl TimeControl {
 
         let increment = if is_white { self.winc } else { self.binc };
 
-        let time_for_move = (our_time / 30) + (increment / 2);
-        self.depth_from_time(time_for_move)
-    }
+        let moves_to_go = self.movestogo.unwrap_or(30) as u64;
 
-    /// Returns a fixed number of depth given the remaining time
-    fn depth_from_time(&self, time_ms: u64) -> u8 {
-        match time_ms {
-            t if t > 10000 => 6,
-            t if t > 5000 => 5,
-            t if t > 1000 => 4,
-            _ => 3,
-        }
+        // Soft time: time we aim to use for this move
+        // (remaining_time / moves_to_go) + (increment * 0.75)
+        let soft_time = (our_time / moves_to_go) + (increment * 3 / 4);
+
+        // Hard limit: absolute maximum time we can use
+        // Makin sure we don't use more than 1/3 of remaining time in one move
+        let hard_limit = soft_time.min(our_time / 3) + increment;
+
+        // Add some buffer to soft time for time loss in communication
+        let soft_buffered = soft_time.saturating_sub(50).max(10);
+        let hard_buffered = hard_limit.saturating_sub(20).max(20);
+
+        SearchLimits::from_time(soft_buffered, hard_buffered)
     }
 }
