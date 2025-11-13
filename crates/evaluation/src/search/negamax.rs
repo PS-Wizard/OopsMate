@@ -1,4 +1,5 @@
 use crate::evaluation::evaluate::Evaluator;
+use tpt::{Bound, TranspositionTable};
 use types::moves::MoveCollector;
 
 use board::Position;
@@ -8,14 +9,14 @@ use types::moves::Move;
 pub trait Searcher {
     /// Search for the best move at a given depth
     /// Returns (best_move, score in centipawns)
-    fn search(&mut self, depth: u8) -> (Option<Move>, i32);
+    fn search(&mut self, depth: u8, tt: &mut TranspositionTable) -> (Option<Move>, i32);
 
     /// Negamax search with alpha-beta pruning
-    fn negamax(&mut self, depth: u8, alpha: i32, beta: i32) -> i32;
+    fn negamax(&mut self, depth: u8, alpha: i32, beta: i32, tt: &mut TranspositionTable) -> i32;
 }
 
 impl Searcher for Position {
-    fn search(&mut self, depth: u8) -> (Option<Move>, i32) {
+    fn search(&mut self, depth: u8, tt: &mut TranspositionTable) -> (Option<Move>, i32) {
         let mut best_move = None;
         let mut best_score = i32::MIN;
         let mut alpha = i32::MIN + 1;
@@ -24,11 +25,54 @@ impl Searcher for Position {
         let mut collector = MoveCollector::new();
         self.generate_moves(&mut collector);
 
+        // Try TT move first if available
+        let mut tt_move = None;
+        if let Some(entry) = tt.probe(self.hash) {
+            // If stored entry is greater than or equal to the current depth
+            if entry.depth >= depth {
+                match entry.bound {
+                    Bound::Exact => return (Some(entry.best_move), entry.score),
+                    Bound::Lower => alpha = alpha.max(entry.score),
+                    Bound::Upper => _ = (), // beta cutoff handled in negamax
+                }
+            }
+            tt_move = Some(entry.best_move)
+        }
+
+        // Check TT moves first
+        if let Some(tt_m) = tt_move {
+            if collector.contains(tt_m) {
+                let undo = self.make_move(tt_m);
+                let mut score = -self.negamax(depth - 1, -beta, -alpha, tt);
+
+                // Bonus for giving check
+                if score > 50000 && self.is_in_check() {
+                    score += 1;
+                }
+
+                self.unmake_move(tt_m, undo);
+
+                if score > best_score {
+                    best_score = score;
+                    best_move = Some(tt_m);
+                    alpha = alpha.max(score);
+                }
+            }
+        }
+
+        // Search Remaining
         for i in 0..collector.len() {
             let m = collector[i];
 
+            // Skip TT move (already searched)
+            if Some(m) == tt_move {
+                continue;
+            }
+
             let undo = self.make_move(m);
-            let mut score = -self.negamax(depth - 1, -beta, -alpha);
+            // The order of alpha & Beta is swapped cause from the opponent's perspective,
+            // our alpha becomes their -beta (our lower bound becomes their upper bound, negated)
+            let mut score = -self.negamax(depth - 1, -beta, -alpha, tt);
 
             // If we're winning big (likely mate), prefer checks
             if score > 50000 {
@@ -44,12 +88,51 @@ impl Searcher for Position {
                 best_move = Some(m);
                 alpha = alpha.max(score);
             }
+
+            if alpha >= beta {
+                break;
+            }
+        }
+
+        let bound = if best_score <= alpha {
+            Bound::Upper
+        } else if best_score >= beta {
+            Bound::Lower
+        } else {
+            Bound::Exact
+        };
+
+        if let Some(mv) = best_move {
+            tt.store(self.hash, mv, best_score, depth, bound);
         }
 
         (best_move, best_score)
     }
 
-    fn negamax(&mut self, depth: u8, mut alpha: i32, beta: i32) -> i32 {
+    fn negamax(&mut self, depth: u8, mut alpha: i32, beta: i32, tt: &mut TranspositionTable) -> i32 {
+        let original_alpha = alpha;
+
+        // TT probe
+        if let Some(entry) = tt.probe(self.hash) {
+            if entry.depth >= depth {
+                match entry.bound {
+                    Bound::Exact => return entry.score,
+                    Bound::Lower => alpha = alpha.max(entry.score),
+                    Bound::Upper => {
+                        if entry.score <= alpha {
+                            return entry.score;
+                        }
+                    }
+                }
+
+                // Early cutoff
+                if alpha >= beta {
+                    return entry.score;
+                }
+            }
+        }
+
+        // Terminal Node
         if depth == 0 {
             return self.evaluate();
         }
@@ -60,29 +143,68 @@ impl Searcher for Position {
         // No legal moves - checkmate or stalemate
         if collector.len() == 0 {
             if self.is_in_check() {
-                return -100000 - depth as i32; // Checkmate (prefer faster mates)
+                return -100000 - depth as i32; // Checkmate 
             } else {
                 return 0; // Stalemate
             }
         }
 
         let mut best_score = i32::MIN;
+        let mut best_move = Move::NULL;
+
+        let tt_move = tt.probe(self.hash).map(|e| e.best_move);
+
+        // Try TT Move First
+        if let Some(tt_m) = tt_move {
+            if collector.contains(tt_m) {
+                let undo = self.make_move(tt_m);
+                let score = -self.negamax(depth - 1, -beta, -alpha, tt);
+                self.unmake_move(tt_m, undo);
+
+                if score > best_score {
+                    best_score = score;
+                    best_move = tt_m;
+                }
+
+                alpha = alpha.max(score);
+                if alpha >= beta {
+                    // Store and return
+                    tt.store(self.hash, best_move, best_score, depth, Bound::Lower);
+                    return best_score;
+                }
+            }
+        }
 
         for i in 0..collector.len() {
             let m = collector[i];
+            if Some(m) == tt_move {
+                continue; // TT Move Already searched above
+            }
+
             let undo = self.make_move(m);
-
-            let score = -self.negamax(depth - 1, -beta, -alpha);
-            best_score = best_score.max(score);
-
+            let score = -self.negamax(depth - 1, -beta, -alpha, tt);
             self.unmake_move(m, undo);
 
+            if score > best_score {
+                best_score = score;
+                best_move = m;
+            }
             // Alpha-beta pruning
             alpha = alpha.max(score);
             if alpha >= beta {
                 break; // Beta cutoff
             }
         }
+
+        let bound = if best_score <= original_alpha {
+            Bound::Upper // All moves failed low
+        } else if best_score >= beta {
+            Bound::Lower // Beta cutoff
+        } else {
+            Bound::Exact // Exact score
+        };
+
+        tt.store(self.hash, best_move, best_score, depth, bound);
 
         best_score
     }

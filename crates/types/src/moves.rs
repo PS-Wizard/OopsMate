@@ -43,6 +43,10 @@ impl MoveCollector {
     pub fn clear(&mut self) {
         self.count = 0;
     }
+
+    pub fn contains(&self, m: Move) -> bool {
+        (0..self.len()).any(|i| self[i] == m)
+    }
 }
 
 /// Utility to directly index the MoveCollector's array

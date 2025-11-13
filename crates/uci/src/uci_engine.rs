@@ -1,6 +1,7 @@
 use board::Position;
 use evaluation::search::iterative_deepening::IterativeSearcher;
 use std::io::{self, BufRead};
+use tpt::TranspositionTable;
 use types::others::Color;
 
 use crate::parsers::{go_parser::GoParser, move_parser::MoveParser};
@@ -8,6 +9,7 @@ use crate::parsers::{go_parser::GoParser, move_parser::MoveParser};
 /// Struct to handle UCI communication
 pub struct UCIEngine {
     position: Position,
+    tt: TranspositionTable,
 }
 
 impl UCIEngine {
@@ -15,6 +17,7 @@ impl UCIEngine {
     pub fn new() -> Self {
         Self {
             position: Position::new(),
+            tt: TranspositionTable::new(128), // 128 MB transposition table
         }
     }
 
@@ -77,6 +80,7 @@ impl UCIEngine {
     /// Creates a new default Position as a result of the `ucinewgame` command
     fn cmd_ucinewgame(&mut self) {
         self.position = Position::new();
+        self.tt.clear(); // Clear transposition table for new game
     }
 
     /// Handles parsing custom fen position
@@ -117,7 +121,7 @@ impl UCIEngine {
         }
     }
 
-    /// Handles search with iterative deepening
+    /// Handles search with iterative deepening and transposition table
     fn cmd_go(&mut self, parts: &[&str]) {
         let time_control = GoParser::parse(parts);
         let is_white = matches!(self.position.side_to_move, Color::White);
@@ -125,8 +129,8 @@ impl UCIEngine {
         // Convert time control to search limits
         let limits = time_control.to_search_limits(is_white);
 
-        // Run iterative deepening search
-        let result = self.position.search_iterative(limits);
+        // Run iterative deepening search with persistent TT
+        let result = self.position.search_iterative_with_tt(limits, &mut self.tt);
 
         if let Some(m) = result.best_move {
             println!("bestmove {}", m);
@@ -139,5 +143,6 @@ impl UCIEngine {
     fn cmd_display(&self) {
         println!("Current position:");
         println!("{:?}", self.position);
+        println!("TT usage: {:.2}%", self.tt.usage());
     }
 }
