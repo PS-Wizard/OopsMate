@@ -7,35 +7,33 @@ use types::others::{
     Color::*,
     Piece::{self, *},
 };
+use zobrist::ZOBRIST;
 
 use crate::Position;
 
-/// Stores all information needed to undo a move
 #[derive(Clone, Copy, Debug)]
 pub struct UndoInfo {
     pub captured_piece: Option<(Piece, Color)>,
     pub castling_rights: types::others::CastleRights,
     pub en_passant: Option<u8>,
     pub half_clock: u8,
-
-    // Store the captured square for en passant (different from move.to())
     pub ep_capture_square: Option<usize>,
+    pub hash: u64,
 }
 
 impl Position {
-    /// Makes a move in place and returns undo information
     pub fn make_move(&mut self, m: Move) -> UndoInfo {
         let from = m.from();
         let to = m.to();
         let move_type = m.move_type();
 
-        // Save state for undo
         let mut undo = UndoInfo {
             captured_piece: None,
             castling_rights: self.castling_rights,
             en_passant: self.en_passant,
             half_clock: self.half_clock,
             ep_capture_square: None,
+            hash: self.hash,
         };
 
         let (moving_piece, moving_color) = self.piece_at(from).expect("No piece at from square");
@@ -54,13 +52,21 @@ impl Position {
             DoublePush => {
                 self.remove_piece(from);
                 self.add_piece(to, moving_color, moving_piece);
-                // Set en passant square
+
+                if let Some(old_ep) = self.en_passant {
+                    let file = (old_ep % 8) as usize;
+                    self.hash ^= ZOBRIST.en_passant_key(file);
+                }
+
                 let ep_sq = if self.side_to_move == White {
                     from + 8
                 } else {
                     from - 8
                 };
+
                 self.en_passant = Some(ep_sq as u8);
+                let ep_file = (ep_sq % 8) as usize;
+                self.hash ^= ZOBRIST.en_passant_key(ep_file);
             }
             EnPassant => {
                 let captured_sq = if self.side_to_move == White {
@@ -76,16 +82,14 @@ impl Position {
                 self.add_piece(to, moving_color, moving_piece);
             }
             Castle => {
-                // Move king
                 self.remove_piece(from);
                 self.add_piece(to, moving_color, moving_piece);
 
-                // Move rook
                 let (rook_from, rook_to) = match to {
-                    6 => (7, 5),    // White kingside
-                    2 => (0, 3),    // White queenside
-                    62 => (63, 61), // Black kingside
-                    58 => (56, 59), // Black queenside
+                    6 => (7, 5),
+                    2 => (0, 3),
+                    62 => (63, 61),
+                    58 => (56, 59),
                     _ => panic!("Invalid castle destination: {}", to),
                 };
                 self.remove_piece(rook_from);
@@ -108,18 +112,21 @@ impl Position {
             }
         }
 
-        // Update castling rights
+        self.hash ^= ZOBRIST.castling_key(self.castling_rights);
         self.update_castling_rights(from, to, moving_piece, moving_color);
+        self.hash ^= ZOBRIST.castling_key(self.castling_rights);
 
-        // Clear en passant if not a double push
         if move_type != DoublePush {
+            if let Some(old_ep) = self.en_passant {
+                let file = (old_ep % 8) as usize;
+                self.hash ^= ZOBRIST.en_passant_key(file);
+            }
             self.en_passant = None;
         }
 
-        // Switch turns
+        self.hash ^= ZOBRIST.side_to_move;
         self.side_to_move = self.side_to_move.flip();
 
-        // Update clocks
         if matches!(moving_piece, Pawn)
             || matches!(
                 move_type,
@@ -143,96 +150,86 @@ impl Position {
         undo
     }
 
-    /// Unmakes a move using the undo information
     pub fn unmake_move(&mut self, m: Move, undo: UndoInfo) {
         let from = m.from();
         let to = m.to();
         let move_type = m.move_type();
 
-        // Switch turns back
         self.side_to_move = self.side_to_move.flip();
-
-        // Restore clocks
         self.half_clock = undo.half_clock;
         if self.side_to_move == Black {
             self.full_clock -= 1;
         }
 
-        let (moving_piece, moving_color) = self.piece_at(to).unwrap_or_else(|| {
-            // For promotions, the piece at 'to' is the promoted piece, not the original
-            match move_type {
-                PromotionQueen | CapturePromotionQueen => (Queen, self.side_to_move),
-                PromotionRook | CapturePromotionRook => (Rook, self.side_to_move),
-                PromotionBishop | CapturePromotionBishop => (Bishop, self.side_to_move),
-                PromotionKnight | CapturePromotionKnight => (Knight, self.side_to_move),
-                _ => panic!("No piece at destination square {}", to),
-            }
+        let (moving_piece, moving_color) = self.piece_at(to).unwrap_or_else(|| match move_type {
+            PromotionQueen | CapturePromotionQueen => (Queen, self.side_to_move),
+            PromotionRook | CapturePromotionRook => (Rook, self.side_to_move),
+            PromotionBishop | CapturePromotionBishop => (Bishop, self.side_to_move),
+            PromotionKnight | CapturePromotionKnight => (Knight, self.side_to_move),
+            _ => panic!("No piece at destination square {}", to),
         });
 
         match move_type {
             Quiet => {
-                self.remove_piece(to);
-                self.add_piece(from, moving_color, moving_piece);
+                self.remove_piece_silent(to);
+                self.add_piece_silent(from, moving_color, moving_piece);
             }
             Capture => {
-                self.remove_piece(to);
-                self.add_piece(from, moving_color, moving_piece);
+                self.remove_piece_silent(to);
+                self.add_piece_silent(from, moving_color, moving_piece);
                 if let Some((piece, color)) = undo.captured_piece {
-                    self.add_piece(to, color, piece);
+                    self.add_piece_silent(to, color, piece);
                 }
             }
             DoublePush => {
-                self.remove_piece(to);
-                self.add_piece(from, moving_color, moving_piece);
+                self.remove_piece_silent(to);
+                self.add_piece_silent(from, moving_color, moving_piece);
             }
             EnPassant => {
-                self.remove_piece(to);
-                self.add_piece(from, moving_color, Pawn);
+                self.remove_piece_silent(to);
+                self.add_piece_silent(from, moving_color, Pawn);
 
                 if let Some(captured_sq) = undo.ep_capture_square {
                     if let Some((piece, color)) = undo.captured_piece {
-                        self.add_piece(captured_sq, color, piece);
+                        self.add_piece_silent(captured_sq, color, piece);
                     }
                 }
             }
             Castle => {
-                // Unmove king
-                self.remove_piece(to);
-                self.add_piece(from, moving_color, King);
+                self.remove_piece_silent(to);
+                self.add_piece_silent(from, moving_color, King);
 
-                // Unmove rook
                 let (rook_from, rook_to) = match to {
-                    6 => (7, 5),    // White kingside
-                    2 => (0, 3),    // White queenside
-                    62 => (63, 61), // Black kingside
-                    58 => (56, 59), // Black queenside
+                    6 => (7, 5),
+                    2 => (0, 3),
+                    62 => (63, 61),
+                    58 => (56, 59),
                     _ => panic!("Invalid castle destination: {}", to),
                 };
-                self.remove_piece(rook_to);
-                self.add_piece(rook_from, moving_color, Rook);
+                self.remove_piece_silent(rook_to);
+                self.add_piece_silent(rook_from, moving_color, Rook);
             }
             PromotionQueen | PromotionRook | PromotionBishop | PromotionKnight => {
-                self.remove_piece(to);
-                self.add_piece(from, moving_color, Pawn);
+                self.remove_piece_silent(to);
+                self.add_piece_silent(from, moving_color, Pawn);
             }
             CapturePromotionQueen
             | CapturePromotionRook
             | CapturePromotionBishop
             | CapturePromotionKnight => {
-                self.remove_piece(to);
-                self.add_piece(from, moving_color, Pawn);
+                self.remove_piece_silent(to);
+                self.add_piece_silent(from, moving_color, Pawn);
                 if let Some((piece, color)) = undo.captured_piece {
-                    self.add_piece(to, color, piece);
+                    self.add_piece_silent(to, color, piece);
                 }
             }
         }
 
-        // Restore state
         self.castling_rights = undo.castling_rights;
         self.en_passant = undo.en_passant;
+        self.hash = undo.hash;
     }
 
-    /// Helper function to get the promotion piece depending on the flag
     fn get_promotion_piece(&self, move_type: MoveType) -> Piece {
         match move_type {
             PromotionQueen | CapturePromotionQueen => Queen,
@@ -243,9 +240,7 @@ impl Position {
         }
     }
 
-    /// Updates castling rights depending on if the king moved or the rooks did
     fn update_castling_rights(&mut self, from: usize, to: usize, piece: Piece, color: Color) {
-        // King moves lose all castling rights for that color
         if piece == King {
             if color == White {
                 self.castling_rights.remove_white_castling();
@@ -254,7 +249,6 @@ impl Position {
             }
         }
 
-        // Rook moves or captures lose specific castling rights
         match from {
             0 => self.castling_rights.remove_white_queenside(),
             7 => self.castling_rights.remove_white_kingside(),
@@ -298,6 +292,7 @@ mod make_unmake_tests {
                 let undo = pos.make_move(m);
                 pos.unmake_move(m, undo);
 
+                println!("Zobrist For Original: {}",original.hash);
                 assert_eq!(
                     pos, original,
                     "Position not restored after make/unmake for move {}",
