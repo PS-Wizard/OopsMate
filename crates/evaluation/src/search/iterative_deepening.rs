@@ -1,6 +1,7 @@
 use crate::search::negamax::Searcher;
 use board::Position;
 use std::time::{Duration, Instant};
+use tpt::TranspositionTable;
 use types::moves::Move;
 
 /// Controls when to stop the iterative deepening search
@@ -63,19 +64,31 @@ pub struct SearchResult {
     pub time_ms: u64,
 }
 
-/// Performs iterative deepening search
+/// Performs iterative deepening search with transposition table
 pub struct IterativeSearch {
     start_time: Instant,
     limits: SearchLimits,
     nodes: u64,
+    tt: TranspositionTable,
 }
 
 impl IterativeSearch {
-    pub fn new(limits: SearchLimits) -> Self {
+    pub fn new(limits: SearchLimits, tt_size_mb: usize) -> Self {
         Self {
             start_time: Instant::now(),
             limits,
             nodes: 0,
+            tt: TranspositionTable::new(tt_size_mb),
+        }
+    }
+
+    /// Create with existing transposition table
+    pub fn with_tt(limits: SearchLimits, tt: TranspositionTable) -> Self {
+        Self {
+            start_time: Instant::now(),
+            limits,
+            nodes: 0,
+            tt,
         }
     }
 
@@ -93,7 +106,8 @@ impl IterativeSearch {
                 break;
             }
 
-            let (mv, score) = position.search(depth);
+            // Search with TT
+            let (mv, score) = position.search(depth, &mut self.tt);
 
             if let Some(m) = mv {
                 best_move = Some(m);
@@ -185,16 +199,142 @@ impl IterativeSearch {
 
         false
     }
+
+    /// Get reference to the transposition table (for reuse across searches)
+    pub fn tt(&self) -> &TranspositionTable {
+        &self.tt
+    }
+
+    /// Get mutable reference to the transposition table
+    pub fn tt_mut(&mut self) -> &mut TranspositionTable {
+        &mut self.tt
+    }
+
+    /// Consume and return the transposition table
+    pub fn into_tt(self) -> TranspositionTable {
+        self.tt
+    }
 }
 
 /// Extension trait to add iterative deepening to Position
 pub trait IterativeSearcher {
     fn search_iterative(&mut self, limits: SearchLimits) -> SearchResult;
+    fn search_iterative_with_tt(
+        &mut self,
+        limits: SearchLimits,
+        tt: &mut TranspositionTable,
+    ) -> SearchResult;
 }
 
 impl IterativeSearcher for Position {
+    /// Search with a new transposition table (64MB default)
     fn search_iterative(&mut self, limits: SearchLimits) -> SearchResult {
-        let mut search = IterativeSearch::new(limits);
+        let mut search = IterativeSearch::new(limits, 64);
         search.search(self)
     }
+
+    /// Search with an existing transposition table (more efficient for repeated searches)
+    fn search_iterative_with_tt(
+        &mut self,
+        limits: SearchLimits,
+        tt: &mut TranspositionTable,
+    ) -> SearchResult {
+        let mut best_move = None;
+        let mut best_score = 0;
+        let mut completed_depth = 0;
+        let nodes = 0u64;
+
+        let max_depth = limits.max_depth.unwrap_or(20);
+        let start_time = Instant::now();
+
+        for depth in 1..=max_depth {
+            // Check time before starting new depth
+            if should_stop_before_depth(&limits, &start_time, depth) {
+                break;
+            }
+
+            // Search with TT
+            let (mv, score) = self.search(depth, tt);
+
+            if let Some(m) = mv {
+                best_move = Some(m);
+                best_score = score;
+                completed_depth = depth;
+
+                // Print info for UCI
+                let elapsed = start_time.elapsed().as_millis() as u64;
+                let nps = if elapsed > 0 {
+                    (nodes * 1000) / elapsed
+                } else {
+                    0
+                };
+
+                println!(
+                    "info depth {} score cp {} nodes {} nps {} time {} pv {}",
+                    depth, score, nodes, nps, elapsed, m
+                );
+
+                // Check if we should stop after completing this depth
+                if should_stop_after_depth(&limits, &start_time, score) {
+                    break;
+                }
+            } else {
+                // No legal moves
+                break;
+            }
+        }
+
+        SearchResult {
+            best_move,
+            score: best_score,
+            depth: completed_depth,
+            nodes,
+            time_ms: start_time.elapsed().as_millis() as u64,
+        }
+    }
+}
+
+// Helper functions for time management
+fn should_stop_before_depth(limits: &SearchLimits, start_time: &Instant, next_depth: u8) -> bool {
+    if let Some(max) = limits.max_depth {
+        if next_depth > max {
+            return true;
+        }
+    }
+
+    if let Some(hard) = limits.hard_limit {
+        if start_time.elapsed() >= hard {
+            return true;
+        }
+    }
+
+    if let Some(soft) = limits.max_time {
+        let elapsed = start_time.elapsed();
+        let estimated_next = elapsed * 3;
+        if elapsed + estimated_next > soft {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn should_stop_after_depth(limits: &SearchLimits, start_time: &Instant, score: i32) -> bool {
+    if score.abs() > 50000 {
+        return true;
+    }
+
+    if let Some(soft) = limits.max_time {
+        if start_time.elapsed() >= soft {
+            return true;
+        }
+    }
+
+    if let Some(hard) = limits.hard_limit {
+        if start_time.elapsed() >= hard {
+            return true;
+        }
+    }
+
+    false
 }

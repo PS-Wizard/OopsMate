@@ -30,6 +30,7 @@ name = "evaluation"
 version = "0.1.0"
 dependencies = [
  "board",
+ "tpt",
  "types",
 ]
 
@@ -126,6 +127,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tpt"
+version = "0.1.0"
+dependencies = [
+ "types",
+]
+
+[[package]]
 name = "types"
 version = "0.1.0"
 
@@ -135,6 +143,7 @@ version = "0.1.0"
 dependencies = [
  "board",
  "evaluation",
+ "tpt",
  "types",
 ]
 
