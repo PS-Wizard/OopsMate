@@ -1,3 +1,4 @@
+use ::zobrist::ZOBRIST;
 use types::{
     bitboard::Bitboard,
     others::{CastleRights, Color, Piece},
@@ -6,6 +7,7 @@ use types::{
 mod fen;
 mod legality;
 mod move_gen;
+mod zobrist;
 
 #[derive(Clone, Debug, PartialEq)]
 /// A struct that represents the entire game state. Uses bitboards to represent pieces, 6 total,
@@ -65,6 +67,9 @@ impl Position {
     /// Position struct
     pub fn remove_piece(&mut self, idx: usize) {
         if let Some((piece, color)) = self.piece_map[idx] {
+            // XOR out the piece from the hash
+            self.hash ^= ZOBRIST.piece(piece, color, idx);
+
             self.pieces[piece as usize].remove_bit(idx);
             self.all_pieces[color as usize].remove_bit(idx);
             self.piece_map[idx] = None;
@@ -74,10 +79,12 @@ impl Position {
     #[inline(always)]
     /// Takes in a mutable refernce to the position struct, an index , a Color and a piece type and
     /// sets the bit of the relevant board based on those provided values.
-    pub fn add_piece(&mut self, idx: usize, color: Color, board: Piece) {
-        self.pieces[board as usize].set_bit(idx);
+    pub fn add_piece(&mut self, idx: usize, color: Color, piece: Piece) {
+        self.hash ^= ZOBRIST.piece(piece, color, idx);
+
+        self.pieces[piece as usize].set_bit(idx);
         self.all_pieces[color as usize].set_bit(idx);
-        self.piece_map[idx] = Some((board, color));
+        self.piece_map[idx] = Some((piece, color));
     }
 
     #[inline(always)]

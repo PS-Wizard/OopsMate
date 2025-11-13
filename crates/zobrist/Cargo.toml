@@ -1,0 +1,9 @@
+[package]
+name = "zobrist"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+types = { path = "../types" }
+rand = "0.8"
+rand_chacha = "0.3"

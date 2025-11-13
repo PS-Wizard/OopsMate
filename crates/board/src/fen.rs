@@ -45,6 +45,8 @@ impl Position {
         // Parse fullmove number (part 5)
         position.full_clock = parts[5].parse().map_err(|_| "Invalid fullmove number")?;
 
+        position.hash = position.compute_hash();
+
         Ok(position)
     }
 
@@ -120,7 +122,7 @@ impl Position {
         Ok((piece, color))
     }
 
-    /// Parses the side to move from the provided string 
+    /// Parses the side to move from the provided string
     fn parse_side_to_move(side_str: &str) -> Result<Color, String> {
         match side_str {
             "w" => Ok(Color::White),
