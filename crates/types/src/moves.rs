@@ -1,61 +1,104 @@
 use crate::others::Piece;
 use std::mem::MaybeUninit;
 
-/// A struct holding a fixed array of side 256 (max legal moves in any position) to avoid
-/// allocating memory when generating moves and a count usize that represents the number of moves
-/// in the array. Elements of the array are `MaybeUninit`  for better performance
+/// A struct that separates moves into captures and quiet moves for better move ordering
 pub struct MoveCollector {
-    pub moves: [MaybeUninit<Move>; 256],
-    count: usize,
+    pub captures: [MaybeUninit<Move>; 128],
+    pub quiets: [MaybeUninit<Move>; 128],
+    capture_count: usize,
+    quiet_count: usize,
 }
 
 impl MoveCollector {
-    /// Returns a New Movecollector
+    /// Returns a new MoveCollector
     pub fn new() -> Self {
         MoveCollector {
-            moves: unsafe { MaybeUninit::uninit().assume_init() },
-            count: 0,
+            captures: unsafe { MaybeUninit::uninit().assume_init() },
+            quiets: unsafe { MaybeUninit::uninit().assume_init() },
+            capture_count: 0,
+            quiet_count: 0,
         }
     }
 
     #[inline(always)]
-    /// Pushes a Move type into the array
+    /// Pushes a move into the appropriate array (captures or quiets)
     pub fn push(&mut self, m: Move) {
-        self.moves[self.count].write(m);
-        self.count += 1;
+        if m.is_capture() {
+            self.captures[self.capture_count].write(m);
+            self.capture_count += 1;
+        } else {
+            self.quiets[self.quiet_count].write(m);
+            self.quiet_count += 1;
+        }
     }
 
     #[inline(always)]
-    /// Returns the number of moves in the arrray
+    /// Returns the total number of moves
     pub fn len(&self) -> usize {
-        self.count
+        self.capture_count + self.quiet_count
     }
 
     #[inline(always)]
-    /// Returns true if there are no moves in the array
+    /// Returns true if there are no moves
     pub fn is_empty(&self) -> bool {
-        self.count == 0
+        self.len() == 0
+    }
+
+    /// Returns the number of capture moves
+    #[inline(always)]
+    pub fn capture_count(&self) -> usize {
+        self.capture_count
+    }
+
+    /// Returns the number of quiet moves
+    #[inline(always)]
+    pub fn quiet_count(&self) -> usize {
+        self.quiet_count
     }
 
     #[inline(always)]
-    /// Clears the array, by setting the count to 0 so the next pass of generating moves overwrites
-    /// the previous values
+    /// Clears both arrays
     pub fn clear(&mut self) {
-        self.count = 0;
+        self.capture_count = 0;
+        self.quiet_count = 0;
     }
 
     pub fn contains(&self, m: Move) -> bool {
-        (0..self.len()).any(|i| self[i] == m)
+        (0..self.capture_count).any(|i| unsafe { self.captures[i].assume_init() } == m)
+            || (0..self.quiet_count).any(|i| unsafe { self.quiets[i].assume_init() } == m)
+    }
+
+    /// Get a move by index (captures first, then quiets)
+    #[inline(always)]
+    pub fn get(&self, index: usize) -> Move {
+        if index < self.capture_count {
+            unsafe { self.captures[index].assume_init() }
+        } else {
+            unsafe { self.quiets[index - self.capture_count].assume_init() }
+        }
+    }
+
+    /// Iterate through captures first, then quiets
+    pub fn iter_ordered(&self) -> impl Iterator<Item = Move> + '_ {
+        let captures =
+            (0..self.capture_count).map(move |i| unsafe { self.captures[i].assume_init() });
+        let quiets = (0..self.quiet_count).map(move |i| unsafe { self.quiets[i].assume_init() });
+        captures.chain(quiets)
     }
 }
 
-/// Utility to directly index the MoveCollector's array
+/// Utility to directly index the MoveCollector's array (for backward compat)
 impl std::ops::Index<usize> for MoveCollector {
     type Output = Move;
 
     fn index(&self, index: usize) -> &Self::Output {
-        debug_assert!(index < self.count);
-        unsafe { self.moves[index].assume_init_ref() }
+        debug_assert!(index < self.len());
+        // SAFETY: We know the move is initialized because we wrote it in push()
+        if index < self.capture_count {
+            unsafe { self.captures[index].assume_init_ref() }
+        } else {
+            unsafe { self.quiets[index - self.capture_count].assume_init_ref() }
+        }
     }
 }
 
