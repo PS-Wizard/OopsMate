@@ -1,4 +1,4 @@
-use evaluation::search::iterative_deepening::SearchLimits;
+use evaluation::search::types::SearchLimits;
 
 /// Struct to parse the time control from UCI
 pub struct TimeControl {
@@ -53,7 +53,6 @@ impl TimeControl {
         };
 
         let increment = if is_white { self.winc } else { self.binc };
-
         let moves_to_go = self.movestogo.unwrap_or(30) as u64;
 
         // Soft time: time we aim to use for this move
@@ -61,7 +60,7 @@ impl TimeControl {
         let soft_time = (our_time / moves_to_go) + (increment * 3 / 4);
 
         // Hard limit: absolute maximum time we can use
-        // Makin sure we don't use more than 1/3 of remaining time in one move
+        // Making sure we don't use more than 1/3 of remaining time in one move
         let hard_limit = soft_time.min(our_time / 3) + increment;
 
         // Add some buffer to soft time for time loss in communication
@@ -69,5 +68,11 @@ impl TimeControl {
         let hard_buffered = hard_limit.saturating_sub(20).max(20);
 
         SearchLimits::from_time(soft_buffered, hard_buffered)
+    }
+}
+
+impl Default for TimeControl {
+    fn default() -> Self {
+        Self::new()
     }
 }

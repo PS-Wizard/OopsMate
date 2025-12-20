@@ -8,3 +8,4 @@ edition = "2024"
 board = {path = "../board/"}
 types = {path = "../types/"}
 tpt = {path = "../tpt/"}
+nnueffi = {path = "../nnueffi/"}

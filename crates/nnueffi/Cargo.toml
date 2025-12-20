@@ -1,0 +1,15 @@
+[package]
+name = "nnueffi"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+# Link to the NNUE probe shared library
+[package.metadata]
+links = "nnueprobe"
+
+# Tell cargo where to find the library
+[package.metadata.cargo-link-search]
+native = ["assets/nnue-probe/src"]
+

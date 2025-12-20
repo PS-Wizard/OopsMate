@@ -1,4 +1,3 @@
-
 #[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 /// White / Black Color Enum, maps to the same order stored in the side, in `Position` struct
@@ -7,6 +6,16 @@ pub enum Color {
     Black,
 }
 
+impl std::ops::Not for Color {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        if self == Color::White {
+            return Color::Black;
+        }
+        Color::White
+    }
+}
 impl Color {
     pub fn flip(&self) -> Color {
         match self {
