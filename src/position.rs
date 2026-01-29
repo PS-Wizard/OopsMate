@@ -1,4 +1,7 @@
-use crate::types::*;
+use crate::{
+    types::*,
+    zobrist::{CASTLE_KEYS, EP_KEYS, PIECE_KEYS, SIDE_KEY},
+};
 
 // ============================================================================
 // POSITION
@@ -16,6 +19,7 @@ pub struct Position {
     pub en_passant: Option<u8>,
     pub halfmove: u16,
     pub fullmove: u16,
+    pub hash: u64,
 }
 
 impl Position {
@@ -40,6 +44,7 @@ impl Position {
             en_passant: None,
             halfmove: 0,
             fullmove: 1,
+            hash: 0,
         };
 
         // Parse board
@@ -107,7 +112,44 @@ impl Position {
             pos.fullmove = parts[5].parse().unwrap_or(1);
         }
 
+        pos.hash = pos.compute_hash();
         Ok(pos)
+    }
+
+    // ========================================================================
+    // Zobrist Hashing
+    // ========================================================================
+
+    #[inline(always)]
+    pub fn compute_hash(&self) -> u64 {
+        let mut h = 0u64;
+
+        // Hash all pieces
+        for sq in 0..64 {
+            if let Some((piece, color)) = self.piece_at(sq) {
+                h ^= PIECE_KEYS[color as usize][piece as usize][sq];
+            }
+        }
+
+        // Hash castling rights
+        h ^= CASTLE_KEYS[self.castling_rights.0 as usize];
+
+        // Hash en passant
+        if let Some(ep) = self.en_passant {
+            h ^= EP_KEYS[(ep % 8) as usize];
+        }
+
+        // Hash side to move
+        if self.side_to_move == Color::Black {
+            h ^= SIDE_KEY;
+        }
+
+        h
+    }
+
+    #[inline(always)]
+    pub fn hash(&self) -> u64 {
+        self.hash
     }
 
     // ========================================================================
@@ -186,33 +228,60 @@ impl Position {
     // ========================================================================
 
     #[inline(always)]
-    pub fn make_move(&self, m: Move) -> Position {
+    pub fn make_move(&self, m: &Move) -> Position {
         let mut new_pos = self.clone();
-        new_pos.apply_move(m);
+        new_pos.apply_move(&m);
         new_pos
     }
 
     #[inline(always)]
-    fn apply_move(&mut self, m: Move) {
+    fn apply_move(&mut self, m: &Move) {
         let from = m.from();
         let to = m.to();
         let move_type = m.move_type();
 
         let (piece, color) = self.piece_at(from).expect("No piece at from");
 
+        // Remove old castling rights from hash
+        self.hash ^= CASTLE_KEYS[self.castling_rights.0 as usize];
+
+        // Remove old en passant from hash
+        if let Some(ep) = self.en_passant {
+            self.hash ^= EP_KEYS[(ep % 8) as usize];
+        }
+
         match move_type {
             MoveType::Quiet => {
+                // Remove piece from 'from'
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
+
+                // Add piece to 'to'
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
             }
             MoveType::Capture => {
+                let (captured_piece, captured_color) = self.piece_at(to).unwrap();
+
+                // Remove captured piece
+                self.hash ^= PIECE_KEYS[captured_color as usize][captured_piece as usize][to];
                 self.remove_piece(to);
+
+                // Remove moving piece from 'from'
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
+
+                // Add moving piece to 'to'
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
             }
             MoveType::DoublePush => {
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
+
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
+
                 self.en_passant = Some(((from + to) / 2) as u8);
             }
             MoveType::EnPassant => {
@@ -221,13 +290,24 @@ impl Position {
                 } else {
                     to + 8
                 };
+
+                self.hash ^= PIECE_KEYS[color.flip() as usize][Piece::Pawn as usize][captured];
                 self.remove_piece(captured);
+
+                // Move our pawn
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
+
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
             }
             MoveType::Castle => {
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
+
+                self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
+
                 let (rook_from, rook_to) = match to {
                     6 => (7, 5),
                     2 => (0, 3),
@@ -235,14 +315,20 @@ impl Position {
                     58 => (56, 59),
                     _ => panic!("Invalid castle"),
                 };
+
+                self.hash ^= PIECE_KEYS[color as usize][Piece::Rook as usize][rook_from];
                 self.remove_piece(rook_from);
+
+                self.hash ^= PIECE_KEYS[color as usize][Piece::Rook as usize][rook_to];
                 self.add_piece(rook_to, color, Piece::Rook);
             }
             MoveType::PromotionKnight
             | MoveType::PromotionBishop
             | MoveType::PromotionRook
             | MoveType::PromotionQueen => {
+                self.hash ^= PIECE_KEYS[color as usize][Piece::Pawn as usize][from];
                 self.remove_piece(from);
+
                 let promoted = match move_type {
                     MoveType::PromotionKnight => Piece::Knight,
                     MoveType::PromotionBishop => Piece::Bishop,
@@ -250,14 +336,24 @@ impl Position {
                     MoveType::PromotionQueen => Piece::Queen,
                     _ => unreachable!(),
                 };
+
+                self.hash ^= PIECE_KEYS[color as usize][promoted as usize][to];
                 self.add_piece(to, color, promoted);
             }
             MoveType::CapturePromotionKnight
             | MoveType::CapturePromotionBishop
             | MoveType::CapturePromotionRook
             | MoveType::CapturePromotionQueen => {
+                let (captured_piece, captured_color) = self.piece_at(to).unwrap();
+
+                // Remove captured piece
+                self.hash ^= PIECE_KEYS[captured_color as usize][captured_piece as usize][to];
                 self.remove_piece(to);
+
+                // Remove pawn from 'from'
+                self.hash ^= PIECE_KEYS[color as usize][Piece::Pawn as usize][from];
                 self.remove_piece(from);
+
                 let promoted = match move_type {
                     MoveType::CapturePromotionKnight => Piece::Knight,
                     MoveType::CapturePromotionBishop => Piece::Bishop,
@@ -265,6 +361,8 @@ impl Position {
                     MoveType::CapturePromotionQueen => Piece::Queen,
                     _ => unreachable!(),
                 };
+
+                self.hash ^= PIECE_KEYS[color as usize][promoted as usize][to];
                 self.add_piece(to, color, promoted);
             }
         }
@@ -275,6 +373,9 @@ impl Position {
         }
         self.castling_rights.remove_rook(from);
         self.castling_rights.remove_rook(to);
+
+        // Add new castling rights to hash
+        self.hash ^= CASTLE_KEYS[self.castling_rights.0 as usize];
 
         // Update clocks
         if piece == Piece::Pawn || m.is_capture() {
@@ -287,10 +388,18 @@ impl Position {
             self.fullmove += 1;
         }
 
+        // Clear en passant (unless double push, which set it above)
         if move_type != MoveType::DoublePush {
             self.en_passant = None;
         }
 
+        // Add new en passant to hash
+        if let Some(ep) = self.en_passant {
+            self.hash ^= EP_KEYS[(ep % 8) as usize];
+        }
+
+        // Flip side to move
+        self.hash ^= SIDE_KEY;
         self.side_to_move = self.side_to_move.flip();
     }
 }

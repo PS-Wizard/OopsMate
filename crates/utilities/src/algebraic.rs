@@ -32,6 +32,10 @@ pub trait Algebraic {
     fn notation(&self) -> String {
         unimplemented!("notation() is only for u64")
     }
+
+    fn single_notation(&self) -> String {
+        unimplemented!("single_notation() is only for u64")
+    }
 }
 
 impl Algebraic for str {
@@ -120,5 +124,11 @@ impl Algebraic for usize {
         }
 
         result
+    }
+
+    fn single_notation(&self) -> String {
+        let file = (*self % 8) as u8;
+        let rank = (*self / 8) as u8;
+        format!("{}{}", (b'a' + file) as char, (b'1' + rank) as char)
     }
 }

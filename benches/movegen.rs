@@ -16,7 +16,7 @@ fn perft(pos: &Position, depth: u8) -> u64 {
     let mut nodes = 0;
     for i in 0..collector.len() {
         let m = collector.get(i);
-        let new_pos = pos.make_move(m);
+        let new_pos = pos.make_move(&m);
         nodes += perft(&new_pos, depth - 1);
     }
     nodes
