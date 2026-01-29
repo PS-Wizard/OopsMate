@@ -1,11 +1,21 @@
-[workspace]
-resolver = "3"
-members = [ "crates/board", "crates/engine", "crates/evaluation", "crates/raw", "crates/types", "crates/uci", "crates/utilities"]
+[package]
+name = "chess-engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+raw = { path = "../../V2/crates/raw/" } 
+rand = "0.8"
 
 [profile.release]
-opt-level = 3        # max LLVM optimizations
-lto = "fat"          # full link-time optimization
-codegen-units = 1    # single-threaded codegen, better optimization at the cost of compile time
-panic = "abort"      # smaller, faster, no unwinding machinery
-incremental = false  # disable incremental compilation (cleaner codegen)
-strip = "symbols"    # strip debug symbols for smaller binary
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
+[profile.bench]
+inherits = "release"
+
+[[bench]]
+name = "movegen"
+harness = false
