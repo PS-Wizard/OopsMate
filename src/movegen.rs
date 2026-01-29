@@ -2,8 +2,7 @@ use crate::position::Position;
 use crate::types::*;
 use std::arch::x86_64::_pext_u64;
 
-// Import from raw crate
-use raw::{
+use strikes::{
     line_between, BISHOP_ATTACKS, BISHOP_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS,
     ROOK_ATTACKS, ROOK_MASKS, THROUGH,
 };

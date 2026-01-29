@@ -50,9 +50,9 @@ fn main() {
         ),
     ];
 
-    println!("\n╔════════════════════════════════════════════╗");
-    println!("║         MOVE GENERATION BENCHMARK          ║");
-    println!("╚════════════════════════════════════════════╝\n");
+    println!("----------------------------------------------");
+    println!("MOVE GENERATION BENCHMARK");
+    println!("----------------------------------------------");
 
     for (name, fen, depth, expected) in positions {
         let pos = Position::from_fen(fen).unwrap();
@@ -72,10 +72,10 @@ fn main() {
         println!("  NPS: {}", format_number(nps));
 
         if nodes == expected {
-            println!("  ✓ CORRECT");
+            println!("CORRECT");
         } else {
             println!(
-                "  ✗ INCORRECT (diff: {})",
+                "INCORRECT (diff: {})",
                 (nodes as i64 - expected as i64).abs()
             );
         }

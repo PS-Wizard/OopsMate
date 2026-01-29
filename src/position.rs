@@ -4,7 +4,7 @@ use crate::types::*;
 // POSITION
 // ============================================================================
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Position {
     // Piece bitboards [Pawn, Knight, Bishop, Rook, Queen, King]
     pub pieces: [Bitboard; 6],
@@ -192,6 +192,7 @@ impl Position {
         new_pos
     }
 
+    #[inline(always)]
     fn apply_move(&mut self, m: Move) {
         let from = m.from();
         let to = m.to();
