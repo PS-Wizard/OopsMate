@@ -243,4 +243,9 @@ impl MoveCollector {
         debug_assert!(index < self.count);
         unsafe { self.moves.get_unchecked(index).assume_init() }
     }
+
+    #[inline(always)]
+    pub fn as_slice(&self) -> &[Move] {
+        unsafe { std::slice::from_raw_parts(self.moves.as_ptr() as *const Move, self.count) }
+    }
 }

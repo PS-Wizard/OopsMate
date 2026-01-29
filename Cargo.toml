@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 strikes = { path = "./crates/strikes/" } 
+utilities = { path = "./crates/utilities/" } 
 rand = "0.8"
 
 [profile.release]

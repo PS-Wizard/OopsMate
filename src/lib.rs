@@ -1,7 +1,13 @@
-pub mod movegen;
-pub mod play;
+pub mod game_state;
 pub mod position;
 pub mod types;
+
+pub mod evaluate;
+pub mod movegen;
+pub mod search;
+
+pub mod tpt;
+pub mod zobrist;
 
 pub use position::Position;
 pub use types::*;
@@ -26,7 +32,7 @@ mod tests {
 
         // Make e2e4
         let m = collector.get(0);
-        let new_pos = pos.make_move(m);
+        let new_pos = pos.make_move(&m);
 
         // assert_ne!(pos, new_pos);
         assert_eq!(new_pos.side_to_move, Color::Black);
