@@ -11,6 +11,7 @@ pub mod zobrist;
 
 
 pub mod move_ordering;
+pub mod qsearch;
 
 pub use position::Position;
 pub use types::*;

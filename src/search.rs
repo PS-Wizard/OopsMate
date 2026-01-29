@@ -1,6 +1,6 @@
 use crate::{
-    evaluate::evaluate,
     move_ordering::{pick_next_move, score_move},
+    qsearch::qsearch,
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
     Move, MoveCollector, Position,
 };
@@ -103,9 +103,11 @@ fn negamax(
         }
     }
 
-    // Base case
+    // Base case;
     if depth == 0 {
-        return evaluate(pos);
+        // return evaluate(pos);
+        // enter quiescence search instead of just evaluating
+        return qsearch(pos, alpha, beta, stats);
     }
 
     let mut collector = MoveCollector::new();
@@ -175,6 +177,35 @@ mod test_search {
 
     use super::*;
     use crate::Position;
+
+    #[test]
+    fn test_search_with_qsearch() {
+        let depth = 1;
+        let pos =
+            Position::from_fen("rnb1kbnr/pppp1p1p/6p1/4p2q/4P3/8/PPPPQPPP/RNB1KBNR w KQkq - 0 1")
+                .unwrap();
+        let mut tt = TranspositionTable::new_mb(1);
+
+        println!("Starting search at depth {}...", depth);
+        let start = Instant::now();
+
+        let move_result = search(&pos, depth, &mut tt);
+
+        let duration = start.elapsed();
+
+        if let Some(m) = move_result {
+            println!(
+                "Depth: {}, From: {}, To: {}",
+                depth,
+                m.from().single_notation(),
+                m.to().single_notation()
+            );
+        } else {
+            println!("No Move");
+        }
+
+        println!("Time elapsed: {:.4}s", duration.as_secs_f64());
+    }
 
     #[test]
     fn test_search_with_tt() {
