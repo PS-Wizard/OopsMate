@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-raw = { path = "../../V2/crates/raw/" } 
+raw = { path = "./raw/" } 
 rand = "0.8"
 
 [profile.release]

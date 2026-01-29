@@ -157,6 +157,7 @@ impl Position {
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
 
         let mut bb = pawns;
+        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
@@ -198,7 +199,6 @@ impl Position {
             }
 
             // Captures
-            let enemy_king = self.their(Piece::King).0;
             let mut attacks = PAWN_ATTACKS[0][from] & enemies & !enemy_king & pin_ray & check_mask;
             while attacks != 0 {
                 let to = attacks.trailing_zeros() as usize;
@@ -228,6 +228,7 @@ impl Position {
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
 
         let mut bb = pawns;
+        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
@@ -271,7 +272,6 @@ impl Position {
             }
 
             // Captures
-            let enemy_king = self.their(Piece::King).0;
             let mut attacks = PAWN_ATTACKS[1][from] & enemies & !enemy_king & pin_ray & check_mask;
             while attacks != 0 {
                 let to = attacks.trailing_zeros() as usize;
@@ -365,11 +365,11 @@ impl Position {
         let them = self.them().0;
 
         let mut bb = knights;
+        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
 
-            let enemy_king = self.their(Piece::King).0;
             let mut attacks = KNIGHT_ATTACKS[from] & !us & !enemy_king & check_mask;
 
             while attacks != 0 {
@@ -399,13 +399,13 @@ impl Position {
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
 
         let mut bb = bishops;
+        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
 
             let idx = unsafe { _pext_u64(blockers, BISHOP_MASKS[from]) as usize };
 
-            let enemy_king = self.their(Piece::King).0;
             let mut attacks = BISHOP_ATTACKS[from][idx] & !us & !enemy_king;
 
             if (pinned >> from) & 1 != 0 {
@@ -440,13 +440,13 @@ impl Position {
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
 
         let mut bb = rooks;
+        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
 
             let idx = unsafe { _pext_u64(blockers, ROOK_MASKS[from]) as usize };
 
-            let enemy_king = self.their(Piece::King).0;
             let mut attacks = ROOK_ATTACKS[from][idx] & !us & !enemy_king;
 
             if (pinned >> from) & 1 != 0 {
@@ -481,13 +481,13 @@ impl Position {
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
 
         let mut bb = queens;
+        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
 
             let bishop_idx = unsafe { _pext_u64(blockers, BISHOP_MASKS[from]) as usize };
             let rook_idx = unsafe { _pext_u64(blockers, ROOK_MASKS[from]) as usize };
-            let enemy_king = self.their(Piece::King).0;
             let mut attacks = (BISHOP_ATTACKS[from][bishop_idx] | ROOK_ATTACKS[from][rook_idx])
                 & !us
                 & !enemy_king;

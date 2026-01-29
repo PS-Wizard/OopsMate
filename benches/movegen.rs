@@ -27,8 +27,8 @@ fn main() {
         (
             "Starting",
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            8,
-            84_998_978_956,
+            6,
+            119_060_324,
         ),
         (
             "Kiwipete",
