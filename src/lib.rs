@@ -9,6 +9,9 @@ pub mod search;
 pub mod tpt;
 pub mod zobrist;
 
+
+pub mod move_ordering;
+
 pub use position::Position;
 pub use types::*;
 

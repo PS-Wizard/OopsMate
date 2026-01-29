@@ -1,5 +1,6 @@
 use crate::{
     evaluate::evaluate,
+    move_ordering::{pick_next_move, score_move},
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
     Move, MoveCollector, Position,
 };
@@ -14,7 +15,7 @@ pub struct SearchStats {
 
 impl SearchStats {
     pub fn new() -> Self {
-        SearchStats { 
+        SearchStats {
             nodes: 0,
             tt_hits: 0,
         }
@@ -35,15 +36,29 @@ pub fn search(pos: &Position, depth: u8, tt: &mut TranspositionTable) -> Option<
         return None;
     }
 
+    // Get TT move
+    let tt_move = tt.probe(pos.hash()).map(|e| e.best_move);
+
+    // Score all moves
+    let mut move_list: Vec<Move> = moves.to_vec();
+    let mut scores: Vec<i32> = move_list
+        .iter()
+        .map(|m| score_move(*m, pos, tt_move))
+        .collect();
+
     let mut best_score = -INFINITY;
 
-    for mv in moves {
-        let new_pos = pos.make_move(mv);
+    // Search moves in order
+    for i in 0..move_list.len() {
+        pick_next_move(&mut move_list, &mut scores, i);
+        let mv = move_list[i];
+
+        let new_pos = pos.make_move(&mv);
         let score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, &mut stats);
-        
+
         if score > best_score {
             best_score = score;
-            best_move = Some(*mv);
+            best_move = Some(mv);
             if score > alpha {
                 alpha = score;
             }
@@ -75,7 +90,8 @@ fn negamax(
     let hash = pos.hash();
 
     // TT probe
-    if let Some(entry) = tt.probe(hash) {
+    let tt_entry = tt.probe(hash);
+    if let Some(entry) = tt_entry {
         if entry.depth >= depth {
             stats.tt_hits += 1;
             match entry.flag {
@@ -99,31 +115,42 @@ fn negamax(
     // Checkmate / Stalemate detection
     if moves.is_empty() {
         if pos.is_in_check() {
-            // Prefer faster mates
             return -MATE_VALUE + (depth as i32);
         } else {
             return 0; // Stalemate
         }
     }
 
+    // Get TT move
+    let tt_move = tt_entry.map(|e| e.best_move);
+
+    // Score all moves
+    let mut move_list: Vec<Move> = moves.to_vec();
+    let mut scores: Vec<i32> = move_list
+        .iter()
+        .map(|m| score_move(*m, pos, tt_move))
+        .collect();
+
     let mut best_score = -INFINITY;
     let mut best_move = Move(0);
 
-    // Recursive search
-    for mv in moves {
-        let new_pos = pos.make_move(mv);
+    // Search moves in order
+    for i in 0..move_list.len() {
+        pick_next_move(&mut move_list, &mut scores, i);
+        let mv = move_list[i];
+
+        let new_pos = pos.make_move(&mv);
         let score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, stats);
 
         if score >= beta {
-            // Beta cutoff
-            tt.store(hash, *mv, beta, depth, LOWER_BOUND);
+            tt.store(hash, mv, beta, depth, LOWER_BOUND);
             return beta;
         }
 
         if score > best_score {
             best_score = score;
-            best_move = *mv;
-            
+            best_move = mv;
+
             if score > alpha {
                 alpha = score;
             }
@@ -151,15 +178,15 @@ mod test_search {
 
     #[test]
     fn test_search_with_tt() {
-        let depth = 8;
+        let depth = 10;
         let pos = Position::new();
         let mut tt = TranspositionTable::new_mb(64);
 
         println!("Starting search at depth {}...", depth);
         let start = Instant::now();
-        
+
         let move_result = search(&pos, depth, &mut tt);
-        
+
         let duration = start.elapsed();
 
         if let Some(m) = move_result {

@@ -53,13 +53,17 @@ impl TranspositionTable {
         let idx = (hash as usize) % self.size;
         let entry = &mut self.table[idx];
 
-        // Always replace (simple scheme)
-        // Later you can add depth-preferred replacement
-        entry.key = hash;
-        entry.best_move = best_move;
-        entry.score = score;
-        entry.depth = depth;
-        entry.flag = flag;
+        // Only replace if:
+        // 1. Entry is empty (key == 0), OR
+        // 2. Same position, OR
+        // 3. New search is deeper
+        if entry.key == 0 || entry.key == hash || depth >= entry.depth {
+            entry.key = hash;
+            entry.best_move = best_move;
+            entry.score = score;
+            entry.depth = depth;
+            entry.flag = flag;
+        }
     }
 
     pub fn clear(&mut self) {
