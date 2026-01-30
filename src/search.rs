@@ -196,7 +196,7 @@ fn negamax(
 
     // Base case
     if depth == 0 {
-        return qsearch(pos, alpha, beta, stats);
+        return qsearch(pos, alpha, beta, stats, 0);
     }
 
     let mut collector = MoveCollector::new();
@@ -206,7 +206,7 @@ fn negamax(
     // Checkmate / Stalemate detection
     if moves.is_empty() {
         return if pos.is_in_check() {
-            -MATE_VALUE + (depth as i32)
+            -MATE_VALUE - (depth as i32)
         } else {
             0
         };

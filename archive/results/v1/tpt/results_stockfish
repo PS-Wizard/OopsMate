@@ -1,0 +1,300 @@
+[1] Started game 1 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[4] Started game 4 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Started game 5 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[8] Started game 8 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[6] Started game 6 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[3] Started game 3 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[7] Started game 7 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[2] Started game 2 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[4] Finished game 4 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 0 - 1 - 0  [0.000] 1
+[4] Started game 9 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[8] Finished game 8 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 0 - 2 - 0  [0.000] 2
+[8] Started game 10 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[6] Finished game 6 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 0 - 3 - 0  [0.000] 3
+[6] Started game 11 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[3] Finished game 3 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 0 - 4 - 0  [0.000] 4
+[3] Started game 12 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Finished game 5 (Stockfish vs OopsMate_Zobrist_TPT): 1/2-1/2 {3-fold repetition}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 0 - 4 - 1  [0.100] 5
+[5] Started game 13 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[1] Finished game 1 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 0 - 5 - 1  [0.083] 6
+[1] Started game 14 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[8] Finished game 10 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 0 - 6 - 1  [0.071] 7
+[8] Started game 15 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[2] Finished game 2 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 0 - 7 - 1  [0.062] 8
+[2] Started game 16 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[6] Finished game 11 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 0 - 8 - 1  [0.056] 9
+[6] Started game 17 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[2] Finished game 16 (OopsMate_Zobrist_TPT vs Stockfish): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 1 - 8 - 1  [0.150] 10
+[2] Started game 18 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Finished game 13 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 1 - 9 - 1  [0.136] 11
+[5] Started game 19 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[1] Finished game 14 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 1 - 10 - 1  [0.125] 12
+[1] Started game 20 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[8] Finished game 15 (Stockfish vs OopsMate_Zobrist_TPT): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 2 - 10 - 1  [0.192] 13
+[8] Started game 21 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[4] Finished game 9 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 2 - 11 - 1  [0.179] 14
+[4] Started game 22 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[2] Finished game 18 (OopsMate_Zobrist_TPT vs Stockfish): 0-1 {time forfeit}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 11 - 1  [0.233] 15
+[2] Started game 23 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[3] Finished game 12 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 12 - 1  [0.219] 16
+[3] Started game 24 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[6] Finished game 17 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 13 - 1  [0.206] 17
+[6] Started game 25 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[7] Finished game 7 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 14 - 1  [0.194] 18
+[7] Started game 26 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Finished game 19 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 15 - 1  [0.184] 19
+[5] Started game 27 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[1] Finished game 20 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 16 - 1  [0.175] 20
+[1] Started game 28 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[4] Finished game 22 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 17 - 1  [0.167] 21
+[4] Started game 29 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[5] Finished game 27 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 18 - 1  [0.159] 22
+[5] Started game 30 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[3] Finished game 24 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 19 - 1  [0.152] 23
+[3] Started game 31 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[7] Finished game 26 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 20 - 1  [0.146] 24
+[7] Started game 32 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[1] Finished game 28 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 21 - 1  [0.140] 25
+[1] Started game 33 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[2] Finished game 23 (Stockfish vs OopsMate_Zobrist_TPT): 1/2-1/2 {3-fold repetition}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 21 - 2  [0.154] 26
+[2] Started game 34 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[8] Finished game 21 (Stockfish vs OopsMate_Zobrist_TPT): 1/2-1/2 {insufficient material}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 21 - 3  [0.167] 27
+[8] Started game 35 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[7] Finished game 32 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 22 - 3  [0.161] 28
+[7] Started game 36 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[6] Finished game 25 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 23 - 3  [0.155] 29
+[6] Started game 37 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[5] Finished game 30 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 3 - 24 - 3  [0.150] 30
+[5] Started game 38 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[3] Finished game 31 (Stockfish vs OopsMate_Zobrist_TPT): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 4 - 24 - 3  [0.177] 31
+[3] Started game 39 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[1] Finished game 33 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 4 - 25 - 3  [0.172] 32
+[1] Started game 40 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[4] Finished game 29 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 4 - 26 - 3  [0.167] 33
+[4] Started game 41 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[3] Finished game 39 (Stockfish vs OopsMate_Zobrist_TPT): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 5 - 26 - 3  [0.191] 34
+[3] Started game 42 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[8] Finished game 35 (Stockfish vs OopsMate_Zobrist_TPT): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 6 - 26 - 3  [0.214] 35
+[8] Started game 43 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[1] Finished game 40 (OopsMate_Zobrist_TPT vs Stockfish): 0-1 {time forfeit}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 7 - 26 - 3  [0.236] 36
+[1] Started game 44 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Finished game 38 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 7 - 27 - 3  [0.230] 37
+[5] Started game 45 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[4] Finished game 41 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 7 - 28 - 3  [0.224] 38
+[4] Started game 46 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[3] Finished game 42 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 7 - 29 - 3  [0.218] 39
+[3] Started game 47 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[8] Finished game 43 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 7 - 30 - 3  [0.212] 40
+[8] Started game 48 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Finished game 45 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 7 - 31 - 3  [0.207] 41
+[5] Started game 49 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[8] Finished game 48 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 7 - 32 - 3  [0.202] 42
+[8] Started game 50 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Finished game 49 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 7 - 33 - 3  [0.198] 43
+[5] Started game 51 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[1] Finished game 44 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 7 - 34 - 3  [0.193] 44
+[1] Started game 52 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[6] Finished game 37 (Stockfish vs OopsMate_Zobrist_TPT): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 8 - 34 - 3  [0.211] 45
+[6] Started game 53 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[5] Finished game 51 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 8 - 35 - 3  [0.207] 46
+[5] Started game 54 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[1] Finished game 52 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 8 - 36 - 3  [0.202] 47
+[1] Started game 55 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[2] Finished game 34 (OopsMate_Zobrist_TPT vs Stockfish): 1/2-1/2 {50 moves rule}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 8 - 36 - 4  [0.208] 48
+[2] Started game 56 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[4] Finished game 46 (OopsMate_Zobrist_TPT vs Stockfish): 1/2-1/2 {3-fold repetition}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 8 - 36 - 5  [0.214] 49
+[4] Started game 57 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[8] Finished game 50 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 8 - 37 - 5  [0.210] 50
+[8] Started game 58 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[6] Finished game 53 (Stockfish vs OopsMate_Zobrist_TPT): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 37 - 5  [0.225] 51
+[6] Started game 59 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[7] Finished game 36 (OopsMate_Zobrist_TPT vs Stockfish): 1/2-1/2 {50 moves rule}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 37 - 6  [0.231] 52
+[7] Started game 60 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[3] Finished game 47 (Stockfish vs OopsMate_Zobrist_TPT): 1/2-1/2 {3-fold repetition}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 37 - 7  [0.236] 53
+[3] Started game 61 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[2] Finished game 56 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 38 - 7  [0.231] 54
+[2] Started game 62 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[8] Finished game 58 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 39 - 7  [0.227] 55
+[8] Started game 63 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[1] Finished game 55 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 40 - 7  [0.223] 56
+[1] Started game 64 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[3] Finished game 61 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 41 - 7  [0.219] 57
+[3] Started game 65 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[7] Finished game 60 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 42 - 7  [0.216] 58
+[7] Started game 66 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Finished game 54 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 43 - 7  [0.212] 59
+[5] Started game 67 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[2] Finished game 62 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 44 - 7  [0.208] 60
+[2] Started game 68 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[6] Finished game 59 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 45 - 7  [0.205] 61
+[6] Started game 69 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[4] Finished game 57 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 46 - 7  [0.202] 62
+[4] Started game 70 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[1] Finished game 64 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 47 - 7  [0.198] 63
+[1] Started game 71 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[7] Finished game 66 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 48 - 7  [0.195] 64
+[7] Started game 72 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Finished game 67 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 49 - 7  [0.192] 65
+[5] Started game 73 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[3] Finished game 65 (Stockfish vs OopsMate_Zobrist_TPT): 1/2-1/2 {3-fold repetition}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 49 - 8  [0.197] 66
+[3] Started game 74 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[4] Finished game 70 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 50 - 8  [0.194] 67
+[4] Started game 75 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[8] Finished game 63 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 51 - 8  [0.191] 68
+[8] Started game 76 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[2] Finished game 68 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 52 - 8  [0.188] 69
+[2] Started game 77 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[5] Finished game 73 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 53 - 8  [0.186] 70
+[5] Started game 78 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[1] Finished game 71 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 54 - 8  [0.183] 71
+[1] Started game 79 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[6] Finished game 69 (Stockfish vs OopsMate_Zobrist_TPT): 1/2-1/2 {3-fold repetition}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 54 - 9  [0.188] 72
+[6] Started game 80 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[3] Finished game 74 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 55 - 9  [0.185] 73
+[3] Started game 81 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[8] Finished game 76 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 56 - 9  [0.182] 74
+[8] Started game 82 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[4] Finished game 75 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 57 - 9  [0.180] 75
+[4] Started game 83 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[6] Finished game 80 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 58 - 9  [0.178] 76
+[6] Started game 84 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[1] Finished game 79 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 59 - 9  [0.175] 77
+[1] Started game 85 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[3] Finished game 81 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 60 - 9  [0.173] 78
+[3] Started game 86 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[2] Finished game 77 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 61 - 9  [0.171] 79
+[2] Started game 87 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[6] Finished game 84 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 9 - 62 - 9  [0.169] 80
+[6] Started game 88 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[8] Finished game 82 (OopsMate_Zobrist_TPT vs Stockfish): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 10 - 62 - 9  [0.179] 81
+[8] Started game 89 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[5] Finished game 78 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 10 - 63 - 9  [0.177] 82
+[5] Started game 90 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[7] Finished game 72 (OopsMate_Zobrist_TPT vs Stockfish): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 11 - 63 - 9  [0.187] 83
+[7] Started game 91 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[4] Finished game 83 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 11 - 64 - 9  [0.185] 84
+[4] Started game 92 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[3] Finished game 86 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 11 - 65 - 9  [0.182] 85
+[3] Started game 93 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[6] Finished game 88 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 11 - 66 - 9  [0.180] 86
+[6] Started game 94 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[1] Finished game 85 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 11 - 67 - 9  [0.178] 87
+[1] Started game 95 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[5] Finished game 90 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 11 - 68 - 9  [0.176] 88
+[5] Started game 96 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[8] Finished game 89 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 11 - 69 - 9  [0.174] 89
+[8] Started game 97 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[4] Finished game 92 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 11 - 70 - 9  [0.172] 90
+[4] Started game 98 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[7] Finished game 91 (Stockfish vs OopsMate_Zobrist_TPT): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 12 - 70 - 9  [0.181] 91
+[7] Started game 99 of 100 (Stockfish vs OopsMate_Zobrist_TPT)
+[6] Finished game 94 (OopsMate_Zobrist_TPT vs Stockfish): 1/2-1/2 {3-fold repetition}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 12 - 70 - 10  [0.185] 92
+[6] Started game 100 of 100 (OopsMate_Zobrist_TPT vs Stockfish)
+[5] Finished game 96 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 12 - 71 - 10  [0.183] 93
+[8] Finished game 97 (Stockfish vs OopsMate_Zobrist_TPT): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 13 - 71 - 10  [0.191] 94
+[4] Finished game 98 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 13 - 72 - 10  [0.189] 95
+[7] Finished game 99 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 13 - 73 - 10  [0.188] 96
+[3] Finished game 93 (Stockfish vs OopsMate_Zobrist_TPT): 1/2-1/2 {stalemate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 13 - 73 - 11  [0.191] 97
+[1] Finished game 95 (Stockfish vs OopsMate_Zobrist_TPT): 0-1 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 13 - 74 - 11  [0.189] 98
+[6] Finished game 100 (OopsMate_Zobrist_TPT vs Stockfish): 1-0 {checkmate}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 13 - 75 - 11  [0.187] 99
+[2] Finished game 87 (Stockfish vs OopsMate_Zobrist_TPT): 1/2-1/2 {50 moves rule}
+Score of Stockfish vs OopsMate_Zobrist_TPT: 13 - 75 - 12  [0.190] 100

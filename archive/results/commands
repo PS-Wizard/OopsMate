@@ -1,1 +1,0 @@
-cchess  -engine cmd=stockfish name=Stockfish option."UCI_LimitStrength"=true option."UCI_Elo"=1320   -engine cmd=./engine name=OopsMate   -each tc=1+0.1 -games 1 -repeat -concurrency 8 -pgn result.pgn 
