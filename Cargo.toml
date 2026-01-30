@@ -1,5 +1,5 @@
 [package]
-name = "chess-engine"
+name = "oops_mate"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,14 @@ edition = "2021"
 strikes = { path = "./crates/strikes/" } 
 utilities = { path = "./crates/utilities/" } 
 rand = "0.8"
+
+[[bin]]
+name = "oops_mate"
+path = "./src/main.rs"
+
+[lib]
+name = "oops_mate"
+path = "./src/lib.rs"
 
 [profile.release]
 opt-level = 3

@@ -1,4 +1,4 @@
-use chess_engine::{MoveCollector, Position};
+use oops_mate::{MoveCollector, Position};
 use std::time::Instant;
 
 fn perft(pos: &Position, depth: u8) -> u64 {

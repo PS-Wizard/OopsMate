@@ -9,6 +9,8 @@ pub mod search;
 pub mod tpt;
 pub mod zobrist;
 
+pub mod uci;
+pub mod time_control;
 
 pub mod move_ordering;
 pub mod qsearch;
