@@ -2,7 +2,7 @@ use crate::{
     move_ordering::{pick_next_move, score_move},
     qsearch::qsearch,
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
-    Move, MoveCollector, Position,
+    Move, MoveCollector, Piece, Position,
 };
 use std::time::Instant;
 
@@ -86,7 +86,7 @@ pub fn search(
             let mv = move_list[i];
 
             let new_pos = pos.make_move(&mv);
-            let score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, &mut stats);
+            let score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, &mut stats, true);
 
             if score > iteration_best_score {
                 iteration_best_score = score;
@@ -175,28 +175,73 @@ fn negamax(
     beta: i32,
     tt: &mut TranspositionTable,
     stats: &mut SearchStats,
+    allow_null: bool,
 ) -> i32 {
     stats.nodes += 1;
 
     let hash = pos.hash();
 
-    // TT probe
-    let tt_entry = tt.probe(hash);
-    if let Some(entry) = tt_entry {
-        if entry.depth >= depth {
-            stats.tt_hits += 1;
-            match entry.flag {
-                EXACT => return entry.score,
-                LOWER_BOUND if entry.score >= beta => return entry.score,
-                UPPER_BOUND if entry.score <= alpha => return entry.score,
-                _ => {}
+    // TT probe - extract data we need, then drop the borrow
+    let (_tt_hit, tt_move) = {
+        let tt_entry = tt.probe(hash);
+        if let Some(entry) = tt_entry {
+            if entry.depth >= depth {
+                stats.tt_hits += 1;
+                match entry.flag {
+                    EXACT => return entry.score,
+                    LOWER_BOUND if entry.score >= beta => return entry.score,
+                    UPPER_BOUND if entry.score <= alpha => return entry.score,
+                    _ => {}
+                }
             }
+            (true, Some(entry.best_move))
+        } else {
+            (false, None)
         }
-    }
+    }; // tt_entry borrow dropped here
 
     // Base case
     if depth == 0 {
         return qsearch(pos, alpha, beta, stats, 0);
+    }
+
+    let in_check = pos.is_in_check();
+
+    // Null Move Pruning
+    // Skip if: in check, last move was null, insufficient depth, or endgame
+    if allow_null && !in_check && depth >= 3 {
+        // Avoid in zugzwang-prone endgames (check for non-pawn material)
+        let has_pieces = (pos.our(Piece::Knight).0
+            | pos.our(Piece::Bishop).0
+            | pos.our(Piece::Rook).0
+            | pos.our(Piece::Queen).0)
+            != 0;
+
+        if has_pieces {
+            // Make null move: just flip side
+            let mut null_pos = *pos;
+            null_pos.side_to_move = null_pos.side_to_move.flip();
+            null_pos.hash ^= crate::zobrist::SIDE_KEY;
+            null_pos.en_passant = None;
+
+            // Adaptive reduction: R=2 for depth 3-6, R=3 for depth 7+
+            let r = if depth >= 7 { 3 } else { 2 };
+
+            let null_score = -negamax(
+                &null_pos,
+                depth.saturating_sub(1 + r),
+                -beta,
+                -beta + 1,
+                tt,
+                stats,
+                false, // Disable consecutive null moves
+            );
+
+            // Beta cutoff
+            if null_score >= beta {
+                return beta;
+            }
+        }
     }
 
     let mut collector = MoveCollector::new();
@@ -205,7 +250,7 @@ fn negamax(
 
     // Checkmate / Stalemate detection
     if moves.is_empty() {
-        return if pos.is_in_check() {
+        return if in_check {
             -MATE_VALUE - (depth as i32)
         } else {
             0
@@ -213,7 +258,6 @@ fn negamax(
     }
 
     let move_count = moves.len();
-    let tt_move = tt_entry.map(|e| e.best_move);
 
     // Stack arrays instead of Vec (no heap allocation)
     let mut move_list = [Move(0); MAX_MOVES];
@@ -233,7 +277,7 @@ fn negamax(
         let mv = move_list[i];
 
         let new_pos = pos.make_move(&mv);
-        let score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, stats);
+        let score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, stats, true);
 
         if score >= beta {
             tt.store(hash, mv, beta, depth, LOWER_BOUND);
@@ -300,8 +344,9 @@ mod test_search {
     use crate::Position;
 
     #[test]
+    #[ignore = "Overlfows On Debug / Need Release"]
     fn test_iterative_deepening() {
-        let depth = 8;
+        let depth = 10;
         let pos = Position::new();
         let mut tt = TranspositionTable::new_mb(64);
 

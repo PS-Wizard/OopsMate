@@ -201,6 +201,7 @@ impl Move {
 // MOVE COLLECTOR
 // ============================================================================
 
+#[derive(Clone, Copy)]
 pub struct MoveCollector {
     moves: [MaybeUninit<Move>; 256],
     count: usize,
