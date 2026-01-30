@@ -170,10 +170,14 @@ impl UciEngine {
             return None;
         }
 
-        let file = (s.as_bytes()[0] as char).to_digit(18)? - 10;
-        let rank = (s.as_bytes()[1] as char).to_digit(10)?;
+        let file = (s.as_bytes()[0] as i32 - b'a' as i32) as usize;
+        let rank = (s.as_bytes()[1] as i32 - b'1' as i32) as usize;
 
-        Some((rank as usize) * 8 + file as usize)
+        if file > 7 || rank > 7 {
+            return None;
+        }
+
+        Some(rank * 8 + file)
     }
 
     fn handle_go(&mut self, parts: &[&str]) {

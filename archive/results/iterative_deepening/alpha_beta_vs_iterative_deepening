@@ -1,0 +1,300 @@
+[1] Started game 1 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[2] Started game 2 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[4] Started game 3 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[7] Started game 7 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[8] Started game 8 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[5] Started game 5 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[3] Started game 4 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[6] Started game 6 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[3] Finished game 4 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 1 - 0  [0.000] 1
+[3] Started game 9 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[6] Finished game 6 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 2 - 0  [0.000] 2
+[6] Started game 10 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[8] Finished game 8 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 3 - 0  [0.000] 3
+[8] Started game 11 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[2] Finished game 2 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 4 - 0  [0.000] 4
+[2] Started game 12 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[7] Finished game 7 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 5 - 0  [0.000] 5
+[7] Started game 13 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[1] Finished game 1 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 6 - 0  [0.000] 6
+[1] Started game 14 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[5] Finished game 5 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 7 - 0  [0.000] 7
+[5] Started game 15 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[4] Finished game 3 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 8 - 0  [0.000] 8
+[4] Started game 16 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[6] Finished game 10 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 9 - 0  [0.000] 9
+[6] Started game 17 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[2] Finished game 12 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 10 - 0  [0.000] 10
+[2] Started game 18 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[1] Finished game 14 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 11 - 0  [0.000] 11
+[1] Started game 19 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[4] Finished game 16 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 12 - 0  [0.000] 12
+[4] Started game 20 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[3] Finished game 9 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 13 - 0  [0.000] 13
+[3] Started game 21 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[8] Finished game 11 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 14 - 0  [0.000] 14
+[8] Started game 22 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[2] Finished game 18 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 15 - 0  [0.000] 15
+[2] Started game 23 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[7] Finished game 13 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1/2-1/2 {3-fold repetition}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 15 - 1  [0.031] 16
+[7] Started game 24 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[5] Finished game 15 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1/2-1/2 {3-fold repetition}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 15 - 2  [0.059] 17
+[5] Started game 25 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[4] Finished game 20 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 16 - 2  [0.056] 18
+[4] Started game 26 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[8] Finished game 22 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 17 - 2  [0.053] 19
+[8] Started game 27 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[6] Finished game 17 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 18 - 2  [0.050] 20
+[6] Started game 28 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[1] Finished game 19 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 19 - 2  [0.048] 21
+[1] Started game 29 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[3] Finished game 21 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 20 - 2  [0.045] 22
+[3] Started game 30 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[2] Finished game 23 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 0 - 21 - 2  [0.043] 23
+[2] Started game 31 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[8] Finished game 27 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 1 - 21 - 2  [0.083] 24
+[8] Started game 32 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[5] Finished game 25 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 1 - 22 - 2  [0.080] 25
+[5] Started game 33 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[6] Finished game 28 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 1 - 23 - 2  [0.077] 26
+[6] Started game 34 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[7] Finished game 24 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 1 - 24 - 2  [0.074] 27
+[7] Started game 35 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[4] Finished game 26 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 1 - 25 - 2  [0.071] 28
+[4] Started game 36 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[2] Finished game 31 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 2 - 25 - 2  [0.103] 29
+[2] Started game 37 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[1] Finished game 29 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 2 - 26 - 2  [0.100] 30
+[1] Started game 38 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[3] Finished game 30 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 2 - 27 - 2  [0.097] 31
+[3] Started game 39 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[5] Finished game 33 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 3 - 27 - 2  [0.125] 32
+[5] Started game 40 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[8] Finished game 32 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 3 - 28 - 2  [0.121] 33
+[8] Started game 41 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[4] Finished game 36 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 3 - 29 - 2  [0.118] 34
+[4] Started game 42 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[7] Finished game 35 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 3 - 30 - 2  [0.114] 35
+[7] Started game 43 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[6] Finished game 34 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 3 - 31 - 2  [0.111] 36
+[6] Started game 44 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[1] Finished game 38 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 3 - 32 - 2  [0.108] 37
+[1] Started game 45 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[2] Finished game 37 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 3 - 33 - 2  [0.105] 38
+[2] Started game 46 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[3] Finished game 39 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 3 - 34 - 2  [0.103] 39
+[3] Started game 47 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[8] Finished game 41 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 4 - 34 - 2  [0.125] 40
+[8] Started game 48 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[7] Finished game 43 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 5 - 34 - 2  [0.146] 41
+[7] Started game 49 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[5] Finished game 40 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 5 - 35 - 2  [0.143] 42
+[5] Started game 50 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[4] Finished game 42 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 5 - 36 - 2  [0.140] 43
+[4] Started game 51 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[6] Finished game 44 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 5 - 37 - 2  [0.136] 44
+[6] Started game 52 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[1] Finished game 45 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 5 - 38 - 2  [0.133] 45
+[1] Started game 53 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[7] Finished game 49 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 6 - 38 - 2  [0.152] 46
+[7] Started game 54 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[3] Finished game 47 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 6 - 39 - 2  [0.149] 47
+[3] Started game 55 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[2] Finished game 46 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 6 - 40 - 2  [0.146] 48
+[2] Started game 56 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[8] Finished game 48 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 6 - 41 - 2  [0.143] 49
+[8] Started game 57 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[4] Finished game 51 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 7 - 41 - 2  [0.160] 50
+[4] Started game 58 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[5] Finished game 50 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 7 - 42 - 2  [0.157] 51
+[5] Started game 59 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[6] Finished game 52 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 7 - 43 - 2  [0.154] 52
+[6] Started game 60 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[8] Finished game 57 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 8 - 43 - 2  [0.170] 53
+[8] Started game 61 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[1] Finished game 53 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 8 - 44 - 2  [0.167] 54
+[1] Started game 62 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[3] Finished game 55 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 8 - 45 - 2  [0.164] 55
+[3] Started game 63 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[7] Finished game 54 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 8 - 46 - 2  [0.161] 56
+[7] Started game 64 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[2] Finished game 56 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 8 - 47 - 2  [0.158] 57
+[2] Started game 65 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[4] Finished game 58 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 8 - 48 - 2  [0.155] 58
+[4] Started game 66 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[5] Finished game 59 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 8 - 49 - 2  [0.153] 59
+[5] Started game 67 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[8] Finished game 61 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 9 - 49 - 2  [0.167] 60
+[8] Started game 68 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[6] Finished game 60 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 9 - 50 - 2  [0.164] 61
+[6] Started game 69 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[2] Finished game 65 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 50 - 2  [0.177] 62
+[2] Started game 70 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[3] Finished game 63 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 51 - 2  [0.175] 63
+[3] Started game 71 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[1] Finished game 62 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 52 - 2  [0.172] 64
+[1] Started game 72 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[4] Finished game 66 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 53 - 2  [0.169] 65
+[4] Started game 73 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[7] Finished game 64 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 54 - 2  [0.167] 66
+[7] Started game 74 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[5] Finished game 67 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 55 - 2  [0.164] 67
+[5] Started game 75 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[8] Finished game 68 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 56 - 2  [0.162] 68
+[8] Started game 76 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[6] Finished game 69 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 57 - 2  [0.159] 69
+[6] Started game 77 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[7] Finished game 74 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 58 - 2  [0.157] 70
+[7] Started game 78 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[2] Finished game 70 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 59 - 2  [0.155] 71
+[2] Started game 79 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[1] Finished game 72 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 60 - 2  [0.153] 72
+[1] Started game 80 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[3] Finished game 71 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 61 - 2  [0.151] 73
+[3] Started game 81 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[4] Finished game 73 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 62 - 2  [0.149] 74
+[4] Started game 82 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[8] Finished game 76 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 63 - 2  [0.147] 75
+[8] Started game 83 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[5] Finished game 75 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 10 - 64 - 2  [0.145] 76
+[5] Started game 84 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[2] Finished game 79 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 11 - 64 - 2  [0.156] 77
+[2] Started game 85 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[6] Finished game 77 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 11 - 65 - 2  [0.154] 78
+[6] Started game 86 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[7] Finished game 78 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 11 - 66 - 2  [0.152] 79
+[7] Started game 87 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[8] Finished game 83 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 12 - 66 - 2  [0.163] 80
+[8] Started game 88 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[1] Finished game 80 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 12 - 67 - 2  [0.160] 81
+[1] Started game 89 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[3] Finished game 81 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 12 - 68 - 2  [0.159] 82
+[3] Started game 90 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[4] Finished game 82 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 12 - 69 - 2  [0.157] 83
+[4] Started game 91 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[5] Finished game 84 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 12 - 70 - 2  [0.155] 84
+[5] Started game 92 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[6] Finished game 86 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 12 - 71 - 2  [0.153] 85
+[6] Started game 93 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[2] Finished game 85 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 12 - 72 - 2  [0.151] 86
+[2] Started game 94 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[7] Finished game 87 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 12 - 73 - 2  [0.149] 87
+[7] Started game 95 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[8] Finished game 88 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 12 - 74 - 2  [0.148] 88
+[8] Started game 96 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[4] Finished game 91 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 13 - 74 - 2  [0.157] 89
+[4] Started game 97 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[1] Finished game 89 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 13 - 75 - 2  [0.156] 90
+[1] Started game 98 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[3] Finished game 90 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 13 - 76 - 2  [0.154] 91
+[3] Started game 99 of 100 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening)
+[6] Finished game 93 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 1-0 {time forfeit}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 14 - 76 - 2  [0.163] 92
+[6] Started game 100 of 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta)
+[5] Finished game 92 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 14 - 77 - 2  [0.161] 93
+[2] Finished game 94 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 14 - 78 - 2  [0.160] 94
+[4] Finished game 97 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 14 - 79 - 2  [0.158] 95
+[7] Finished game 95 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 14 - 80 - 2  [0.156] 96
+[8] Finished game 96 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 14 - 81 - 2  [0.155] 97
+[1] Finished game 98 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 14 - 82 - 2  [0.153] 98
+[3] Finished game 99 (OopsMate_AlphaBeta vs OopsMate_IterativeDeepening): 0-1 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 14 - 83 - 2  [0.152] 99
+[6] Finished game 100 (OopsMate_IterativeDeepening vs OopsMate_AlphaBeta): 1-0 {checkmate}
+Score of OopsMate_AlphaBeta vs OopsMate_IterativeDeepening: 14 - 84 - 2  [0.150] 100
