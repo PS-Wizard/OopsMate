@@ -1,8 +1,6 @@
 use crate::{
-    search::search,
-    time_control::{calculate_time_allocation, TimeControl},
-    tpt::TranspositionTable,
-    Move, Position,
+    search::search, time_control::calculate_time_allocation, tpt::TranspositionTable, Move,
+    Position,
 };
 use std::io::{self, BufRead};
 
@@ -64,16 +62,12 @@ impl UciEngine {
             return;
         }
 
-        // position startpos moves e2e4 e7e5 ...
-        // position fen <fen> moves ...
-
         let mut moves_idx = None;
 
         if parts[0] == "startpos" {
             self.position = Position::new();
             moves_idx = parts.iter().position(|&s| s == "moves");
         } else if parts[0] == "fen" {
-            // Collect FEN parts (should be 6 parts after "fen")
             let fen_parts: Vec<&str> = parts
                 .iter()
                 .skip(1)
@@ -94,20 +88,23 @@ impl UciEngine {
             moves_idx = parts.iter().position(|&s| s == "moves");
         }
 
-        // Apply moves if any
+        // Apply moves directly without validation
+        // The GUI/engine sending the moves is responsible for legality
         if let Some(idx) = moves_idx {
             for move_str in &parts[idx + 1..] {
-                if let Some(m) = self.parse_move(move_str) {
+                if let Some(m) = Self::parse_move_fast(move_str, &self.position) {
                     self.position = self.position.make_move(&m);
                 } else {
-                    eprintln!("Invalid move: {}", move_str);
+                    eprintln!("Invalid move format: {}", move_str);
                     break;
                 }
             }
         }
     }
 
-    fn parse_move(&self, move_str: &str) -> Option<Move> {
+    /// Fast move parsing without legal move generation
+    /// Assumes the move is legal (as GUIs should only send legal moves)
+    fn parse_move_fast(move_str: &str, pos: &Position) -> Option<Move> {
         if move_str.len() < 4 {
             return None;
         }
@@ -115,40 +112,57 @@ impl UciEngine {
         let from = Self::parse_square(&move_str[0..2])?;
         let to = Self::parse_square(&move_str[2..4])?;
 
-        // Generate legal moves and find matching move
-        use crate::types::MoveCollector;
-        let mut collector = MoveCollector::new();
-        self.position.generate_moves(&mut collector);
+        let (piece, _color) = pos.piece_at(from)?;
 
-        for mv in collector.as_slice() {
-            if mv.from() == from && mv.to() == to {
-                // Handle promotions
-                if move_str.len() == 5 {
-                    let promo = move_str.chars().nth(4)?;
-                    let is_capture = mv.is_capture();
+        // Determine move type based on position and move
+        use crate::types::{MoveType, Piece};
 
-                    let expected_type = match (promo, is_capture) {
-                        ('q', false) => crate::types::MoveType::PromotionQueen,
-                        ('r', false) => crate::types::MoveType::PromotionRook,
-                        ('b', false) => crate::types::MoveType::PromotionBishop,
-                        ('n', false) => crate::types::MoveType::PromotionKnight,
-                        ('q', true) => crate::types::MoveType::CapturePromotionQueen,
-                        ('r', true) => crate::types::MoveType::CapturePromotionRook,
-                        ('b', true) => crate::types::MoveType::CapturePromotionBishop,
-                        ('n', true) => crate::types::MoveType::CapturePromotionKnight,
-                        _ => return None,
-                    };
+        let is_capture = pos.piece_at(to).is_some();
 
-                    if mv.move_type() == expected_type {
-                        return Some(*mv);
-                    }
-                } else {
-                    return Some(*mv);
+        // Handle promotions
+        if move_str.len() == 5 {
+            let promo = move_str.chars().nth(4)?;
+            let move_type = match (promo, is_capture) {
+                ('q', false) => MoveType::PromotionQueen,
+                ('r', false) => MoveType::PromotionRook,
+                ('b', false) => MoveType::PromotionBishop,
+                ('n', false) => MoveType::PromotionKnight,
+                ('q', true) => MoveType::CapturePromotionQueen,
+                ('r', true) => MoveType::CapturePromotionRook,
+                ('b', true) => MoveType::CapturePromotionBishop,
+                ('n', true) => MoveType::CapturePromotionKnight,
+                _ => return None,
+            };
+            return Some(Move::new(from, to, move_type));
+        }
+
+        // Check for castling
+        if piece == Piece::King && ((from as i32 - to as i32).abs() == 2) {
+            return Some(Move::new(from, to, MoveType::Castle));
+        }
+
+        // Check for en passant
+        if piece == Piece::Pawn {
+            if let Some(ep_sq) = pos.en_passant {
+                if to == ep_sq as usize && !is_capture {
+                    return Some(Move::new(from, to, MoveType::EnPassant));
                 }
+            }
+
+            // Check for double push
+            if (from as i32 - to as i32).abs() == 16 {
+                return Some(Move::new(from, to, MoveType::DoublePush));
             }
         }
 
-        None
+        // Regular move or capture
+        let move_type = if is_capture {
+            MoveType::Capture
+        } else {
+            MoveType::Quiet
+        };
+
+        Some(Move::new(from, to, move_type))
     }
 
     fn parse_square(s: &str) -> Option<usize> {
@@ -156,20 +170,19 @@ impl UciEngine {
             return None;
         }
 
-        let file = (s.as_bytes()[0] as char).to_digit(18)? - 10; // a=0, b=1, ...
+        let file = (s.as_bytes()[0] as char).to_digit(18)? - 10;
         let rank = (s.as_bytes()[1] as char).to_digit(10)?;
 
         Some((rank as usize) * 8 + file as usize)
     }
 
     fn handle_go(&mut self, parts: &[&str]) {
-        // Parse go parameters
         let mut wtime = None;
         let mut btime = None;
         let mut winc = 0;
         let mut binc = 0;
         let mut movestogo = None;
-        let mut depth = 10; // Default depth
+        let mut depth = 50; // Default max depth (will be limited by time)
         let mut infinite = false;
         let mut movetime = None;
 
@@ -218,7 +231,7 @@ impl UciEngine {
                 }
                 "depth" => {
                     if i + 1 < parts.len() {
-                        depth = parts[i + 1].parse().unwrap_or(10);
+                        depth = parts[i + 1].parse().unwrap_or(50);
                         i += 2;
                     } else {
                         i += 1;
@@ -241,10 +254,10 @@ impl UciEngine {
         }
 
         // Calculate time allocation
-        let _time_control = if infinite {
-            TimeControl::infinite()
+        let allocated_time = if infinite {
+            None
         } else if let Some(mt) = movetime {
-            TimeControl::new(mt)
+            Some(mt)
         } else {
             let our_time = match self.position.side_to_move {
                 crate::types::Color::White => wtime.unwrap_or(60000),
@@ -255,13 +268,12 @@ impl UciEngine {
                 crate::types::Color::Black => binc,
             };
 
-            let allocated = calculate_time_allocation(our_time, our_inc, movestogo);
-            TimeControl::new(allocated)
+            Some(calculate_time_allocation(our_time, our_inc, movestogo))
         };
 
-        // Search for best move
-        if let Some(best_move) = search(&self.position, depth, &mut self.tt) {
-            println!("bestmove {}", Self::move_to_uci(&best_move));
+        // Search with iterative deepening
+        if let Some(info) = search(&self.position, depth, allocated_time, &mut self.tt) {
+            println!("bestmove {}", Self::move_to_uci(&info.best_move));
         } else {
             println!("bestmove 0000");
         }
@@ -282,7 +294,6 @@ impl UciEngine {
             (b'1' + (to / 8) as u8) as char
         );
 
-        // Add promotion piece if needed
         if m.is_promotion() {
             let promo = match m.move_type() {
                 crate::types::MoveType::PromotionQueen
