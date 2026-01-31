@@ -1,5 +1,6 @@
 use crate::{
     lmr::{calculate_reduction, should_reduce},
+    move_history::KillerTable,
     move_ordering::{pick_next_move, score_move},
     qsearch::qsearch,
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
@@ -34,7 +35,6 @@ pub struct SearchInfo {
     pub tt_hits: u64,
 }
 
-/// Iterative deepening search with smart time management
 pub fn search(
     pos: &Position,
     max_depth: u8,
@@ -43,6 +43,7 @@ pub fn search(
 ) -> Option<SearchInfo> {
     let start_time = Instant::now();
     let mut stats = SearchStats::new();
+    let mut killers = KillerTable::new();
     let mut best_move = None;
     let mut best_score = -INFINITY;
 
@@ -75,7 +76,7 @@ pub fn search(
 
         for i in 0..move_count {
             move_list[i] = moves[i];
-            scores[i] = score_move(moves[i], pos, tt_move);
+            scores[i] = score_move(moves[i], pos, tt_move, &killers, 0);
         }
 
         let mut iteration_best_move = None;
@@ -93,9 +94,11 @@ pub fn search(
                 -beta,
                 -alpha,
                 tt,
+                &mut killers,
                 &mut stats,
                 true,
                 true,
+                1, // ply = 1 at root
             );
 
             if score > iteration_best_score {
@@ -168,6 +171,9 @@ pub fn search(
         } else {
             break;
         }
+
+        // Clear killers for next depth (optional - can keep them)
+        // killers.clear();
     }
 
     best_move.map(|mv| SearchInfo {
@@ -180,21 +186,24 @@ pub fn search(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn negamax(
     pos: &Position,
     depth: u8,
     mut alpha: i32,
     beta: i32,
     tt: &mut TranspositionTable,
+    killers: &mut KillerTable,
     stats: &mut SearchStats,
     allow_null: bool,
     pv_node: bool,
+    ply: usize,
 ) -> i32 {
     stats.nodes += 1;
 
     let hash = pos.hash();
 
-    // TT probe - extract data we need, then drop the borrow
+    // TT probe
     let (_tt_hit, tt_move) = {
         let tt_entry = tt.probe(hash);
         if let Some(entry) = tt_entry {
@@ -211,7 +220,7 @@ fn negamax(
         } else {
             (false, None)
         }
-    }; // tt_entry borrow dropped here
+    };
 
     // Base case
     if depth == 0 {
@@ -221,7 +230,11 @@ fn negamax(
     let in_check = pos.is_in_check();
 
     // Null Move Pruning
-    // Skip if: in check, last move was null, insufficient depth, or endgame
+    // Skip if:
+    // - in check,
+    // - last move was null,
+    // - insufficient depth,
+    // - or endgame
     if allow_null && !in_check && depth >= 3 {
         // Avoid in zugzwang-prone endgames (check for non-pawn material)
         let has_pieces = (pos.our(Piece::Knight).0
@@ -246,9 +259,11 @@ fn negamax(
                 -beta,
                 -beta + 1,
                 tt,
+                killers,
                 stats,
                 false, // Disable consecutive null moves
                 false, // Not a PV node
+                ply + 1,
             );
 
             // Beta cutoff
@@ -279,7 +294,7 @@ fn negamax(
 
     for i in 0..move_count {
         move_list[i] = moves[i];
-        scores[i] = score_move(moves[i], pos, tt_move);
+        scores[i] = score_move(moves[i], pos, tt_move, killers, ply);
     }
 
     let mut best_score = -INFINITY;
@@ -309,21 +324,50 @@ fn negamax(
                 -alpha - 1,
                 -alpha,
                 tt,
+                killers,
                 stats,
                 true,
                 false,
+                ply + 1,
             );
 
             // If the reduced search failed high, re-search at full depth
             if score > alpha {
-                score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, stats, true, pv_node);
+                score = -negamax(
+                    &new_pos,
+                    depth - 1,
+                    -beta,
+                    -alpha,
+                    tt,
+                    killers,
+                    stats,
+                    true,
+                    pv_node,
+                    ply + 1,
+                );
             }
         } else {
             // Full depth search for important moves
-            score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, stats, true, pv_node);
+            score = -negamax(
+                &new_pos,
+                depth - 1,
+                -beta,
+                -alpha,
+                tt,
+                killers,
+                stats,
+                true,
+                pv_node,
+                ply + 1,
+            );
         }
 
         if score >= beta {
+            // Beta cutoff - store killer move if it's quiet
+            if !mv.is_capture() && !mv.is_promotion() {
+                killers.store(ply, mv);
+            }
+
             tt.store(hash, mv, beta, depth, LOWER_BOUND);
             return beta;
         }

@@ -15,6 +15,8 @@ pub mod move_ordering;
 pub mod qsearch;
 pub mod lmr;
 
+pub mod move_history;
+
 pub use position::Position;
 pub use types::*;
 
