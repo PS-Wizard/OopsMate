@@ -286,7 +286,7 @@ impl UciEngine {
             println!("bestmove 0000");
         }
 
-        // CRITICAL: Flush stdout to ensure CuteChess receives the bestmove immediately
+        // Flush stdout to ensure CuteChess receives the bestmove immediately
         let _ = std::io::stdout().flush();
     }
 

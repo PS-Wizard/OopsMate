@@ -1,4 +1,5 @@
 use crate::evaluate::evaluate;
+use crate::move_history::KillerTable;
 use crate::move_ordering::{pick_next_move, score_move, PIECE_VALUES};
 use crate::search::SearchStats;
 use crate::{Move, MoveCollector, Position};
@@ -28,11 +29,11 @@ pub fn qsearch(
     }
 
     let original_alpha = alpha;
-
     if stand_pat > alpha {
         alpha = stand_pat;
     }
 
+    // Delta pruning: if stand_pat + queen value can't raise alpha, prune
     const QUEEN_VALUE: i32 = 900;
     if stand_pat + QUEEN_VALUE + 200 < original_alpha {
         return alpha;
@@ -45,6 +46,9 @@ pub fn qsearch(
     let mut capture_list = [Move(0); MAX_MOVES];
     let mut scores = [0i32; MAX_MOVES];
     let mut capture_count = 0;
+
+    // Dummy killer table for qsearch (killers don't apply here)
+    let killers = KillerTable::new();
 
     for &m in moves {
         if m.is_capture() || m.is_promotion() {
@@ -64,8 +68,9 @@ pub fn qsearch(
                     continue; // Skip likely bad captures
                 }
             }
+
             capture_list[capture_count] = m;
-            scores[capture_count] = score_move(m, pos, None);
+            scores[capture_count] = score_move(m, pos, None, &killers, ply as usize);
             capture_count += 1;
         }
     }
@@ -83,11 +88,12 @@ pub fn qsearch(
         let mv = capture_list[i];
 
         let new_pos = pos.make_move(&mv);
-        let score = -qsearch(&new_pos, -beta, -alpha, stats, ply + 1); // Pass ply + 1
+        let score = -qsearch(&new_pos, -beta, -alpha, stats, ply + 1);
 
         if score >= beta {
             return beta;
         }
+
         if score > alpha {
             alpha = score;
         }
