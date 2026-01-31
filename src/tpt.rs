@@ -70,12 +70,16 @@ impl TranspositionTable {
         let idx = (hash & self.mask) as usize;
         let entry = unsafe { self.table.get_unchecked_mut(idx) };
 
-        // Depth-preferred replacement with aging
-        let replace = entry.key == 0
-            || entry.key == hash
-            || entry.age != self.generation
-            || depth >= entry.depth.saturating_add(3)
-            || (depth >= entry.depth && entry.age == self.generation);
+        // Calculate replacement value (lower = more likely to replace)
+        let new_value = -(depth as i32);
+        let old_value = if entry.age == self.generation {
+            -(entry.depth as i32)
+        } else {
+            // Penalize old entries (makes them easier to replace)
+            -(entry.depth as i32) + 100
+        };
+
+        let replace = entry.key == 0 || entry.key == hash || new_value < old_value;
 
         if replace {
             entry.key = hash;

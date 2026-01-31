@@ -13,7 +13,7 @@ impl UciEngine {
     pub fn new() -> Self {
         UciEngine {
             position: Position::new(),
-            tt: TranspositionTable::new_mb(64),
+            tt: TranspositionTable::new_mb(256),
         }
     }
 
@@ -267,7 +267,8 @@ impl UciEngine {
             None
         } else if let Some(mt) = movetime {
             Some(mt)
-        } else {
+        } else if wtime.is_some() || btime.is_some() {
+            // Only use time management if time was actually provided
             let our_time = match self.position.side_to_move {
                 crate::types::Color::White => wtime.unwrap_or(60000),
                 crate::types::Color::Black => btime.unwrap_or(60000),
@@ -276,11 +277,12 @@ impl UciEngine {
                 crate::types::Color::White => winc,
                 crate::types::Color::Black => binc,
             };
-
             Some(calculate_time_allocation(our_time, our_inc, movestogo))
+        } else {
+            None // No time limit for depth-only search
         };
 
-        // Search with iterative deepening (position is borrowed mutably)
+        // Search with iterative deepening 
         if let Some(info) = search(&mut self.position, depth, allocated_time, &mut self.tt) {
             println!("bestmove {}", Self::move_to_uci(&info.best_move));
         } else {
