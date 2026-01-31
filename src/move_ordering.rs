@@ -33,6 +33,21 @@ pub fn score_move(
         }
     }
 
+    // Promotions
+    if m.is_promotion() {
+        if m.is_capture() {
+            // Capture promotion
+            if let (Some((victim_piece, _)), Some(_)) =
+                (pos.piece_at(m.to()), pos.piece_at(m.from()))
+            {
+                return SCORE_WINNING_CAPTURE + 900 + PIECE_VALUES[victim_piece as usize] * 10;
+            }
+        } else {
+            return SCORE_PROMOTION; // Quiet promotion
+        }
+    }
+
+    // Then captures...
     // MVV-LVA for captures
     if m.is_capture() {
         if let (Some((victim_piece, _)), Some((attacker_piece, _))) =
@@ -41,11 +56,6 @@ pub fn score_move(
             return SCORE_WINNING_CAPTURE + PIECE_VALUES[victim_piece as usize] * 10
                 - PIECE_VALUES[attacker_piece as usize];
         }
-    }
-
-    // Promotions
-    if m.is_promotion() {
-        return SCORE_PROMOTION;
     }
 
     // Killer moves

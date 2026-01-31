@@ -1,3 +1,5 @@
+# Gautlet Match
+
 Rank Name                          Elo     +/-   Games   Score    Draw
    0 OopsMate                      201      85      90   76.1%    3.3%
    1 SF-1600                      -161     148      30   28.3%    3.3%
