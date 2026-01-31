@@ -1,7 +1,7 @@
 use oops_mate::{MoveCollector, Position};
 use std::time::Instant;
 
-fn perft(pos: &Position, depth: u8) -> u64 {
+fn perft(pos: &mut Position, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
@@ -16,9 +16,11 @@ fn perft(pos: &Position, depth: u8) -> u64 {
     let mut nodes = 0;
     for i in 0..collector.len() {
         let m = collector.get(i);
-        let new_pos = pos.make_move(&m);
-        nodes += perft(&new_pos, depth - 1);
+        let undo = pos.make_move(&m);
+        nodes += perft(pos, depth - 1);
+        pos.unmake_move(&m, &undo);
     }
+
     nodes
 }
 
@@ -55,13 +57,12 @@ fn main() {
     println!("----------------------------------------------");
 
     for (name, fen, depth, expected) in positions {
-        let pos = Position::from_fen(fen).unwrap();
-
+        let mut pos = Position::from_fen(fen).unwrap();
         println!("Position: {}", name);
         println!("Depth: {}", depth);
 
         let start = Instant::now();
-        let nodes = perft(&pos, depth);
+        let nodes = perft(&mut pos, depth);
         let elapsed = start.elapsed();
 
         let nps = (nodes as f64 / elapsed.as_secs_f64()) as u64;
@@ -72,10 +73,10 @@ fn main() {
         println!("  NPS: {}", format_number(nps));
 
         if nodes == expected {
-            println!("CORRECT");
+            println!("✓ CORRECT");
         } else {
             println!(
-                "INCORRECT (diff: {})",
+                "✗ INCORRECT (diff: {})",
                 (nodes as i64 - expected as i64).abs()
             );
         }

@@ -4,6 +4,18 @@ use crate::{
 };
 
 // ============================================================================
+// UNDO STATE - Stores information needed to unmake a move
+// ============================================================================
+#[derive(Clone, Copy)]
+pub struct UndoState {
+    pub captured_piece: Option<Piece>,
+    pub castling_rights: CastleRights,
+    pub en_passant: Option<u8>,
+    pub halfmove: u16,
+    pub hash: u64,
+}
+
+// ============================================================================
 // POSITION
 // ============================================================================
 #[derive(Clone, Copy, PartialEq)]
@@ -207,13 +219,13 @@ impl Position {
     // ========================================================================
 
     #[inline(always)]
-    pub fn add_piece(&mut self, sq: usize, color: Color, piece: Piece) {
+    fn add_piece(&mut self, sq: usize, color: Color, piece: Piece) {
         self.pieces[piece as usize].set(sq);
         self.colors[color as usize].set(sq);
     }
 
     #[inline(always)]
-    pub fn remove_piece(&mut self, sq: usize) {
+    fn remove_piece(&mut self, sq: usize) {
         let mask = !(1u64 << sq);
         for i in 0..6 {
             self.pieces[i].0 &= mask;
@@ -223,87 +235,79 @@ impl Position {
     }
 
     // ========================================================================
-    // MOVE APPLICATION
+    // MAKE/UNMAKE MOVES
     // ========================================================================
 
     #[inline(always)]
-    pub fn make_move(&self, m: &Move) -> Position {
-        let mut new_pos = self.clone();
-        new_pos.apply_move(&m);
-        new_pos
-    }
-
-    #[inline(always)]
-    fn apply_move(&mut self, m: &Move) {
+    pub fn make_move(&mut self, m: &Move) -> UndoState {
         let from = m.from();
         let to = m.to();
         let move_type = m.move_type();
 
         let (piece, color) = self.piece_at(from).expect("No piece at from");
 
-        // Remove old castling rights from hash
-        self.hash ^= CASTLE_KEYS[self.castling_rights.0 as usize];
+        // Save state for unmake
+        let undo = UndoState {
+            captured_piece: if m.is_capture() && move_type != MoveType::EnPassant {
+                self.piece_at(to).map(|(p, _)| p)
+            } else {
+                None
+            },
+            castling_rights: self.castling_rights,
+            en_passant: self.en_passant,
+            halfmove: self.halfmove,
+            hash: self.hash,
+        };
 
-        // Remove old en passant from hash
+        // Remove old state from hash
+        self.hash ^= CASTLE_KEYS[self.castling_rights.0 as usize];
         if let Some(ep) = self.en_passant {
             self.hash ^= EP_KEYS[(ep % 8) as usize];
         }
 
+        // Handle move by type
         match move_type {
             MoveType::Quiet => {
-                // Remove piece from 'from'
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
-
-                // Add piece to 'to'
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
             }
             MoveType::Capture => {
                 let (captured_piece, captured_color) = self.piece_at(to).unwrap();
-
-                // Remove captured piece
                 self.hash ^= PIECE_KEYS[captured_color as usize][captured_piece as usize][to];
                 self.remove_piece(to);
 
-                // Remove moving piece from 'from'
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
 
-                // Add moving piece to 'to'
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
             }
             MoveType::DoublePush => {
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
-
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
-
                 self.en_passant = Some(((from + to) / 2) as u8);
             }
             MoveType::EnPassant => {
-                let captured = if color == Color::White {
+                let captured_sq = if color == Color::White {
                     to - 8
                 } else {
                     to + 8
                 };
+                self.hash ^= PIECE_KEYS[color.flip() as usize][Piece::Pawn as usize][captured_sq];
+                self.remove_piece(captured_sq);
 
-                self.hash ^= PIECE_KEYS[color.flip() as usize][Piece::Pawn as usize][captured];
-                self.remove_piece(captured);
-
-                // Move our pawn
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
-
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
             }
             MoveType::Castle => {
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][from];
                 self.remove_piece(from);
-
                 self.hash ^= PIECE_KEYS[color as usize][piece as usize][to];
                 self.add_piece(to, color, piece);
 
@@ -317,7 +321,6 @@ impl Position {
 
                 self.hash ^= PIECE_KEYS[color as usize][Piece::Rook as usize][rook_from];
                 self.remove_piece(rook_from);
-
                 self.hash ^= PIECE_KEYS[color as usize][Piece::Rook as usize][rook_to];
                 self.add_piece(rook_to, color, Piece::Rook);
             }
@@ -344,12 +347,9 @@ impl Position {
             | MoveType::CapturePromotionRook
             | MoveType::CapturePromotionQueen => {
                 let (captured_piece, captured_color) = self.piece_at(to).unwrap();
-
-                // Remove captured piece
                 self.hash ^= PIECE_KEYS[captured_color as usize][captured_piece as usize][to];
                 self.remove_piece(to);
 
-                // Remove pawn from 'from'
                 self.hash ^= PIECE_KEYS[color as usize][Piece::Pawn as usize][from];
                 self.remove_piece(from);
 
@@ -373,7 +373,7 @@ impl Position {
         self.castling_rights.remove_rook(from);
         self.castling_rights.remove_rook(to);
 
-        // Add new castling rights to hash
+        // Add new state to hash
         self.hash ^= CASTLE_KEYS[self.castling_rights.0 as usize];
 
         // Update clocks
@@ -387,7 +387,7 @@ impl Position {
             self.fullmove += 1;
         }
 
-        // Clear en passant (unless double push, which set it above)
+        // Clear en passant (unless double push)
         if move_type != MoveType::DoublePush {
             self.en_passant = None;
         }
@@ -397,9 +397,91 @@ impl Position {
             self.hash ^= EP_KEYS[(ep % 8) as usize];
         }
 
-        // Flip side to move
+        // Flip side
         self.hash ^= SIDE_KEY;
         self.side_to_move = self.side_to_move.flip();
+
+        undo
+    }
+
+    #[inline(always)]
+    pub fn unmake_move(&mut self, m: &Move, undo: &UndoState) {
+        let from = m.from();
+        let to = m.to();
+        let move_type = m.move_type();
+
+        // Restore hash and state
+        self.hash = undo.hash;
+        self.castling_rights = undo.castling_rights;
+        self.en_passant = undo.en_passant;
+        self.halfmove = undo.halfmove;
+
+        // Flip side back
+        self.side_to_move = self.side_to_move.flip();
+        if self.side_to_move == Color::Black {
+            self.fullmove -= 1;
+        }
+
+        let color = self.side_to_move;
+
+        // Reverse the move
+        match move_type {
+            MoveType::Quiet | MoveType::DoublePush => {
+                let piece = self.piece_at(to).unwrap().0;
+                self.remove_piece(to);
+                self.add_piece(from, color, piece);
+            }
+            MoveType::Capture => {
+                let piece = self.piece_at(to).unwrap().0;
+                self.remove_piece(to);
+                self.add_piece(from, color, piece);
+                if let Some(captured) = undo.captured_piece {
+                    self.add_piece(to, color.flip(), captured);
+                }
+            }
+            MoveType::EnPassant => {
+                self.remove_piece(to);
+                self.add_piece(from, color, Piece::Pawn);
+                let captured_sq = if color == Color::White {
+                    to - 8
+                } else {
+                    to + 8
+                };
+                self.add_piece(captured_sq, color.flip(), Piece::Pawn);
+            }
+            MoveType::Castle => {
+                self.remove_piece(to);
+                self.add_piece(from, color, Piece::King);
+
+                let (rook_from, rook_to) = match to {
+                    6 => (7, 5),
+                    2 => (0, 3),
+                    62 => (63, 61),
+                    58 => (56, 59),
+                    _ => panic!("Invalid castle"),
+                };
+
+                self.remove_piece(rook_to);
+                self.add_piece(rook_from, color, Piece::Rook);
+            }
+            MoveType::PromotionKnight
+            | MoveType::PromotionBishop
+            | MoveType::PromotionRook
+            | MoveType::PromotionQueen => {
+                self.remove_piece(to);
+                self.add_piece(from, color, Piece::Pawn);
+            }
+            MoveType::CapturePromotionKnight
+            | MoveType::CapturePromotionBishop
+            | MoveType::CapturePromotionRook
+            | MoveType::CapturePromotionQueen => {
+                self.remove_piece(to);
+                self.add_piece(from, color, Piece::Pawn);
+                if let Some(captured) = undo.captured_piece {
+                    self.add_piece(to, color.flip(), captured);
+                }
+            }
+        }
     }
 }
 
@@ -429,14 +511,27 @@ impl Default for Position {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    fn test_make_unmake() {
+        let mut pos = Position::new();
+        let original_hash = pos.hash();
+
+        let mut collector = MoveCollector::new();
+        pos.generate_moves(&mut collector);
+        let mv = collector.get(0);
+
+        let undo = pos.make_move(&mv);
+        pos.unmake_move(&mv, &undo);
+
+        assert_eq!(pos.hash(), original_hash);
+    }
+
+    #[test]
     fn test_checkmate_detection() {
-        // Fool's mate
         let pos =
             Position::from_fen("rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3")
                 .unwrap();

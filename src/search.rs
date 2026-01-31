@@ -36,7 +36,7 @@ pub struct SearchInfo {
 }
 
 pub fn search(
-    pos: &Position,
+    pos: &mut Position,
     max_depth: u8,
     max_time_ms: Option<u64>,
     tt: &mut TranspositionTable,
@@ -87,9 +87,9 @@ pub fn search(
             pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
             let mv = move_list[i];
 
-            let new_pos = pos.make_move(&mv);
+            let undo = pos.make_move(&mv);
             let score = -negamax(
-                &new_pos,
+                pos,
                 depth - 1,
                 -beta,
                 -alpha,
@@ -100,6 +100,7 @@ pub fn search(
                 true,
                 1, // ply = 1 at root
             );
+            pos.unmake_move(&mv, &undo);
 
             if score > iteration_best_score {
                 iteration_best_score = score;
@@ -188,7 +189,7 @@ pub fn search(
 
 #[allow(clippy::too_many_arguments)]
 fn negamax(
-    pos: &Position,
+    pos: &mut Position,
     depth: u8,
     mut alpha: i32,
     beta: i32,
@@ -230,11 +231,6 @@ fn negamax(
     let in_check = pos.is_in_check();
 
     // Null Move Pruning
-    // Skip if:
-    // - in check,
-    // - last move was null,
-    // - insufficient depth,
-    // - or endgame
     if allow_null && !in_check && depth >= 3 {
         // Avoid in zugzwang-prone endgames (check for non-pawn material)
         let has_pieces = (pos.our(Piece::Knight).0
@@ -245,16 +241,24 @@ fn negamax(
 
         if has_pieces {
             // Make null move: just flip side
-            let mut null_pos = *pos;
-            null_pos.side_to_move = null_pos.side_to_move.flip();
-            null_pos.hash ^= crate::zobrist::SIDE_KEY;
-            null_pos.en_passant = None;
+            let old_side = pos.side_to_move;
+            let old_ep = pos.en_passant;
+            let old_hash = pos.hash;
+
+            pos.side_to_move = pos.side_to_move.flip();
+            pos.hash ^= crate::zobrist::SIDE_KEY;
+
+            // Remove en passant from hash if it exists
+            if let Some(ep) = pos.en_passant {
+                pos.hash ^= crate::zobrist::EP_KEYS[(ep % 8) as usize];
+            }
+            pos.en_passant = None;
 
             // Adaptive reduction: R=2 for depth 3-6, R=3 for depth 7+
             let r = if depth >= 7 { 3 } else { 2 };
 
             let null_score = -negamax(
-                &null_pos,
+                pos,
                 depth.saturating_sub(1 + r),
                 -beta,
                 -beta + 1,
@@ -265,6 +269,11 @@ fn negamax(
                 false, // Not a PV node
                 ply + 1,
             );
+
+            // Restore position
+            pos.side_to_move = old_side;
+            pos.en_passant = old_ep;
+            pos.hash = old_hash;
 
             // Beta cutoff
             if null_score >= beta {
@@ -305,10 +314,10 @@ fn negamax(
         pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
         let mv = move_list[i];
 
-        let new_pos = pos.make_move(&mv);
+        let undo = pos.make_move(&mv);
 
         // Check if the move gives check (for LMR heuristics)
-        let gives_check = new_pos.is_in_check();
+        let gives_check = pos.is_in_check();
 
         let mut score;
 
@@ -319,7 +328,7 @@ fn negamax(
             // Search with reduced depth
             let reduced_depth = depth.saturating_sub(1 + reduction);
             score = -negamax(
-                &new_pos,
+                pos,
                 reduced_depth,
                 -alpha - 1,
                 -alpha,
@@ -334,7 +343,7 @@ fn negamax(
             // If the reduced search failed high, re-search at full depth
             if score > alpha {
                 score = -negamax(
-                    &new_pos,
+                    pos,
                     depth - 1,
                     -beta,
                     -alpha,
@@ -349,7 +358,7 @@ fn negamax(
         } else {
             // Full depth search for important moves
             score = -negamax(
-                &new_pos,
+                pos,
                 depth - 1,
                 -beta,
                 -alpha,
@@ -361,6 +370,8 @@ fn negamax(
                 ply + 1,
             );
         }
+
+        pos.unmake_move(&mv, &undo);
 
         if score >= beta {
             // Beta cutoff - store killer move if it's quiet
@@ -432,17 +443,17 @@ mod test_search {
     use crate::{lmr::init, Position};
 
     #[test]
-    #[ignore = "Overlfows On Debug / Need Release"]
+    #[ignore = "Overflows On Debug / Need Release"]
     fn test_iterative_deepening() {
         let depth = 18;
-        let pos = Position::new();
+        let mut pos = Position::new();
         let mut tt = TranspositionTable::new_mb(64);
         init();
 
         println!("Starting iterative deepening search to depth {}...", depth);
         let start = Instant::now();
 
-        let result = search(&pos, depth, None, &mut tt);
+        let result = search(&mut pos, depth, None, &mut tt);
 
         let duration = start.elapsed();
 

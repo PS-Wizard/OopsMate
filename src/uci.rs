@@ -92,12 +92,13 @@ impl UciEngine {
             moves_idx = parts.iter().position(|&s| s == "moves");
         }
 
-        // Apply moves directly without validation
-        // The GUI/engine sending the moves is responsible for legality
+        // Apply moves using make_move (in-place modification)
         if let Some(idx) = moves_idx {
             for move_str in &parts[idx + 1..] {
                 if let Some(m) = Self::parse_move_fast(move_str, &self.position) {
-                    self.position = self.position.make_move(&m);
+                    // Make move in-place and discard the undo state
+                    // We don't need to unmake these moves
+                    let _ = self.position.make_move(&m);
                 } else {
                     eprintln!("Invalid move format: {}", move_str);
                     break;
@@ -279,8 +280,8 @@ impl UciEngine {
             Some(calculate_time_allocation(our_time, our_inc, movestogo))
         };
 
-        // Search with iterative deepening
-        if let Some(info) = search(&self.position, depth, allocated_time, &mut self.tt) {
+        // Search with iterative deepening (position is borrowed mutably)
+        if let Some(info) = search(&mut self.position, depth, allocated_time, &mut self.tt) {
             println!("bestmove {}", Self::move_to_uci(&info.best_move));
         } else {
             println!("bestmove 0000");

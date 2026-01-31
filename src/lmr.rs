@@ -122,8 +122,14 @@ pub fn calculate_reduction(depth: u8, move_num: usize, pv_node: bool, mv: Move) 
 mod tests {
     use super::*;
 
+    // Initialize LMR table once for all tests
+    fn setup() {
+        init();
+    }
+
     #[test]
     fn test_should_reduce_depth() {
+        setup();
         let mv = Move::new(0, 8, crate::types::MoveType::Quiet);
 
         // Too shallow
@@ -135,6 +141,7 @@ mod tests {
 
     #[test]
     fn test_should_reduce_move_number() {
+        setup();
         let mv = Move::new(0, 8, crate::types::MoveType::Quiet);
 
         // Early moves
@@ -148,6 +155,7 @@ mod tests {
 
     #[test]
     fn test_should_reduce_tactical() {
+        setup();
         let quiet = Move::new(0, 8, crate::types::MoveType::Quiet);
         let capture = Move::new(0, 8, crate::types::MoveType::Capture);
         let promotion = Move::new(0, 8, crate::types::MoveType::PromotionQueen);
@@ -170,6 +178,7 @@ mod tests {
 
     #[test]
     fn test_reduction_scaling() {
+        setup();
         let quiet = Move::new(0, 8, crate::types::MoveType::Quiet);
         let capture = Move::new(0, 8, crate::types::MoveType::Capture);
 
@@ -195,6 +204,7 @@ mod tests {
 
     #[test]
     fn test_reduction_bounds() {
+        setup();
         let quiet = Move::new(0, 8, crate::types::MoveType::Quiet);
 
         // Should never reduce more than depth - 2
