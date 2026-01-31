@@ -1,10 +1,11 @@
 use crate::{
+    lmr::{calculate_reduction, should_reduce},
     move_ordering::{pick_next_move, score_move},
     qsearch::qsearch,
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
     Move, MoveCollector, Piece, Position,
 };
-use std::time::Instant;
+use std::{io::Write, time::Instant};
 
 const INFINITY: i32 = 50_000;
 const MATE_VALUE: i32 = 49_000;
@@ -86,7 +87,16 @@ pub fn search(
             let mv = move_list[i];
 
             let new_pos = pos.make_move(&mv);
-            let score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, &mut stats, true);
+            let score = -negamax(
+                &new_pos,
+                depth - 1,
+                -beta,
+                -alpha,
+                tt,
+                &mut stats,
+                true,
+                true,
+            );
 
             if score > iteration_best_score {
                 iteration_best_score = score;
@@ -141,6 +151,8 @@ pub fn search(
                 move_to_uci(&mv)
             );
 
+            let _ = std::io::stdout().flush(); // flush stdout
+
             let current_depth_time = depth_start.elapsed().as_millis() as u64;
 
             // Smart time management
@@ -176,6 +188,7 @@ fn negamax(
     tt: &mut TranspositionTable,
     stats: &mut SearchStats,
     allow_null: bool,
+    pv_node: bool,
 ) -> i32 {
     stats.nodes += 1;
 
@@ -235,6 +248,7 @@ fn negamax(
                 tt,
                 stats,
                 false, // Disable consecutive null moves
+                false, // Not a PV node
             );
 
             // Beta cutoff
@@ -277,7 +291,37 @@ fn negamax(
         let mv = move_list[i];
 
         let new_pos = pos.make_move(&mv);
-        let score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, stats, true);
+
+        // Check if the move gives check (for LMR heuristics)
+        let gives_check = new_pos.is_in_check();
+
+        let mut score;
+
+        // Late Move Reduction (LMR)
+        if should_reduce(depth, i, in_check, gives_check, mv) {
+            let reduction = calculate_reduction(depth, i, pv_node, mv);
+
+            // Search with reduced depth
+            let reduced_depth = depth.saturating_sub(1 + reduction);
+            score = -negamax(
+                &new_pos,
+                reduced_depth,
+                -alpha - 1,
+                -alpha,
+                tt,
+                stats,
+                true,
+                false,
+            );
+
+            // If the reduced search failed high, re-search at full depth
+            if score > alpha {
+                score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, stats, true, pv_node);
+            }
+        } else {
+            // Full depth search for important moves
+            score = -negamax(&new_pos, depth - 1, -beta, -alpha, tt, stats, true, pv_node);
+        }
 
         if score >= beta {
             tt.store(hash, mv, beta, depth, LOWER_BOUND);
@@ -341,14 +385,15 @@ fn move_to_uci(m: &Move) -> String {
 #[cfg(test)]
 mod test_search {
     use super::*;
-    use crate::Position;
+    use crate::{lmr::init, Position};
 
     #[test]
     #[ignore = "Overlfows On Debug / Need Release"]
     fn test_iterative_deepening() {
-        let depth = 10;
+        let depth = 18;
         let pos = Position::new();
         let mut tt = TranspositionTable::new_mb(64);
+        init();
 
         println!("Starting iterative deepening search to depth {}...", depth);
         let start = Instant::now();

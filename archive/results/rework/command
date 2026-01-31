@@ -9,3 +9,15 @@ cutechess-cli \
   -pgnout refine_elo.pgn \
   -concurrency 8 \
   -tournament gauntlet
+
+
+=========
+
+cutechess-cli \
+  -engine cmd=./oops_mate name="OopsMate" \
+  -engine cmd=stockfish name="SF-1750" option."UCI_LimitStrength"=true option."UCI_Elo"=1750 \
+  -each proto=uci tc=5+0.05 \
+  -rounds 300 \
+  -openings file=Modern.pgn format=pgn order=random plies=16 \
+  -pgnout refine_elo.pgn \
+  -concurrency 8

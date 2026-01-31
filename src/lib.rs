@@ -1,4 +1,3 @@
-pub mod game_state;
 pub mod position;
 pub mod types;
 
@@ -14,6 +13,7 @@ pub mod time_control;
 
 pub mod move_ordering;
 pub mod qsearch;
+pub mod lmr;
 
 pub use position::Position;
 pub use types::*;
