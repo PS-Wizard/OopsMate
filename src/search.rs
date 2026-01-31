@@ -5,7 +5,7 @@ use crate::{
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
     Move, MoveCollector, Piece, Position,
 };
-use std::time::Instant;
+use std::{io::Write, time::Instant};
 
 const INFINITY: i32 = 50_000;
 const MATE_VALUE: i32 = 49_000;
@@ -150,6 +150,8 @@ pub fn search(
                 tt.hashfull(),
                 move_to_uci(&mv)
             );
+
+            let _ = std::io::stdout().flush(); // flush stdout
 
             let current_depth_time = depth_start.elapsed().as_millis() as u64;
 
