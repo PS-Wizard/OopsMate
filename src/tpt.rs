@@ -57,7 +57,17 @@ impl TranspositionTable {
 
     #[inline(always)]
     pub fn probe(&self, hash: u64) -> Option<&TTEntry> {
-        let entry = unsafe { self.table.get_unchecked((hash & self.mask) as usize) };
+        let idx = (hash & self.mask) as usize;
+
+        // Prefetch the cache line
+        #[cfg(target_arch = "x86_64")]
+        unsafe {
+            use std::arch::x86_64::_mm_prefetch;
+            let ptr = self.table.as_ptr().add(idx) as *const i8;
+            _mm_prefetch::<3>(ptr); // _MM_HINT_T0
+        }
+
+        let entry = unsafe { self.table.get_unchecked(idx) };
         if entry.key == hash {
             Some(entry)
         } else {

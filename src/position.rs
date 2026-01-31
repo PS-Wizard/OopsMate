@@ -6,7 +6,7 @@ use crate::{
 // ============================================================================
 // POSITION
 // ============================================================================
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub struct Position {
     // Piece bitboards [Pawn, Knight, Bishop, Rook, Queen, King]
     pub pieces: [Bitboard; 6],
@@ -21,6 +21,16 @@ pub struct Position {
     pub hash: u64,
 }
 
+impl Clone for Position {
+    fn clone(&self) -> Self {
+        // Use ptr::copy_nonoverlapping for speed
+        unsafe {
+            let mut new_pos = std::mem::MaybeUninit::<Position>::uninit();
+            std::ptr::copy_nonoverlapping(self as *const Position, new_pos.as_mut_ptr(), 1);
+            new_pos.assume_init()
+        }
+    }
+}
 impl Position {
     /// Create starting position
     pub fn new() -> Self {
@@ -428,7 +438,6 @@ impl Default for Position {
         Self::new()
     }
 }
-
 
 #[cfg(test)]
 mod tests {

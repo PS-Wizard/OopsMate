@@ -113,8 +113,7 @@ pub fn get_constraints(pos: &Position) -> (u64, u64) {
         !0u64
     } else if checkers.count_ones() == 1 {
         let checker_sq = checkers.trailing_zeros() as usize;
-        let mask = line_between(king_sq, checker_sq) | checkers;
-        mask
+        line_between(king_sq, checker_sq) | checkers
     } else {
         0
     };
@@ -123,10 +122,12 @@ pub fn get_constraints(pos: &Position) -> (u64, u64) {
 }
 
 // ============================================================================
-// MOVE GENERATION
+// OPTIMIZED MOVE GENERATION
 // ============================================================================
 
 impl Position {
+    /// Generate all legal moves
+    #[inline(always)]
     pub fn generate_moves(&self, collector: &mut MoveCollector) {
         let (pinned, check_mask) = get_constraints(self);
 
@@ -138,10 +139,31 @@ impl Position {
         self.gen_king_moves(collector);
     }
 
+    /// Generate ONLY captures and promotions (for qsearch)
+    #[inline(always)]
+    pub fn generate_captures(&self, collector: &mut MoveCollector) {
+        let (pinned, check_mask) = get_constraints(self);
+        let enemies = self.them().0;
+
+        self.gen_pawn_captures(collector, pinned, check_mask, enemies);
+        self.gen_piece_captures::<{ Piece::Knight as usize }>(
+            collector, pinned, check_mask, enemies,
+        );
+        self.gen_piece_captures::<{ Piece::Bishop as usize }>(
+            collector, pinned, check_mask, enemies,
+        );
+        self.gen_piece_captures::<{ Piece::Rook as usize }>(collector, pinned, check_mask, enemies);
+        self.gen_piece_captures::<{ Piece::Queen as usize }>(
+            collector, pinned, check_mask, enemies,
+        );
+        self.gen_king_captures(collector, enemies);
+    }
+
     // ========================================================================
-    // PAWN MOVES
+    // PAWN MOVES (existing implementation)
     // ========================================================================
 
+    #[inline(always)]
     fn gen_pawn_moves(&self, collector: &mut MoveCollector, pinned: u64, check_mask: u64) {
         match self.side_to_move {
             Color::White => self.gen_white_pawns(collector, pinned, check_mask),
@@ -149,14 +171,15 @@ impl Position {
         }
     }
 
+    #[inline(always)]
     fn gen_white_pawns(&self, collector: &mut MoveCollector, pinned: u64, check_mask: u64) {
         let pawns = self.our(Piece::Pawn).0;
         let empty = !self.occupied().0;
         let enemies = self.them().0;
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
+        let enemy_king = self.their(Piece::King).0;
 
         let mut bb = pawns;
-        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
@@ -183,12 +206,11 @@ impl Position {
                 }
             }
 
-            // Double push (check independently!)
+            // Double push
             if from >= 8 && from < 16 {
                 let to2 = from + 16;
                 let target2 = 1u64 << to2;
                 let single_to = from + 8;
-                // Both intermediate square AND destination must be empty
                 if (empty >> single_to) & 1 != 0
                     && (empty >> to2) & 1 != 0
                     && (target2 & pin_ray & check_mask) != 0
@@ -214,20 +236,20 @@ impl Position {
             }
         }
 
-        // En passant
         if let Some(ep_sq) = self.en_passant {
             self.gen_en_passant(collector, pinned, check_mask, ep_sq as usize);
         }
     }
 
+    #[inline(always)]
     fn gen_black_pawns(&self, collector: &mut MoveCollector, pinned: u64, check_mask: u64) {
         let pawns = self.our(Piece::Pawn).0;
         let empty = !self.occupied().0;
         let enemies = self.them().0;
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
+        let enemy_king = self.their(Piece::King).0;
 
         let mut bb = pawns;
-        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
@@ -238,7 +260,6 @@ impl Position {
                 !0u64
             };
 
-            // Single push
             if from >= 8 {
                 let to = from - 8;
                 if (empty >> to) & 1 != 0 {
@@ -256,12 +277,10 @@ impl Position {
                 }
             }
 
-            // Double push (check independently!)
             if from >= 48 && from < 56 {
                 let to2 = from - 16;
                 let target2 = 1u64 << to2;
                 let single_to = from - 8;
-                // Both intermediate square AND destination must be empty
                 if (empty >> single_to) & 1 != 0
                     && (empty >> to2) & 1 != 0
                     && (target2 & pin_ray & check_mask) != 0
@@ -270,7 +289,6 @@ impl Position {
                 }
             }
 
-            // Captures
             let mut attacks = PAWN_ATTACKS[1][from] & enemies & !enemy_king & pin_ray & check_mask;
             while attacks != 0 {
                 let to = attacks.trailing_zeros() as usize;
@@ -287,7 +305,6 @@ impl Position {
             }
         }
 
-        // En passant
         if let Some(ep_sq) = self.en_passant {
             self.gen_en_passant(collector, pinned, check_mask, ep_sq as usize);
         }
@@ -332,7 +349,6 @@ impl Position {
                 }
             }
 
-            // Check horizontal discovered attack
             let king_rank = king_sq / 8;
             let from_rank = from / 8;
 
@@ -354,7 +370,133 @@ impl Position {
     }
 
     // ========================================================================
-    // KNIGHT MOVES
+    // PAWN CAPTURES ONLY (for qsearch)
+    // ========================================================================
+
+    #[inline(always)]
+    fn gen_pawn_captures(
+        &self,
+        collector: &mut MoveCollector,
+        pinned: u64,
+        check_mask: u64,
+        enemies: u64,
+    ) {
+        match self.side_to_move {
+            Color::White => self.gen_white_pawn_captures(collector, pinned, check_mask, enemies),
+            Color::Black => self.gen_black_pawn_captures(collector, pinned, check_mask, enemies),
+        }
+    }
+
+    #[inline(always)]
+    fn gen_white_pawn_captures(
+        &self,
+        collector: &mut MoveCollector,
+        pinned: u64,
+        check_mask: u64,
+        enemies: u64,
+    ) {
+        let pawns = self.our(Piece::Pawn).0;
+        let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
+        let enemy_king = self.their(Piece::King).0;
+        let empty = !self.occupied().0;
+
+        let mut bb = pawns;
+        while bb != 0 {
+            let from = bb.trailing_zeros() as usize;
+            bb &= bb - 1;
+
+            let pin_ray = if (pinned >> from) & 1 != 0 {
+                THROUGH[king_sq][from]
+            } else {
+                !0u64
+            };
+
+            // Promotions (including non-captures)
+            let to = from + 8;
+            if to >= 56 && to < 64 && (empty >> to) & 1 != 0 {
+                let target = 1u64 << to;
+                if (target & pin_ray & check_mask) != 0 {
+                    collector.push(Move::new(from, to, MoveType::PromotionQueen));
+                    // Only queen promotions in qsearch for speed
+                }
+            }
+
+            // Capture promotions
+            let mut attacks = PAWN_ATTACKS[0][from] & enemies & !enemy_king & pin_ray & check_mask;
+            while attacks != 0 {
+                let to = attacks.trailing_zeros() as usize;
+                attacks &= attacks - 1;
+
+                if to >= 56 {
+                    collector.push(Move::new(from, to, MoveType::CapturePromotionQueen));
+                } else {
+                    collector.push(Move::new(from, to, MoveType::Capture));
+                }
+            }
+        }
+
+        // En passant
+        if let Some(ep_sq) = self.en_passant {
+            self.gen_en_passant(collector, pinned, check_mask, ep_sq as usize);
+        }
+    }
+
+    #[inline(always)]
+    fn gen_black_pawn_captures(
+        &self,
+        collector: &mut MoveCollector,
+        pinned: u64,
+        check_mask: u64,
+        enemies: u64,
+    ) {
+        let pawns = self.our(Piece::Pawn).0;
+        let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
+        let enemy_king = self.their(Piece::King).0;
+        let empty = !self.occupied().0;
+
+        let mut bb = pawns;
+        while bb != 0 {
+            let from = bb.trailing_zeros() as usize;
+            bb &= bb - 1;
+
+            let pin_ray = if (pinned >> from) & 1 != 0 {
+                THROUGH[king_sq][from]
+            } else {
+                !0u64
+            };
+
+            // Promotions (including non-captures)
+            if from >= 8 {
+                let to = from - 8;
+                if to < 8 && (empty >> to) & 1 != 0 {
+                    let target = 1u64 << to;
+                    if (target & pin_ray & check_mask) != 0 {
+                        collector.push(Move::new(from, to, MoveType::PromotionQueen));
+                    }
+                }
+            }
+
+            // Capture promotions
+            let mut attacks = PAWN_ATTACKS[1][from] & enemies & !enemy_king & pin_ray & check_mask;
+            while attacks != 0 {
+                let to = attacks.trailing_zeros() as usize;
+                attacks &= attacks - 1;
+
+                if to < 8 {
+                    collector.push(Move::new(from, to, MoveType::CapturePromotionQueen));
+                } else {
+                    collector.push(Move::new(from, to, MoveType::Capture));
+                }
+            }
+        }
+
+        if let Some(ep_sq) = self.en_passant {
+            self.gen_en_passant(collector, pinned, check_mask, ep_sq as usize);
+        }
+    }
+
+    // ========================================================================
+    // PIECE MOVES (Knights, Bishops, Rooks, Queens)
     // ========================================================================
 
     #[inline(always)]
@@ -362,15 +504,14 @@ impl Position {
         let knights = self.our(Piece::Knight).0 & !pinned;
         let us = self.us().0;
         let them = self.them().0;
+        let enemy_king = self.their(Piece::King).0;
 
         let mut bb = knights;
-        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
 
             let mut attacks = KNIGHT_ATTACKS[from] & !us & !enemy_king & check_mask;
-
             while attacks != 0 {
                 let to = attacks.trailing_zeros() as usize;
                 attacks &= attacks - 1;
@@ -385,10 +526,6 @@ impl Position {
         }
     }
 
-    // ========================================================================
-    // BISHOP MOVES
-    // ========================================================================
-
     #[inline(always)]
     fn gen_bishop_moves(&self, collector: &mut MoveCollector, pinned: u64, check_mask: u64) {
         let bishops = self.our(Piece::Bishop).0;
@@ -396,15 +533,14 @@ impl Position {
         let us = self.us().0;
         let them = self.them().0;
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
+        let enemy_king = self.their(Piece::King).0;
 
         let mut bb = bishops;
-        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
 
             let idx = unsafe { _pext_u64(blockers, BISHOP_MASKS[from]) as usize };
-
             let mut attacks = BISHOP_ATTACKS[from][idx] & !us & !enemy_king;
 
             if (pinned >> from) & 1 != 0 {
@@ -426,10 +562,6 @@ impl Position {
         }
     }
 
-    // ========================================================================
-    // ROOK MOVES
-    // ========================================================================
-
     #[inline(always)]
     fn gen_rook_moves(&self, collector: &mut MoveCollector, pinned: u64, check_mask: u64) {
         let rooks = self.our(Piece::Rook).0;
@@ -437,15 +569,14 @@ impl Position {
         let us = self.us().0;
         let them = self.them().0;
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
+        let enemy_king = self.their(Piece::King).0;
 
         let mut bb = rooks;
-        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
 
             let idx = unsafe { _pext_u64(blockers, ROOK_MASKS[from]) as usize };
-
             let mut attacks = ROOK_ATTACKS[from][idx] & !us & !enemy_king;
 
             if (pinned >> from) & 1 != 0 {
@@ -467,10 +598,6 @@ impl Position {
         }
     }
 
-    // ========================================================================
-    // QUEEN MOVES
-    // ========================================================================
-
     #[inline(always)]
     fn gen_queen_moves(&self, collector: &mut MoveCollector, pinned: u64, check_mask: u64) {
         let queens = self.our(Piece::Queen).0;
@@ -478,9 +605,9 @@ impl Position {
         let us = self.us().0;
         let them = self.them().0;
         let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
+        let enemy_king = self.their(Piece::King).0;
 
         let mut bb = queens;
-        let enemy_king = self.their(Piece::King).0;
         while bb != 0 {
             let from = bb.trailing_zeros() as usize;
             bb &= bb - 1;
@@ -511,6 +638,83 @@ impl Position {
     }
 
     // ========================================================================
+    // PIECE CAPTURES ONLY (generic implementation)
+    // ========================================================================
+
+    #[inline(always)]
+    fn gen_piece_captures<const PIECE: usize>(
+        &self,
+        collector: &mut MoveCollector,
+        pinned: u64,
+        check_mask: u64,
+        enemies: u64,
+    ) {
+        let pieces = self.our(unsafe { std::mem::transmute(PIECE as u8) }).0;
+
+        // Knights can't move if pinned
+        if PIECE == Piece::Knight as usize {
+            let pieces = pieces & !pinned;
+            let mut bb = pieces;
+            while bb != 0 {
+                let from = bb.trailing_zeros() as usize;
+                bb &= bb - 1;
+
+                let mut attacks = KNIGHT_ATTACKS[from] & enemies & check_mask;
+                while attacks != 0 {
+                    let to = attacks.trailing_zeros() as usize;
+                    attacks &= attacks - 1;
+                    collector.push(Move::new(from, to, MoveType::Capture));
+                }
+            }
+            return;
+        }
+
+        // Sliding pieces
+        let blockers = self.occupied().0;
+        let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
+        let enemy_king = self.their(Piece::King).0;
+
+        let mut bb = pieces;
+        while bb != 0 {
+            let from = bb.trailing_zeros() as usize;
+            bb &= bb - 1;
+
+            let mut attacks = match PIECE {
+                2 => {
+                    // Bishop
+                    let idx = unsafe { _pext_u64(blockers, BISHOP_MASKS[from]) as usize };
+                    BISHOP_ATTACKS[from][idx]
+                }
+                3 => {
+                    // Rook
+                    let idx = unsafe { _pext_u64(blockers, ROOK_MASKS[from]) as usize };
+                    ROOK_ATTACKS[from][idx]
+                }
+                4 => {
+                    // Queen
+                    let bishop_idx = unsafe { _pext_u64(blockers, BISHOP_MASKS[from]) as usize };
+                    let rook_idx = unsafe { _pext_u64(blockers, ROOK_MASKS[from]) as usize };
+                    BISHOP_ATTACKS[from][bishop_idx] | ROOK_ATTACKS[from][rook_idx]
+                }
+                _ => unreachable!(),
+            };
+
+            attacks &= enemies & !enemy_king;
+
+            if (pinned >> from) & 1 != 0 {
+                attacks &= THROUGH[king_sq][from];
+            }
+            attacks &= check_mask;
+
+            while attacks != 0 {
+                let to = attacks.trailing_zeros() as usize;
+                attacks &= attacks - 1;
+                collector.push(Move::new(from, to, MoveType::Capture));
+            }
+        }
+    }
+
+    // ========================================================================
     // KING MOVES
     // ========================================================================
 
@@ -521,8 +725,8 @@ impl Position {
         let enemy = self.side_to_move.flip();
 
         let blockers_without_king = self.occupied().0 & !(1u64 << king_sq);
-
         let enemy_king = self.their(Piece::King).0;
+
         let mut attacks = KING_ATTACKS[king_sq] & !us & !enemy_king;
         while attacks != 0 {
             let to = attacks.trailing_zeros() as usize;
@@ -538,9 +742,25 @@ impl Position {
             }
         }
 
-        // Castling
         if !self.is_in_check() {
             self.gen_castling(collector, king_sq, enemy);
+        }
+    }
+
+    fn gen_king_captures(&self, collector: &mut MoveCollector, enemies: u64) {
+        let king_sq = self.our(Piece::King).0.trailing_zeros() as usize;
+        let enemy = self.side_to_move.flip();
+        let blockers_without_king = self.occupied().0 & !(1u64 << king_sq);
+        let enemy_king = self.their(Piece::King).0;
+
+        let mut attacks = KING_ATTACKS[king_sq] & enemies & !enemy_king;
+        while attacks != 0 {
+            let to = attacks.trailing_zeros() as usize;
+            attacks &= attacks - 1;
+
+            if !self.is_square_attacked_with_blockers(to, enemy, blockers_without_king) {
+                collector.push(Move::new(king_sq, to, MoveType::Capture));
+            }
         }
     }
 
@@ -549,7 +769,6 @@ impl Position {
 
         match self.side_to_move {
             Color::White => {
-                // Kingside
                 if self.castling_rights.can_castle_kingside(Color::White) {
                     if (occupied & 0x60) == 0
                         && !self.is_square_attacked(5, enemy)
@@ -558,7 +777,6 @@ impl Position {
                         collector.push(Move::new(king_sq, 6, MoveType::Castle));
                     }
                 }
-                // Queenside
                 if self.castling_rights.can_castle_queenside(Color::White) {
                     if (occupied & 0x0E) == 0
                         && !self.is_square_attacked(3, enemy)
@@ -569,7 +787,6 @@ impl Position {
                 }
             }
             Color::Black => {
-                // Kingside
                 if self.castling_rights.can_castle_kingside(Color::Black) {
                     if (occupied & 0x6000000000000000) == 0
                         && !self.is_square_attacked(61, enemy)
@@ -578,7 +795,6 @@ impl Position {
                         collector.push(Move::new(king_sq, 62, MoveType::Castle));
                     }
                 }
-                // Queenside
                 if self.castling_rights.can_castle_queenside(Color::Black) {
                     if (occupied & 0x0E00000000000000) == 0
                         && !self.is_square_attacked(59, enemy)

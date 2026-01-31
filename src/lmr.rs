@@ -170,6 +170,7 @@ mod tests {
 
     #[test]
     fn test_reduction_scaling() {
+        init();
         let quiet = Move::new(0, 8, crate::types::MoveType::Quiet);
         let capture = Move::new(0, 8, crate::types::MoveType::Capture);
 
@@ -195,6 +196,7 @@ mod tests {
 
     #[test]
     fn test_reduction_bounds() {
+        init();
         let quiet = Move::new(0, 8, crate::types::MoveType::Quiet);
 
         // Should never reduce more than depth - 2

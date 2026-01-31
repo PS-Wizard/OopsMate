@@ -1,12 +1,11 @@
 use crate::evaluate::evaluate;
-use crate::move_history::KillerTable;
-use crate::move_ordering::{pick_next_move, score_move, PIECE_VALUES};
+use crate::move_ordering::{pick_next_move, score_move_qsearch};
 use crate::search::SearchStats;
 use crate::{Move, MoveCollector, Position};
 
-const MAX_MOVES: usize = 256;
+const MAX_CAPTURES: usize = 64; // Reduced from 256 since we only generate captures
 
-/// Quiescence search; searches captures until position is "quiet"
+/// Quiescence search;  searches captures until position is "quiet"
 pub fn qsearch(
     pos: &Position,
     mut alpha: i32,
@@ -16,7 +15,6 @@ pub fn qsearch(
 ) -> i32 {
     stats.nodes += 1;
 
-    // MAX QSEARCH DEPTH
     const MAX_QSEARCH_PLY: i32 = 64;
     if ply >= MAX_QSEARCH_PLY {
         return evaluate(pos);
@@ -28,57 +26,37 @@ pub fn qsearch(
         return beta;
     }
 
-    let original_alpha = alpha;
     if stand_pat > alpha {
         alpha = stand_pat;
     }
 
-    // Delta pruning: if stand_pat + queen value can't raise alpha, prune
+    // Delta pruning
     const QUEEN_VALUE: i32 = 900;
-    if stand_pat + QUEEN_VALUE + 200 < original_alpha {
+    if stand_pat + QUEEN_VALUE + 200 < alpha {
         return alpha;
     }
 
+    // Generate ONLY captures
     let mut collector = MoveCollector::new();
-    pos.generate_moves(&mut collector);
-    let moves = collector.as_slice();
+    pos.generate_captures(&mut collector);
 
-    let mut capture_list = [Move(0); MAX_MOVES];
-    let mut scores = [0i32; MAX_MOVES];
-    let mut capture_count = 0;
-
-    // Dummy killer table for qsearch (killers don't apply here)
-    let killers = KillerTable::new();
-
-    for &m in moves {
-        if m.is_capture() || m.is_promotion() {
-            if m.is_capture() {
-                let victim_value = pos
-                    .piece_at(m.to())
-                    .map(|(p, _)| PIECE_VALUES[p as usize])
-                    .unwrap_or(0);
-                let attacker_value = pos
-                    .piece_at(m.from())
-                    .map(|(p, _)| PIECE_VALUES[p as usize])
-                    .unwrap_or(0);
-
-                // Don't search captures that lose material (SEE < 0)
-                // This is a simple heuristic: don't take a pawn with a queen if the pawn is defended
-                if victim_value < attacker_value / 2 && ply > 0 {
-                    continue; // Skip likely bad captures
-                }
-            }
-
-            capture_list[capture_count] = m;
-            scores[capture_count] = score_move(m, pos, None, &killers, ply as usize);
-            capture_count += 1;
-        }
-    }
-
-    if capture_count == 0 {
+    let captures = collector.as_slice();
+    if captures.is_empty() {
         return stand_pat;
     }
 
+    let capture_count = captures.len().min(MAX_CAPTURES);
+
+    // Stack arrays for move ordering
+    let mut capture_list = [Move(0); MAX_CAPTURES];
+    let mut scores = [0i32; MAX_CAPTURES];
+
+    for i in 0..capture_count {
+        capture_list[i] = captures[i];
+        scores[i] = score_move_qsearch(captures[i], pos);
+    }
+
+    // Search captures in MVV-LVA order
     for i in 0..capture_count {
         pick_next_move(
             &mut capture_list[..capture_count],
