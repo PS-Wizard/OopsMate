@@ -2,7 +2,7 @@ use crate::{
     search::search, time_control::calculate_time_allocation, tpt::TranspositionTable, Move,
     Position,
 };
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Write};
 
 pub struct UciEngine {
     position: Position,
@@ -34,7 +34,10 @@ impl UciEngine {
 
             match parts[0] {
                 "uci" => self.handle_uci(),
-                "isready" => println!("readyok"),
+                "isready" => {
+                    println!("readyok");
+                    let _ = std::io::stdout().flush();
+                }
                 "ucinewgame" => self.handle_new_game(),
                 "position" => self.handle_position(&parts[1..]),
                 "go" => self.handle_go(&parts[1..]),
@@ -50,6 +53,7 @@ impl UciEngine {
         println!("id author Swoyam P.");
         println!("option name Hash type spin default 64 min 1 max 1024");
         println!("uciok");
+        let _ = std::io::stdout().flush();
     }
 
     fn handle_new_game(&mut self) {
@@ -281,6 +285,9 @@ impl UciEngine {
         } else {
             println!("bestmove 0000");
         }
+
+        // CRITICAL: Flush stdout to ensure CuteChess receives the bestmove immediately
+        let _ = std::io::stdout().flush();
     }
 
     fn move_to_uci(m: &Move) -> String {

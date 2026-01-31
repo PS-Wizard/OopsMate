@@ -29,8 +29,7 @@ pub fn score_move(m: Move, pos: &Position, tt_move: Option<Move>) -> i32 {
         if let (Some(victim_piece), Some(attacker_piece)) = (victim, attacker) {
             // MVV-LVA: (victim_value * 10) - attacker_value
             // This ensures we try high-value captures with low-value attackers first
-            return PIECE_VALUES[victim_piece as usize] * 10
-                - PIECE_VALUES[attacker_piece as usize];
+            return PIECE_VALUES[victim_piece as usize] * 10 - PIECE_VALUES[attacker_piece as usize];
         }
     }
 
