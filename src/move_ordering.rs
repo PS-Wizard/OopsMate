@@ -60,27 +60,6 @@ pub fn score_move(
     0
 }
 
-/// Simplified scoring for qsearch - only MVV-LVA needed
-#[inline(always)]
-pub fn score_move_qsearch(m: Move, pos: &Position) -> i32 {
-    if m.is_capture() {
-        if let (Some((victim_piece, _)), Some((attacker_piece, _))) =
-            (pos.piece_at(m.to()), pos.piece_at(m.from()))
-        {
-            // Simple MVV-LVA
-            return PIECE_VALUES[victim_piece as usize] * 10
-                - PIECE_VALUES[attacker_piece as usize];
-        }
-    }
-
-    // Promotions
-    if m.is_promotion() {
-        return 5000;
-    }
-
-    0
-}
-
 /// Order moves in-place using partial selection sort
 /// Only sorts the next move to search, making it O(n) per move
 #[inline(always)]
