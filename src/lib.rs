@@ -3,6 +3,7 @@ pub mod types;
 
 pub mod evaluate;
 pub mod movegen;
+
 pub mod search;
 
 pub mod tpt;
@@ -16,6 +17,8 @@ pub mod qsearch;
 pub mod lmr;
 
 pub mod move_history;
+
+pub mod futility;
 
 pub use position::Position;
 pub use types::*;

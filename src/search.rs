@@ -1,4 +1,6 @@
 use crate::{
+    evaluate::evaluate,
+    futility::{can_use_futility_pruning, get_futility_margin, should_prune_move},
     lmr::{calculate_reduction, should_reduce},
     move_history::KillerTable,
     move_ordering::{pick_next_move, score_move},
@@ -171,9 +173,6 @@ pub fn search(
         } else {
             break;
         }
-
-        // Clear killers for next depth (optional - can keep them)
-        // killers.clear();
     }
 
     best_move.map(|mv| SearchInfo {
@@ -230,13 +229,7 @@ fn negamax(
     let in_check = pos.is_in_check();
 
     // Null Move Pruning
-    // Skip if:
-    // - in check,
-    // - last move was null,
-    // - insufficient depth,
-    // - or endgame
     if allow_null && !in_check && depth >= 3 {
-        // Avoid in zugzwang-prone endgames (check for non-pawn material)
         let has_pieces = (pos.our(Piece::Knight).0
             | pos.our(Piece::Bishop).0
             | pos.our(Piece::Rook).0
@@ -244,13 +237,11 @@ fn negamax(
             != 0;
 
         if has_pieces {
-            // Make null move: just flip side
             let mut null_pos = *pos;
             null_pos.side_to_move = null_pos.side_to_move.flip();
             null_pos.hash ^= crate::zobrist::SIDE_KEY;
             null_pos.en_passant = None;
 
-            // Adaptive reduction: R=2 for depth 3-6, R=3 for depth 7+
             let r = if depth >= 7 { 3 } else { 2 };
 
             let null_score = -negamax(
@@ -261,18 +252,29 @@ fn negamax(
                 tt,
                 killers,
                 stats,
-                false, // Disable consecutive null moves
-                false, // Not a PV node
+                false,
+                false,
                 ply + 1,
             );
 
-            // Beta cutoff
             if null_score >= beta {
                 return beta;
             }
         }
     }
 
+    // Futility Pruning
+    let use_futility = can_use_futility_pruning(depth, in_check, pv_node, alpha, beta);
+
+    let (static_eval, futility_margin) = if use_futility {
+        let eval = evaluate(pos);
+        let margin = get_futility_margin(depth);
+        (eval, margin)
+    } else {
+        (0, 0) // Not used
+    };
+
+    // MOVE GENERATION AND ORDERING
     let mut collector = MoveCollector::new();
     pos.generate_moves(&mut collector);
     let moves = collector.as_slice();
@@ -300,15 +302,20 @@ fn negamax(
     let mut best_score = -INFINITY;
     let mut best_move = Move(0);
 
-    // Search moves in order
     for i in 0..move_count {
         pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
         let mv = move_list[i];
 
         let new_pos = pos.make_move(&mv);
-
-        // Check if the move gives check (for LMR heuristics)
         let gives_check = new_pos.is_in_check();
+
+        // Futility Pruning
+        if use_futility && i > 0 {
+            // Don't prune the first move (TT move)
+            if should_prune_move(mv, gives_check, static_eval, alpha, futility_margin) {
+                continue; // Skip this move
+            }
+        }
 
         let mut score;
 
@@ -363,7 +370,7 @@ fn negamax(
         }
 
         if score >= beta {
-            // Beta cutoff - store killer move if it's quiet
+            // Beta cutoff: store killer move if it's quiet
             if !mv.is_capture() && !mv.is_promotion() {
                 killers.store(ply, mv);
             }
@@ -432,11 +439,11 @@ mod test_search {
     use crate::{lmr::init, Position};
 
     #[test]
-    #[ignore = "Overlfows On Debug / Need Release"]
+    #[ignore = "Overflows On Debug / Need Release"]
     fn test_iterative_deepening() {
         let depth = 18;
         let pos = Position::new();
-        let mut tt = TranspositionTable::new_mb(64);
+        let mut tt = TranspositionTable::new_mb(256);
         init();
 
         println!("Starting iterative deepening search to depth {}...", depth);
