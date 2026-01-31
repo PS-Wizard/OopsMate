@@ -30,6 +30,43 @@ Player: SF-1750
 Finished match
 [wizard@nixos ~/Projects/OopsMate/archive/results/rework] ->
 
+# vs stockfish 1900
+
+Score of OopsMate vs SF-1900: 135 - 131 - 31  [0.507] 297
+Finished game 297 (OopsMate vs SF-1900): 1-0 {White mates}
+Score of OopsMate vs SF-1900: 136 - 131 - 31  [0.508] 298
+Finished game 300 (SF-1900 vs OopsMate): 1-0 {White mates}
+Score of OopsMate vs SF-1900: 136 - 132 - 31  [0.507] 299
+Finished game 299 (OopsMate vs SF-1900): 1/2-1/2 {Draw by fifty moves rule}
+Score of OopsMate vs SF-1900: 136 - 132 - 32  [0.507] 300
+...      OopsMate playing White: 66 - 65 - 19  [0.503] 150
+...      OopsMate playing Black: 70 - 67 - 13  [0.510] 150
+...      White vs Black: 133 - 135 - 32  [0.497] 300
+Elo difference: 4.6 +/- 37.3, LOS: 59.7 %, DrawRatio: 10.7 %
+SPRT: llr 0 (0.0%), lbound -inf, ubound inf
+
+Player: OopsMate
+   "Draw by 3-fold repetition": 22
+   "Draw by fifty moves rule": 9
+   "Draw by insufficient mating material": 1
+   "Loss: Black loses on time": 1
+   "Loss: Black mates": 64
+   "Loss: White loses on time": 1
+   "Loss: White mates": 66
+   "Win: Black mates": 70
+   "Win: White mates": 66
+Player: SF-1900
+   "Draw by 3-fold repetition": 22
+   "Draw by fifty moves rule": 9
+   "Draw by insufficient mating material": 1
+   "Loss: Black mates": 70
+   "Loss: White mates": 66
+   "Win: Black loses on time": 1
+   "Win: Black mates": 64
+   "Win: White loses on time": 1
+   "Win: White mates": 66
+Finished match
+
 # vs OopsMate Last Version ( Late Move Reduction )
 
 Finished game 95 (OopsMate V4 vs OopsMate V3): 1/2-1/2 {Draw by 3-fold repetition}
@@ -75,3 +112,4 @@ Player: OopsMate V3
    "Win: Black mates": 5
 Finished match
 [wizard@nixos ~/Projects/OopsMate/archive/results/rework] ->
+
