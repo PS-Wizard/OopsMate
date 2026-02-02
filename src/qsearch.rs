@@ -35,7 +35,7 @@ pub fn qsearch(
 
     // Delta pruning: if stand_pat + queen value can't raise alpha, prune
     const QUEEN_VALUE: i32 = 900;
-    if stand_pat + QUEEN_VALUE + 200 < original_alpha {
+    if stand_pat + QUEEN_VALUE + 300 < original_alpha {
         return alpha;
     }
 

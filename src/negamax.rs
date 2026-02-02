@@ -120,6 +120,7 @@ pub fn negamax(
 
         let new_pos = pos.make_move(&mv);
         let gives_check = new_pos.is_in_check();
+        let check_extension = if gives_check { 1 } else { 0 };
 
         // Futility pruning - skip quiet moves in losing positions
         if use_futility && i > 0 {
@@ -130,9 +131,12 @@ pub fn negamax(
 
         let score = if i == 0 {
             // First move: full depth, full window (possibly reduced)
-            if should_reduce(depth, i, in_check, gives_check, mv) {
+            let is_hash_move = tt_move.map_or(false, |tt_mv| mv.0 == tt_mv.0);
+            if should_reduce(depth, i, in_check, gives_check, mv) & !is_hash_move {
                 let reduction = calculate_reduction(depth, i, pv_node, mv);
-                let reduced_depth = depth.saturating_sub(1 + reduction);
+                let reduced_depth = depth
+                    .saturating_sub(1 + reduction)
+                    .saturating_add(check_extension);
 
                 let mut s = -negamax(
                     &new_pos,
@@ -150,7 +154,7 @@ pub fn negamax(
                 if s > alpha {
                     s = -negamax(
                         &new_pos,
-                        depth - 1,
+                        depth - 1 + check_extension,
                         -beta,
                         -alpha,
                         tt,
@@ -178,9 +182,12 @@ pub fn negamax(
             }
         } else {
             // PVS for subsequent moves
-            let mut s = if should_reduce(depth, i, in_check, gives_check, mv) {
+            let is_hash_move = tt_move.map_or(false, |tt_mv| mv.0 == tt_mv.0);
+            let mut s = if should_reduce(depth, i, in_check, gives_check, mv) & !is_hash_move {
                 let reduction = calculate_reduction(depth, i, pv_node, mv);
-                let reduced_depth = depth.saturating_sub(1 + reduction);
+                let reduced_depth = depth
+                    .saturating_sub(1 + reduction)
+                    .saturating_add(check_extension);
 
                 -negamax(
                     &new_pos,
@@ -198,7 +205,7 @@ pub fn negamax(
                 // Null window search
                 -negamax(
                     &new_pos,
-                    depth - 1,
+                    depth - 1 + check_extension,
                     -alpha - 1,
                     -alpha,
                     tt,
@@ -214,7 +221,7 @@ pub fn negamax(
             if s > alpha && s < beta {
                 s = -negamax(
                     &new_pos,
-                    depth - 1,
+                    depth - 1 + check_extension,
                     -beta,
                     -alpha,
                     tt,
