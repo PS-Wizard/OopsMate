@@ -5,6 +5,7 @@ use crate::{
     move_history::KillerTable,
     move_ordering::{pick_next_move, score_move},
     qsearch::qsearch,
+    reverse_futility::{can_use_reverse_futility, get_rfp_margin, should_rfp_prune},
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
     Move, MoveCollector, Piece, Position,
 };
@@ -262,14 +263,21 @@ fn negamax(
             }
         }
     }
+    let static_eval = evaluate(pos);
+    if can_use_reverse_futility(depth, in_check, pv_node, beta) {
+        let rfp_margin = get_rfp_margin(depth);
+
+        if should_rfp_prune(static_eval, beta, rfp_margin) {
+            return static_eval - rfp_margin; // Return the evaluation
+        }
+    }
 
     // Futility Pruning
     let use_futility = can_use_futility_pruning(depth, in_check, pv_node, alpha, beta);
 
     let (static_eval, futility_margin) = if use_futility {
-        let eval = evaluate(pos);
         let margin = get_futility_margin(depth);
-        (eval, margin)
+        (static_eval, margin)
     } else {
         (0, 0) // Not used
     };
