@@ -5,6 +5,9 @@ pub mod evaluate;
 pub mod movegen;
 
 pub mod search;
+pub mod negamax;
+pub mod pvs;
+pub mod null_move;
 
 pub mod tpt;
 pub mod zobrist;
