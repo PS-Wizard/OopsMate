@@ -68,11 +68,8 @@ impl TranspositionTable {
         }
 
         let entry = unsafe { self.table.get_unchecked(idx) };
-        if entry.key == hash {
-            Some(entry)
-        } else {
-            None
-        }
+
+        ((entry.key == hash) as usize != 0).then_some(entry)
     }
 
     #[inline(always)]
@@ -80,24 +77,23 @@ impl TranspositionTable {
         let idx = (hash & self.mask) as usize;
         let entry = unsafe { self.table.get_unchecked_mut(idx) };
 
-        // Calculate replacement value (lower = more likely to replace)
-        let new_value = -(depth as i32);
-        let old_value = if entry.age == self.generation {
-            -(entry.depth as i32)
-        } else {
-            // Penalize old entries (makes them easier to replace)
-            -(entry.depth as i32) + 100
-        };
-
-        let replace = entry.key == 0 || entry.key == hash || new_value < old_value;
+        // Always replace if:
+        // 1. Empty slot
+        // 2. Same position
+        // 3. Newer generation and deeper
+        let replace = entry.key == 0
+            || entry.key == hash
+            || (entry.age != self.generation && depth >= entry.depth);
 
         if replace {
-            entry.key = hash;
-            entry.best_move = best_move;
-            entry.score = score;
-            entry.depth = depth;
-            entry.flag = flag;
-            entry.age = self.generation;
+            *entry = TTEntry {
+                key: hash,
+                best_move,
+                score,
+                depth,
+                flag,
+                age: self.generation,
+            };
         }
     }
 

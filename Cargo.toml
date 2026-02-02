@@ -20,6 +20,7 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"
+debug = true  
 
 [profile.bench]
 inherits = "release"
