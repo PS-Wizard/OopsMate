@@ -73,7 +73,6 @@ pub fn search(
         // Get TT move from previous iteration
         let tt_move = tt.probe(pos.hash()).map(|e| e.best_move);
 
-        // Copy moves to stack array (no heap allocation)
         let mut move_list = [Move(0); MAX_MOVES];
         let mut scores = [0i32; MAX_MOVES];
 
@@ -91,18 +90,53 @@ pub fn search(
             let mv = move_list[i];
 
             let new_pos = pos.make_move(&mv);
-            let score = -negamax(
-                &new_pos,
-                depth - 1,
-                -beta,
-                -alpha,
-                tt,
-                &mut killers,
-                &mut stats,
-                true,
-                true,
-                1, // ply = 1 at root
-            );
+            let score = if i == 0 {
+                // First Move; full window search
+                -negamax(
+                    &new_pos,
+                    depth - 1,
+                    -beta,
+                    -alpha,
+                    tt,
+                    &mut killers,
+                    &mut stats,
+                    true,
+                    true,
+                    1, // ply = 1 at root
+                )
+            } else {
+                // PVS: null window search first
+                let mut score = -negamax(
+                    &new_pos,
+                    depth - 1,
+                    -alpha - 1,
+                    -alpha,
+                    tt,
+                    &mut killers,
+                    &mut stats,
+                    true,
+                    false,
+                    1,
+                );
+
+                // Re-search if it failed high
+                if score > alpha && score < beta {
+                    score = -negamax(
+                        &new_pos,
+                        depth - 1,
+                        -beta,
+                        -alpha,
+                        tt,
+                        &mut killers,
+                        &mut stats,
+                        true,
+                        true,
+                        1,
+                    );
+                }
+
+                score
+            };
 
             if score > iteration_best_score {
                 iteration_best_score = score;
@@ -161,7 +195,7 @@ pub fn search(
 
             let current_depth_time = depth_start.elapsed().as_millis() as u64;
 
-            // Smart time management
+            // time management
             if let Some(max_time) = max_time_ms {
                 let elapsed_total = start_time.elapsed().as_millis() as u64;
                 let time_remaining = max_time.saturating_sub(elapsed_total);
@@ -268,7 +302,7 @@ fn negamax(
         let rfp_margin = get_rfp_margin(depth);
 
         if should_rfp_prune(static_eval, beta, rfp_margin) {
-            return static_eval - rfp_margin; // Return the evaluation
+            return static_eval - rfp_margin;
         }
     }
 
@@ -279,10 +313,9 @@ fn negamax(
         let margin = get_futility_margin(depth);
         (static_eval, margin)
     } else {
-        (0, 0) // Not used
+        (0, 0) 
     };
 
-    // MOVE GENERATION AND ORDERING
     let mut collector = MoveCollector::new();
     pos.generate_moves(&mut collector);
     let moves = collector.as_slice();
@@ -298,7 +331,6 @@ fn negamax(
 
     let move_count = moves.len();
 
-    // Stack arrays instead of Vec (no heap allocation)
     let mut move_list = [Move(0); MAX_MOVES];
     let mut scores = [0i32; MAX_MOVES];
 
@@ -321,34 +353,95 @@ fn negamax(
         if use_futility && i > 0 {
             // Don't prune the first move (TT move)
             if should_prune_move(mv, gives_check, static_eval, alpha, futility_margin) {
-                continue; // Skip this move
+                continue; 
             }
         }
 
-        let mut score;
+        let score = if i == 0 {
+            // First move: full depth, full window
+            if should_reduce(depth, i, in_check, gives_check, mv) {
+                let reduction = calculate_reduction(depth, i, pv_node, mv);
+                let reduced_depth = depth.saturating_sub(1 + reduction);
 
-        // Late Move Reduction (LMR)
-        if should_reduce(depth, i, in_check, gives_check, mv) {
-            let reduction = calculate_reduction(depth, i, pv_node, mv);
+                let mut s = -negamax(
+                    &new_pos,
+                    reduced_depth,
+                    -alpha - 1,
+                    -alpha,
+                    tt,
+                    killers,
+                    stats,
+                    true,
+                    false,
+                    ply + 1,
+                );
 
-            // Search with reduced depth
-            let reduced_depth = depth.saturating_sub(1 + reduction);
-            score = -negamax(
-                &new_pos,
-                reduced_depth,
-                -alpha - 1,
-                -alpha,
-                tt,
-                killers,
-                stats,
-                true,
-                false,
-                ply + 1,
-            );
+                if s > alpha {
+                    s = -negamax(
+                        &new_pos,
+                        depth - 1,
+                        -beta,
+                        -alpha,
+                        tt,
+                        killers,
+                        stats,
+                        true,
+                        pv_node,
+                        ply + 1,
+                    );
+                }
+                s
+            } else {
+                -negamax(
+                    &new_pos,
+                    depth - 1,
+                    -beta,
+                    -alpha,
+                    tt,
+                    killers,
+                    stats,
+                    true,
+                    pv_node,
+                    ply + 1,
+                )
+            }
+        } else {
+            // PVS for subsequent moves
+            let mut s = if should_reduce(depth, i, in_check, gives_check, mv) {
+                let reduction = calculate_reduction(depth, i, pv_node, mv);
+                let reduced_depth = depth.saturating_sub(1 + reduction);
 
-            // If the reduced search failed high, re-search at full depth
-            if score > alpha {
-                score = -negamax(
+                -negamax(
+                    &new_pos,
+                    reduced_depth,
+                    -alpha - 1,
+                    -alpha,
+                    tt,
+                    killers,
+                    stats,
+                    true,
+                    false,
+                    ply + 1,
+                )
+            } else {
+                // Null window search
+                -negamax(
+                    &new_pos,
+                    depth - 1,
+                    -alpha - 1,
+                    -alpha,
+                    tt,
+                    killers,
+                    stats,
+                    true,
+                    false,
+                    ply + 1,
+                )
+            };
+
+            // Re-search if failed high with full window
+            if s > alpha && s < beta {
+                s = -negamax(
                     &new_pos,
                     depth - 1,
                     -beta,
@@ -361,21 +454,9 @@ fn negamax(
                     ply + 1,
                 );
             }
-        } else {
-            // Full depth search for important moves
-            score = -negamax(
-                &new_pos,
-                depth - 1,
-                -beta,
-                -alpha,
-                tt,
-                killers,
-                stats,
-                true,
-                pv_node,
-                ply + 1,
-            );
-        }
+
+            s
+        };
 
         if score >= beta {
             // Beta cutoff: store killer move if it's quiet
@@ -450,7 +531,10 @@ mod test_search {
     #[ignore = "Overflows On Debug / Need Release"]
     fn test_iterative_deepening() {
         let depth = 18;
-        let pos = Position::new();
+        let pos = Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        )
+        .unwrap();
         let mut tt = TranspositionTable::new_mb(256);
         init();
 

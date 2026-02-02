@@ -15,7 +15,7 @@ cutechess-cli \
 
 cutechess-cli \
   -engine cmd=./oops_mate name="OopsMate" \
-  -engine cmd=stockfish name="SF-1750" option."UCI_LimitStrength"=true option."UCI_Elo"=1750 \
+  -engine cmd=stockfish name="SF-1900" option."UCI_LimitStrength"=true option."UCI_Elo"=1900 \
   -each proto=uci tc=5+0.05 \
   -rounds 300 \
   -openings file=Modern.pgn format=pgn order=random plies=16 \
