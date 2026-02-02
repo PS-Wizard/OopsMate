@@ -23,12 +23,7 @@ pub struct Position {
 
 impl Clone for Position {
     fn clone(&self) -> Self {
-        // Use ptr::copy_nonoverlapping for speed
-        unsafe {
-            let mut new_pos = std::mem::MaybeUninit::<Position>::uninit();
-            std::ptr::copy_nonoverlapping(self as *const Position, new_pos.as_mut_ptr(), 1);
-            new_pos.assume_init()
-        }
+        unsafe { std::ptr::read(self) }
     }
 }
 impl Position {

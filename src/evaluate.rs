@@ -1,4 +1,4 @@
-use crate::{Color, Position};
+use crate::{Bitboard, Color, Position};
 
 // ============================================================================
 // CONSTANTS
@@ -179,62 +179,121 @@ const EG_TABLES: [&[i32; 64]; 6] = [
 // ============================================================================
 // EVALUATION
 // ============================================================================
-
 pub fn evaluate(pos: &Position) -> i32 {
-    let mut mg = [0; 2];
-    let mut eg = [0; 2];
-    let mut game_phase = 0;
+    let mut mg = [0i32; 2];
+    let mut eg = [0i32; 2];
+    let mut game_phase = 0i32;
 
     let white_pieces = pos.colors[Color::White as usize].0;
     let black_pieces = pos.colors[Color::Black as usize].0;
 
-    // Iterate through all piece types (Pawn=0 .. King=5)
-    for piece in 0..6 {
-        let piece_bb = pos.pieces[piece].0;
-        let mg_val = MG_VALUE[piece];
-        let eg_val = EG_VALUE[piece];
-        let phase_val = GAME_PHASE_INC[piece];
-
-        let mg_pst = MG_TABLES[piece];
-        let eg_pst = EG_TABLES[piece];
-
-        // White
-        let mut us = piece_bb & white_pieces;
-        while us != 0 {
-            let sq = us.trailing_zeros() as usize;
-            us &= us - 1; // Clear LS1B
-
-            mg[0] += mg_val + mg_pst[sq];
-            eg[0] += eg_val + eg_pst[sq];
-            game_phase += phase_val;
-        }
-
-        // Black
-        let mut them = piece_bb & black_pieces;
-        while them != 0 {
-            let sq = them.trailing_zeros() as usize;
-            them &= them - 1; // Clear LS1B
-
-            // Mirror square for Black (sq ^ 56) vertical flip
-            let mirror_sq = sq ^ 56;
-
-            mg[1] += mg_val + mg_pst[mirror_sq];
-            eg[1] += eg_val + eg_pst[mirror_sq];
-            game_phase += phase_val;
-        }
+    // Unroll the loop for better performance
+    unsafe {
+        // Pawn (0)
+        eval_piece::<0>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        // Knight (1)
+        eval_piece::<1>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        // Bishop (2)
+        eval_piece::<2>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        // Rook (3)
+        eval_piece::<3>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        // Queen (4)
+        eval_piece::<4>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        // King (5)
+        eval_piece::<5>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
     }
 
-    // Tapered Evaluation
+    // Tapered eval
     let side = pos.side_to_move as usize;
-    let other = side ^ 1;
+    let mg_score = mg[side] - mg[side ^ 1];
+    let eg_score = eg[side] - eg[side ^ 1];
 
-    let mg_score = mg[side] - mg[other];
-    let eg_score = eg[side] - eg[other];
-
-    let mg_phase = if game_phase > 24 { 24 } else { game_phase };
+    let mg_phase = game_phase.min(24);
     let eg_phase = 24 - mg_phase;
 
     (mg_score * mg_phase + eg_score * eg_phase) / 24
+}
+
+#[inline(always)]
+unsafe fn eval_piece<const PIECE: usize>(
+    pieces: &[Bitboard; 6],
+    white_pieces: u64,
+    black_pieces: u64,
+    mg: &mut [i32; 2],
+    eg: &mut [i32; 2],
+    game_phase: &mut i32,
+) {
+    let piece_bb = pieces.get_unchecked(PIECE).0;
+    let mg_val = *MG_VALUE.get_unchecked(PIECE);
+    let eg_val = *EG_VALUE.get_unchecked(PIECE);
+    let phase_val = *GAME_PHASE_INC.get_unchecked(PIECE);
+    let mg_pst = MG_TABLES.get_unchecked(PIECE);
+    let eg_pst = EG_TABLES.get_unchecked(PIECE);
+
+    // White pieces
+    let mut us = piece_bb & white_pieces;
+    while us != 0 {
+        let sq = us.trailing_zeros() as usize;
+        us &= us.wrapping_sub(1);
+
+        *mg.get_unchecked_mut(0) += mg_val + mg_pst.get_unchecked(sq);
+        *eg.get_unchecked_mut(0) += eg_val + eg_pst.get_unchecked(sq);
+        *game_phase += phase_val;
+    }
+
+    // Black pieces
+    let mut them = piece_bb & black_pieces;
+    while them != 0 {
+        let sq = them.trailing_zeros() as usize;
+        them &= them.wrapping_sub(1);
+        let mirror_sq = sq ^ 56;
+
+        *mg.get_unchecked_mut(1) += mg_val + mg_pst.get_unchecked(mirror_sq);
+        *eg.get_unchecked_mut(1) += eg_val + eg_pst.get_unchecked(mirror_sq);
+        *game_phase += phase_val;
+    }
 }
 
 #[cfg(test)]
@@ -245,10 +304,11 @@ mod test_evaluation {
     #[test]
     fn test_material_imbalance() {
         // This is a mate in one; white wins the next move, but the evaluation says black is
-        // winning by ~2 pawns. This is expected. 
+        // winning by ~2 pawns. This is expected.
         //
         // Evaluation is Blind, Search is the actual vision
-        let pos = Position::from_fen("1nbqkb2/2pppp2/1pn5/8/2B5/5Q2/1PPPPP2/1NB1K3 w - - 0 1") .unwrap();
+        let pos =
+            Position::from_fen("1nbqkb2/2pppp2/1pn5/8/2B5/5Q2/1PPPPP2/1NB1K3 w - - 0 1").unwrap();
         let score = evaluate(&pos);
         println!("Evaluation: {:.2}", score as f32 / 100.0);
     }
