@@ -3,12 +3,16 @@ const MAX_RFP_DEPTH: u8 = 7;
 
 /// Reverse futility margins by depth
 /// These are more aggressive than forward futility since we're betting our position is winning
+#[rustfmt::skip]
 const RFP_MARGINS: [i32; 8] = [
     0,   // depth 0 (not used)
     150, // depth 1
     250, // depth 2
     350, // depth 3
-    450, 500, 600, 700,
+    450,
+    500,
+    600,
+    700,
 ];
 
 /// Check if we can apply reverse futility pruning to this position

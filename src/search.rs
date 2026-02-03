@@ -1,7 +1,7 @@
 use crate::{
     move_history::KillerTable,
     move_ordering::{pick_next_move, score_move},
-    negamax::negamax,
+    pvs::search_move,
     tpt::{TranspositionTable, EXACT},
     Move, MoveCollector, Position,
 };
@@ -59,6 +59,7 @@ pub fn search(
     }
 
     let move_count = moves.len();
+    let in_check = pos.is_in_check();
 
     // Iterative deepening loop
     for depth in 1..=max_depth {
@@ -84,55 +85,23 @@ pub fn search(
         for i in 0..move_count {
             pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
             let mv = move_list[i];
-
-            let new_pos = pos.make_move(&mv);
-            let score = if i == 0 {
-                // First Move; full window search
-                -negamax(
-                    &new_pos,
-                    depth - 1,
-                    -beta,
-                    -alpha,
-                    tt,
-                    &mut killers,
-                    &mut stats,
-                    true,
-                    true,
-                    1, // ply = 1 at root
-                )
-            } else {
-                // PVS: null window search first
-                let mut score = -negamax(
-                    &new_pos,
-                    depth - 1,
-                    -alpha - 1,
-                    -alpha,
-                    tt,
-                    &mut killers,
-                    &mut stats,
-                    true,
-                    false,
-                    1,
-                );
-
-                // Re-search if it failed high
-                if score > alpha && score < beta {
-                    score = -negamax(
-                        &new_pos,
-                        depth - 1,
-                        -beta,
-                        -alpha,
-                        tt,
-                        &mut killers,
-                        &mut stats,
-                        true,
-                        true,
-                        1,
-                    );
-                }
-
-                score
-            };
+            let newpos = pos.make_move(&mv);
+            let gives_check = newpos.is_in_check();
+            let score = search_move(
+                &newpos,
+                mv,
+                depth,
+                alpha,
+                beta,
+                i, // move number
+                in_check,
+                gives_check,
+                true, // PV node at root
+                tt,
+                &mut killers,
+                &mut stats,
+                0, // ply = 0 at root
+            );
 
             if score > iteration_best_score {
                 iteration_best_score = score;
@@ -281,8 +250,8 @@ mod test_search {
         let depth = 18;
         let pos = Position::from_fen(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-        ).unwrap_or_default();
-        // let pos = Position::new();
+        )
+        .unwrap_or_default();
         let mut tt = TranspositionTable::new_mb(256);
         init();
 
