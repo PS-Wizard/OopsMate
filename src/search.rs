@@ -279,10 +279,10 @@ mod test_search {
     #[ignore = "Overflows On Debug / Need Release"]
     fn test_iterative_deepening() {
         let depth = 18;
-        // let pos = Position::from_fen(
-        //     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-        // )
-        let pos = Position::new();
+        let pos = Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        ).unwrap_or_default();
+        // let pos = Position::new();
         let mut tt = TranspositionTable::new_mb(256);
         init();
 

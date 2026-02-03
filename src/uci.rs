@@ -42,7 +42,10 @@ impl UciEngine {
                 "position" => self.handle_position(&parts[1..]),
                 "go" => self.handle_go(&parts[1..]),
                 "quit" => break,
-                "stop" => {} // TODO: Implement search stopping
+                "stop" => {
+                    println!("bestmove 0000");
+                    let _ = std::io::stdout().flush();
+                }
                 _ => {}
             }
         }
@@ -281,7 +284,7 @@ impl UciEngine {
             None // No time limit for depth-only search
         };
 
-        // Search with iterative deepening 
+        // Search with iterative deepening
         if let Some(info) = search(&mut self.position, depth, allocated_time, &mut self.tt) {
             println!("bestmove {}", Self::move_to_uci(&info.best_move));
         } else {

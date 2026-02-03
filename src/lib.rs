@@ -24,6 +24,8 @@ pub mod move_history;
 pub mod futility;
 pub mod reverse_futility;
 
+pub mod razoring;
+
 pub use position::Position;
 pub use types::*;
 

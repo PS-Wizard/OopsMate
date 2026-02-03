@@ -1,0 +1,38 @@
+cutechess-cli \
+  -engine cmd=./oops_mate name="OopsMate" \
+  -engine cmd=stockfish name="SF-1900" option."UCI_LimitStrength"=true option."UCI_Elo"=1900 option."Hash"=64 \
+  -each proto=uci tc=5+0.05 \
+  -rounds 100 \
+  -openings file=Modern.pgn format=pgn order=random plies=16 \
+  -pgnout match.pgn \
+  -concurrency 8 \
+  -draw movenumber=40 movecount=8 score=10 \
+  -resign movecount=5 score=600
+
+cutechess-cli \
+  -engine cmd=./oops_mate name="OopsMate" \
+  -engine cmd=stockfish name="SF-1900" option."UCI_LimitStrength"=true option."UCI_Elo"=1900 option."Hash"=64 \
+  -engine cmd=./goldfish name="Goldfish" option."Hash"=64 \
+  -engine cmd=./sayuri name="Sayuri" option."Hash"=64 \
+  -each proto=uci tc=5+0.05 \
+  -rounds 100 \
+  -openings file=Modern.pgn format=pgn order=random plies=16 \
+  -pgnout gauntlet.pgn \
+  -concurrency 8 \
+  -tournament gauntlet
+
+cutechess-cli \
+  -engine cmd=./oops_mate name="OopsMate" \
+  -engine cmd=./sayuri name="Sayuri" option."Hash"=64 \
+  -each proto=uci tc=5+0.05 \
+  -rounds 100 \
+  -openings file=Modern.pgn format=pgn order=random plies=16 \
+  -pgnout match.pgn \
+  -concurrency 6 \
+  -draw movenumber=40 movecount=8 score=10 \
+  -resign movecount=5 score=600
+
+
+=====
+
+./ordo -a 1807 -A "Sayuri" -- <insert path to pgns>

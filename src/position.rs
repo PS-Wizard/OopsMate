@@ -6,7 +6,7 @@ use crate::{
 // ============================================================================
 // POSITION
 // ============================================================================
-#[derive(Copy, PartialEq)]
+#[derive(Copy, PartialEq, Debug)]
 pub struct Position {
     // Piece bitboards [Pawn, Knight, Bishop, Rook, Queen, King]
     pub pieces: [Bitboard; 6],
