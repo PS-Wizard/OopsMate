@@ -36,4 +36,4 @@ cutechess-cli \
 
 =====
 
-./ordo -a 1807 -A "Sayuri" -- <insert path to pgns>
+./ordo -a 1807 -A "Sayuri" -p <oops_vs_sayuri.pgn>
