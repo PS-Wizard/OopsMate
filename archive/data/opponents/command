@@ -22,16 +22,17 @@ cutechess-cli \
   -tournament gauntlet
 
 cutechess-cli \
-  -engine cmd=./oops_mate name="OopsMate" \
-  -engine cmd=./sayuri name="Sayuri" option."Hash"=64 \
+  -engine cmd=./oops_mate \
+  -engine cmd=./sayuri \
   -each proto=uci tc=5+0.05 \
-  -rounds 100 \
+  -rounds 300 \
+  -recover \
+  -wait 1 \
   -openings file=Modern.pgn format=pgn order=random plies=16 \
-  -pgnout match.pgn \
-  -concurrency 6 \
+  -pgnout games.pgn \
+  -concurrency 8 \
   -draw movenumber=40 movecount=8 score=10 \
   -resign movecount=5 score=600
-
 
 =====
 
