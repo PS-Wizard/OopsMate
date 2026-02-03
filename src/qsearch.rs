@@ -1,5 +1,4 @@
 use crate::evaluate::evaluate;
-use crate::move_history::KillerTable;
 use crate::move_ordering::{pick_next_move, score_move, PIECE_VALUES};
 use crate::search::SearchStats;
 use crate::{Move, MoveCollector, Position};
@@ -47,9 +46,6 @@ pub fn qsearch(
     let mut scores = [0i32; MAX_MOVES];
     let mut capture_count = 0;
 
-    // Dummy killer table for qsearch (killers don't apply here)
-    let killers = KillerTable::new();
-
     for &m in moves {
         if m.is_capture() || m.is_promotion() {
             if m.is_capture() {
@@ -70,7 +66,7 @@ pub fn qsearch(
             }
 
             capture_list[capture_count] = m;
-            scores[capture_count] = score_move(m, pos, None, &killers, ply as usize);
+            scores[capture_count] = score_move(m, pos, None, None, ply as usize);
             capture_count += 1;
         }
     }

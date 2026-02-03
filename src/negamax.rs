@@ -116,7 +116,7 @@ pub fn negamax(
     // Score moves for ordering
     for i in 0..move_count {
         move_list[i] = moves[i];
-        scores[i] = score_move(moves[i], pos, tt_move, killers, ply);
+        scores[i] = score_move(moves[i], pos, tt_move, Some(&killers), ply);
     }
 
     let mut best_score = -INFINITY;

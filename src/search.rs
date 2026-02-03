@@ -75,7 +75,7 @@ pub fn search(
 
         for i in 0..move_count {
             move_list[i] = moves[i];
-            scores[i] = score_move(moves[i], pos, tt_move, &killers, 0);
+            scores[i] = score_move(moves[i], pos, tt_move, Some(&killers), 0);
         }
 
         let mut iteration_best_move = None;

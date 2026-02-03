@@ -23,7 +23,7 @@ pub fn score_move(
     m: Move,
     pos: &Position,
     tt_move: Option<Move>,
-    killers: &KillerTable,
+    killers: Option<&KillerTable>,
     ply: usize,
 ) -> i32 {
     // TT move gets highest priority
@@ -59,12 +59,19 @@ pub fn score_move(
     }
 
     // Killer moves
-    if killers.is_killer(ply, m) {
-        return if Some(m) == killers.get_primary(ply) {
-            SCORE_KILLER_PRIMARY
-        } else {
-            SCORE_KILLER_SECONDARY
-        };
+    match killers {
+        Some(killers) => {
+            if killers.is_killer(ply, m) {
+                return if Some(m) == killers.get_primary(ply) {
+                    SCORE_KILLER_PRIMARY
+                } else {
+                    SCORE_KILLER_SECONDARY
+                };
+            }
+        }
+        None => {
+
+        }
     }
 
     0
