@@ -140,56 +140,19 @@ pub fn negamax(
         }
 
         let score = if i == 0 {
-            // First move: full depth, full window (possibly reduced)
-            let is_hash_move = tt_move.map_or(false, |tt_mv| mv.0 == tt_mv.0);
-            if should_reduce(depth, i, in_check, gives_check, mv) & !is_hash_move {
-                let reduction = calculate_reduction(depth, i, pv_node, mv);
-                let reduced_depth = depth
-                    .saturating_sub(1 + reduction)
-                    .saturating_add(check_extension);
-
-                let mut s = -negamax(
-                    &new_pos,
-                    reduced_depth,
-                    -alpha - 1,
-                    -alpha,
-                    tt,
-                    killers,
-                    stats,
-                    true,
-                    false,
-                    ply + 1,
-                );
-
-                if s > alpha {
-                    s = -negamax(
-                        &new_pos,
-                        depth - 1 + check_extension,
-                        -beta,
-                        -alpha,
-                        tt,
-                        killers,
-                        stats,
-                        true,
-                        pv_node,
-                        ply + 1,
-                    );
-                }
-                s
-            } else {
-                -negamax(
-                    &new_pos,
-                    depth - 1,
-                    -beta,
-                    -alpha,
-                    tt,
-                    killers,
-                    stats,
-                    true,
-                    pv_node,
-                    ply + 1,
-                )
-            }
+            // First move: full depth, full window
+            -negamax(
+                &new_pos,
+                depth - 1,
+                -beta,
+                -alpha,
+                tt,
+                killers,
+                stats,
+                true,
+                pv_node,
+                ply + 1,
+            )
         } else {
             // PVS for subsequent moves
             let is_hash_move = tt_move.map_or(false, |tt_mv| mv.0 == tt_mv.0);
