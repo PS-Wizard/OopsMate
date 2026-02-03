@@ -6,6 +6,7 @@ use crate::{
     move_ordering::{pick_next_move, score_move},
     null_move::try_null_move_pruning,
     qsearch::qsearch,
+    razoring::try_razoring,
     reverse_futility::{can_use_reverse_futility, get_rfp_margin, should_rfp_prune},
     search::SearchStats,
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
@@ -56,20 +57,19 @@ pub fn negamax(
     if depth == 0 {
         return qsearch(pos, alpha, beta, stats, 0);
     }
-
     let in_check = pos.is_in_check();
-
-    // Try null move pruning
-    if let Some(score) = try_null_move_pruning(
-        pos, depth, beta, allow_null, in_check, tt, killers, stats, ply,
-    ) {
-        return score;
-    }
 
     // Static evaluation for pruning decisions
     let static_eval = evaluate(pos);
 
+    // RAZORING (depth 1-3, losing badly)
+    // "Am I so far behind that even tactics can't save me?"
+    if let Some(score) = try_razoring(pos, depth, alpha, in_check, pv_node, static_eval, stats) {
+        return score;
+    }
+
     // Reverse futility pruning
+    // "Am I winning by so much I can just return?"
     if can_use_reverse_futility(depth, in_check, pv_node, beta) {
         let rfp_margin = get_rfp_margin(depth);
         if should_rfp_prune(static_eval, beta, rfp_margin) {
@@ -77,7 +77,16 @@ pub fn negamax(
         }
     }
 
+    // Try null move pruning
+    // "Let me verify I'm winning by giving opponent free move"
+    if let Some(score) = try_null_move_pruning(
+        pos, depth, beta, allow_null, in_check, tt, killers, stats, ply,
+    ) {
+        return score;
+    }
+
     // Futility pruning setup
+    // "Prepare to skip hopeless quiet moves later"
     let use_futility = can_use_futility_pruning(depth, in_check, pv_node, alpha, beta);
     let (static_eval, futility_margin) = if use_futility {
         let margin = get_futility_margin(depth);
@@ -123,6 +132,7 @@ pub fn negamax(
         let check_extension = if gives_check { 1 } else { 0 };
 
         // Futility pruning - skip quiet moves in losing positions
+        // "This quiet move can't raise alpha, skip it"
         if use_futility && i > 0 {
             if should_prune_move(mv, gives_check, static_eval, alpha, futility_margin) {
                 continue;
