@@ -1,5 +1,5 @@
 use crate::evaluate::evaluate;
-use crate::move_ordering::{pick_next_move, score_move, PIECE_VALUES};
+use crate::move_ordering::{pick_next_move, score_move};
 use crate::search::SearchStats;
 use crate::{Move, MoveCollector, Position};
 
@@ -16,8 +16,7 @@ pub fn qsearch(
     stats.nodes += 1;
 
     // MAX QSEARCH DEPTH
-    const MAX_QSEARCH_PLY: i32 = 64;
-    if ply >= MAX_QSEARCH_PLY {
+    if ply >= 64 {
         return evaluate(pos);
     }
 
@@ -33,9 +32,11 @@ pub fn qsearch(
     }
 
     // Delta pruning: if stand_pat + queen value can't raise alpha, prune
-    const QUEEN_VALUE: i32 = 900;
-    if stand_pat + QUEEN_VALUE + 300 < original_alpha {
-        return alpha;
+    if !pos.is_in_check() {
+        const QUEEN_VALUE: i32 = 900;
+        if stand_pat + QUEEN_VALUE + 300 < original_alpha {
+            return original_alpha;
+        }
     }
 
     let mut collector = MoveCollector::new();
@@ -47,30 +48,26 @@ pub fn qsearch(
     let mut capture_count = 0;
 
     for &m in moves {
+        // Only Captures and Promotions
         if m.is_capture() || m.is_promotion() {
+            // SEE PRUNING
             if m.is_capture() {
-                let victim_value = pos
-                    .piece_at(m.to())
-                    .map(|(p, _)| PIECE_VALUES[p as usize])
-                    .unwrap_or(0);
-                let attacker_value = pos
-                    .piece_at(m.from())
-                    .map(|(p, _)| PIECE_VALUES[p as usize])
-                    .unwrap_or(0);
+                let see_score = pos.see(&m);
 
-                // Don't search captures that lose material (SEE < 0)
-                // This is a simple heuristic: don't take a pawn with a queen if the pawn is defended
-                if victim_value < attacker_value / 2 && ply > 0 {
-                    continue; // Skip likely bad captures
+                // If the exchange loses material (SEE < 0), prune it.
+                if see_score < 0 {
+                    continue;
                 }
             }
 
             capture_list[capture_count] = m;
-            scores[capture_count] = score_move(m, pos, None, None, ply as usize);
+
+            scores[capture_count] = score_move(m, pos, None, None, 0);
             capture_count += 1;
         }
     }
 
+    // If no moves passed SEE or generation, return the static eval
     if capture_count == 0 {
         return stand_pat;
     }

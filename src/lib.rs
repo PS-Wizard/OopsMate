@@ -4,6 +4,8 @@ pub mod types;
 pub mod evaluate;
 pub mod movegen;
 
+pub mod see;
+
 pub mod search;
 pub mod aspiration;
 pub mod negamax;
