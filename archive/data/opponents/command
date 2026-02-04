@@ -34,6 +34,18 @@ cutechess-cli \
   -draw movenumber=40 movecount=8 score=10 \
   -resign movecount=5 score=600
 
+cutechess-cli \
+  -engine cmd=./oops_mate name="OopsMate-v11"\
+  -engine cmd=./oops_mate_v10_aspiration_windows name="OopsMate-v10" \
+  -each proto=uci tc=5+0.05 \
+  -rounds 300 \
+  -recover \
+  -wait 1 \
+  -openings file=Modern.pgn format=pgn order=random plies=16 \
+  -pgnout games.pgn \
+  -concurrency 8 \
+  -draw movenumber=40 movecount=8 score=10 \
+  -resign movecount=5 score=600
 =====
 
 ./ordo -a 1807 -A "Sayuri" -p <oops_vs_sayuri.pgn>
