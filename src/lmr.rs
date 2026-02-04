@@ -95,7 +95,7 @@ pub fn calculate_reduction(depth: u8, move_num: usize, pv_node: bool, mv: Move) 
     let move_idx = move_num.min(MAX_MOVES - 1);
 
     // Get base reduction from table (quiet move formula)
-    let mut reduction = table[depth_idx][move_idx];
+    let mut reduction = unsafe { *table.get_unchecked(depth_idx).get_unchecked(move_idx) };
 
     // Adjust for captures (reduce them less)
     // Weiss: 0.20 + ln(depth) * ln(moves) / 3.35 for captures

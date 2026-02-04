@@ -72,10 +72,7 @@ pub enum Color {
 impl Color {
     #[inline(always)]
     pub const fn flip(self) -> Color {
-        match self {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
-        }
+        unsafe { std::mem::transmute(self as u8 ^ 1) }
     }
 }
 
