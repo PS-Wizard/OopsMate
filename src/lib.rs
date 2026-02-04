@@ -19,6 +19,7 @@ pub mod time_control;
 pub mod move_ordering;
 pub mod qsearch;
 pub mod lmr;
+pub mod iid;
 
 pub mod move_history;
 
