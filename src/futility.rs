@@ -3,7 +3,6 @@ use crate::Move;
 /// Maximum depth at which futility pruning is applied
 const MAX_FUTILITY_DEPTH: u8 = 7;
 
-
 #[rustfmt::skip]
 const FUTILITY_MARGINS: [i32; 8] = [
     0,   // depth 0 (not used, handled by qsearch)

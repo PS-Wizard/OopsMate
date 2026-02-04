@@ -69,9 +69,7 @@ pub fn score_move(
                 };
             }
         }
-        None => {
-
-        }
+        None => {}
     }
 
     0
@@ -86,11 +84,11 @@ pub fn pick_next_move(moves: &mut [Move], scores: &mut [i32], index: usize) {
     }
 
     let mut best_idx = index;
-    let mut best_score = scores[index];
+    let mut best_score = unsafe { *scores.get_unchecked(index) };
 
     for i in (index + 1)..moves.len() {
         if scores[i] > best_score {
-            best_score = scores[i];
+            best_score = unsafe { *scores.get_unchecked(i) };
             best_idx = i;
         }
     }

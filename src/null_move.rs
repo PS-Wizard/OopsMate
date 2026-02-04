@@ -52,8 +52,8 @@ pub fn try_null_move_pruning(
         tt,
         killers,
         stats,
-        false, // Don't allow consecutive null moves
-        false, // Not a PV node
+        false,
+        false,
         ply + 1,
     );
 
@@ -81,8 +81,8 @@ mod tests {
 
     #[test]
     fn test_make_null_move() {
-        let pos = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-            .unwrap();
+        let pos =
+            Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
         let null_pos = make_null_move(&pos);
 

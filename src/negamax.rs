@@ -1,6 +1,7 @@
 use crate::{
     evaluate::evaluate,
     futility::{can_use_futility_pruning, get_futility_margin, should_prune_move},
+    iid::try_iid,
     lmr::{calculate_reduction, should_reduce},
     move_history::KillerTable,
     move_ordering::{pick_next_move, score_move},
@@ -84,6 +85,25 @@ pub fn negamax(
     ) {
         return score;
     }
+
+    // Internal Iterative Deepening-  get a good move if we don't have a TT move
+    // "Let me do a quick search to find the best move for ordering"
+    let iid_move = try_iid(
+        pos,
+        depth,
+        alpha,
+        beta,
+        pv_node,
+        tt_move.is_some(),
+        in_check,
+        tt,
+        killers,
+        stats,
+        ply,
+    );
+
+    // Use IID move if we found one and don't have a TT move
+    let tt_move = tt_move.or(iid_move);
 
     // Futility pruning setup
     // "Prepare to skip hopeless quiet moves later"

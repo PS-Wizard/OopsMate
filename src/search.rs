@@ -65,9 +65,6 @@ pub fn search(
         best_move = Some(iteration_best_move);
         best_score = iteration_best_score;
 
-        // NOTE: We do NOT store in TT here because search_aspiration/search_with_window
-        // already stored the result with the correct bound flag
-
         // Print UCI info
         print_uci_info(
             depth,
@@ -190,7 +187,12 @@ mod test_search {
     #[ignore = "Overflows On Debug / Need Release"]
     fn test_iterative_deepening() {
         let depth = 18;
-        let pos = Position::new();
+        // let pos = Position::new();
+        let pos = Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        )
+        .unwrap_or_default();
+
         let mut tt = TranspositionTable::new_mb(256);
         init();
 
