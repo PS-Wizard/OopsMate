@@ -7,6 +7,7 @@ use crate::{
 pub struct Position {
     pub pieces: [Bitboard; 6],
     pub colors: [Bitboard; 2],
+    pub board: [Option<(Piece, Color)>; 64],
     pub side_to_move: Color,
     pub castling_rights: CastleRights,
     pub en_passant: Option<u8>,
@@ -36,6 +37,7 @@ impl Position {
         let mut pos = Position {
             pieces: [Bitboard::new(); 6],
             colors: [Bitboard::new(); 2],
+            board: [None; 64],
             side_to_move: Color::White,
             castling_rights: CastleRights::NONE,
             en_passant: None,
@@ -65,8 +67,7 @@ impl Position {
                         'k' => (Piece::King, Color::Black),
                         _ => return Err("Invalid piece"),
                     };
-                    pos.pieces[piece as usize].set(sq);
-                    pos.colors[color as usize].set(sq);
+                    pos.add_piece(sq, color, piece);
                     sq += 1;
                 }
             }
@@ -158,30 +159,14 @@ impl Position {
 
     #[inline(always)]
     pub fn piece_at(&self, sq: usize) -> Option<(Piece, Color)> {
-        let mask = 1u64 << sq;
-        for color in [Color::White, Color::Black] {
-            if self.colors[color as usize].0 & mask != 0 {
-                for piece in [
-                    Piece::Pawn,
-                    Piece::Knight,
-                    Piece::Bishop,
-                    Piece::Rook,
-                    Piece::Queen,
-                    Piece::King,
-                ] {
-                    if self.pieces[piece as usize].0 & mask != 0 {
-                        return Some((piece, color));
-                    }
-                }
-            }
-        }
-        None
+        self.board[sq]
     }
 
     #[inline(always)]
     pub fn add_piece(&mut self, sq: usize, color: Color, piece: Piece) {
         self.pieces[piece as usize].set(sq);
         self.colors[color as usize].set(sq);
+        self.board[sq] = Some((piece, color));
     }
 
     #[inline(always)]
@@ -192,6 +177,7 @@ impl Position {
         }
         self.colors[0].0 &= mask;
         self.colors[1].0 &= mask;
+        self.board[sq] = None;
     }
 
     #[inline(always)]
