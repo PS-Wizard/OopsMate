@@ -1,6 +1,6 @@
 use crate::{
     evaluate::evaluate,
-    move_history::KillerTable,
+    move_history::MoveHistory,
     move_ordering::{pick_next_move, score_move},
     pruning::{
         calculate_lmr_reduction, can_use_futility_pruning, can_use_reverse_futility,
@@ -64,7 +64,7 @@ pub fn search(
 ) -> Option<SearchInfo> {
     let start_time = Instant::now();
     let mut stats = SearchStats::new();
-    let mut killers = KillerTable::new();
+    let mut history = MoveHistory::new();
     let mut best_move = None;
     let mut best_score = 0; // Initialize to 0 for first aspiration window
 
@@ -87,7 +87,7 @@ pub fn search(
         // search_aspiration handles both shallow (full window) and deep (aspiration) searches
         // It also handles TT storage internally, so we don't need to store again here
         let (iteration_best_score, iteration_best_move) =
-            search_aspiration(pos, depth, best_score, tt, &mut killers, &mut stats);
+            search_aspiration(pos, depth, best_score, tt, &mut history, &mut stats);
 
         // Update best move for this depth
         best_move = Some(iteration_best_move);
@@ -138,7 +138,7 @@ fn search_aspiration(
     depth: u8,
     prev_score: i32,
     tt: &mut TranspositionTable,
-    killers: &mut KillerTable,
+    history: &mut MoveHistory,
     stats: &mut SearchStats,
 ) -> (i32, Move) {
     let mut collector = MoveCollector::new();
@@ -168,7 +168,7 @@ fn search_aspiration(
             -INFINITY,
             INFINITY,
             tt,
-            killers,
+            history,
             stats,
         );
     }
@@ -181,7 +181,7 @@ fn search_aspiration(
     loop {
         // We pass 'depth' to let search_root know if it should use the optimization
         let (score, best_move) =
-            search_root(pos, moves_slice, depth, alpha, beta, tt, killers, stats);
+            search_root(pos, moves_slice, depth, alpha, beta, tt, history, stats);
 
         // Success Inside window
         if score > alpha && score < beta {
@@ -217,7 +217,7 @@ fn search_root(
     mut alpha: i32,
     beta: i32,
     tt: &mut TranspositionTable,
-    killers: &mut KillerTable,
+    history: &mut MoveHistory,
     stats: &mut SearchStats,
 ) -> (i32, Move) {
     let in_check = pos.is_in_check();
@@ -227,7 +227,7 @@ fn search_root(
 
     // Score moves
     for i in 0..move_count {
-        scores[i] = score_move(moves[i], pos, tt_move, Some(killers), 0);
+        scores[i] = score_move(moves[i], pos, tt_move, Some(history), 0);
     }
 
     let mut best_score = -INFINITY;
@@ -251,7 +251,7 @@ fn search_root(
                 gives_check,
                 true,
                 tt,
-                killers,
+                history,
                 stats,
                 0,
             )
@@ -268,7 +268,7 @@ fn search_root(
                 gives_check,
                 true,
                 tt,
-                killers,
+                history,
                 stats,
                 0,
             );
@@ -284,7 +284,7 @@ fn search_root(
                     gives_check,
                     true,
                     tt,
-                    killers,
+                    history,
                     stats,
                     0,
                 )
@@ -337,7 +337,7 @@ pub fn negamax(
     mut alpha: i32,
     beta: i32,
     tt: &mut TranspositionTable,
-    killers: &mut KillerTable,
+    history: &mut MoveHistory,
     stats: &mut SearchStats,
     allow_null: bool,
     pv_node: bool,
@@ -393,7 +393,7 @@ pub fn negamax(
     // Try null move pruning
     // "Let me verify I'm winning by giving opponent free move"
     if let Some(score) = try_null_move_pruning(
-        pos, depth, beta, allow_null, in_check, tt, killers, stats, ply,
+        pos, depth, beta, allow_null, in_check, tt, history, stats, ply,
     ) {
         return score;
     }
@@ -409,7 +409,7 @@ pub fn negamax(
         tt_move.is_some(),
         in_check,
         tt,
-        killers,
+        history,
         stats,
         ply,
     );
@@ -448,7 +448,7 @@ pub fn negamax(
     // Score moves for ordering
     for i in 0..move_count {
         move_list[i] = moves[i];
-        scores[i] = score_move(moves[i], pos, tt_move, Some(&killers), ply);
+        scores[i] = score_move(moves[i], pos, tt_move, Some(history), ply);
     }
 
     let mut best_score = -INFINITY;
@@ -479,7 +479,7 @@ pub fn negamax(
                 -beta,
                 -alpha,
                 tt,
-                killers,
+                history,
                 stats,
                 true,
                 pv_node,
@@ -500,7 +500,7 @@ pub fn negamax(
                     -alpha - 1,
                     -alpha,
                     tt,
-                    killers,
+                    history,
                     stats,
                     true,
                     false,
@@ -514,7 +514,7 @@ pub fn negamax(
                     -alpha - 1,
                     -alpha,
                     tt,
-                    killers,
+                    history,
                     stats,
                     true,
                     false,
@@ -530,7 +530,7 @@ pub fn negamax(
                     -beta,
                     -alpha,
                     tt,
-                    killers,
+                    history,
                     stats,
                     true,
                     pv_node,
@@ -545,7 +545,11 @@ pub fn negamax(
         if score >= beta {
             // Store killer move if it's quiet
             if !mv.is_capture() && !mv.is_promotion() {
-                killers.store(ply, mv);
+                history.killers.store(ply, mv);
+                
+                // History Heuristic: Reward the cutoff move
+                let bonus = (depth as i16 * depth as i16).min(400);
+                history.history.update(pos.side_to_move, mv.from(), mv.to(), bonus);
             }
 
             tt.store(hash, mv, beta, depth, LOWER_BOUND);
@@ -594,7 +598,7 @@ pub fn search_move(
     gives_check: bool,
     pv_node: bool,
     tt: &mut TranspositionTable,
-    killers: &mut KillerTable,
+    history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
 ) -> i32 {
@@ -606,7 +610,7 @@ pub fn search_move(
             -beta,
             -alpha,
             tt,
-            killers,
+            history,
             stats,
             gives_check,
             pv_node,
@@ -628,7 +632,7 @@ pub fn search_move(
             -alpha - 1,
             -alpha,
             tt,
-            killers,
+            history,
             stats,
             gives_check,
             false,
@@ -642,7 +646,7 @@ pub fn search_move(
             -alpha - 1,
             -alpha,
             tt,
-            killers,
+            history,
             stats,
             gives_check,
             false,
@@ -658,7 +662,7 @@ pub fn search_move(
             -beta,
             -alpha,
             tt,
-            killers,
+            history,
             stats,
             gives_check,
             pv_node,
@@ -697,7 +701,7 @@ pub fn try_iid(
     has_tt_move: bool,
     in_check: bool,
     tt: &mut TranspositionTable,
-    killers: &mut KillerTable,
+    history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
 ) -> Option<Move> {
@@ -715,7 +719,7 @@ pub fn try_iid(
 
     // Perform reduced search
     negamax(
-        pos, iid_depth, alpha, beta, tt, killers, stats, true, // allow_null
+        pos, iid_depth, alpha, beta, tt, history, stats, true, // allow_null
         pv_node, ply,
     );
 
@@ -833,7 +837,7 @@ mod tests {
 
         let pos = Position::new();
         let mut tt = TranspositionTable::new_mb(16);
-        let mut killers = KillerTable::new();
+        let mut history = MoveHistory::new();
         let mut stats = SearchStats::new();
 
         // Should not trigger at shallow depths
@@ -846,7 +850,7 @@ mod tests {
             false,
             false,
             &mut tt,
-            &mut killers,
+            &mut history,
             &mut stats,
             0,
         );
@@ -862,7 +866,7 @@ mod tests {
             false,
             false,
             &mut tt,
-            &mut killers,
+            &mut history,
             &mut stats,
             0,
         );
@@ -874,7 +878,7 @@ mod tests {
         let pos =
             Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
         let mut tt = TranspositionTable::new_mb(16);
-        let mut killers = KillerTable::new();
+        let mut history = MoveHistory::new();
         let mut stats = SearchStats::new();
 
         let mut collector = crate::MoveCollector::new();
@@ -893,7 +897,7 @@ mod tests {
                 false,
                 true,
                 &mut tt,
-                &mut killers,
+                &mut history,
                 &mut stats,
                 0,
             );
@@ -907,7 +911,7 @@ mod tests {
         let pos =
             Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
         let mut tt = TranspositionTable::new_mb(16);
-        let mut killers = KillerTable::new();
+        let mut history = MoveHistory::new();
         let mut stats = SearchStats::new();
 
         let mut collector = crate::MoveCollector::new();
@@ -926,7 +930,7 @@ mod tests {
                 false,
                 true,
                 &mut tt,
-                &mut killers,
+                &mut history,
                 &mut stats,
                 0,
             );
@@ -976,4 +980,3 @@ mod tests {
         }
     }
 }
-

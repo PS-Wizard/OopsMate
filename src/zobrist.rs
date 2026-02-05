@@ -42,4 +42,3 @@ pub const PIECE_KEYS: [[[u64; 64]; 6]; 2] = {
 pub const CASTLE_KEYS: [u64; 16] = gen_zobrist_array(0xFEDCBA9876543210);
 pub const EP_KEYS: [u64; 8] = gen_zobrist_array(0x1111111111111111);
 pub const SIDE_KEY: u64 = 0x1234567890ABCDEF;
-

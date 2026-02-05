@@ -2,7 +2,7 @@ use crate::qsearch::qsearch;
 use crate::search::SearchStats;
 use crate::tpt::TranspositionTable;
 use crate::Move;
-use crate::{move_history::KillerTable, search::negamax, Piece, Position};
+use crate::{move_history::MoveHistory, search::negamax, Piece, Position};
 use std::sync::OnceLock;
 
 // ============================================================================
@@ -201,7 +201,7 @@ pub fn try_null_move_pruning(
     allow_null: bool,
     in_check: bool,
     tt: &mut TranspositionTable,
-    killers: &mut KillerTable,
+    history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
 ) -> Option<i32> {
@@ -239,7 +239,7 @@ pub fn try_null_move_pruning(
         -beta,
         -beta + 1,
         tt,
-        killers,
+        history,
         stats,
         false,
         false,

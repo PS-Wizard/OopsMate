@@ -1,4 +1,4 @@
-use crate::{move_history::KillerTable, Move, Position};
+use crate::{move_history::MoveHistory, Move, Position};
 
 pub const PIECE_VALUES: [i32; 6] = [
     100,   // Pawn
@@ -23,7 +23,7 @@ pub fn score_move(
     m: Move,
     pos: &Position,
     tt_move: Option<Move>,
-    killers: Option<&KillerTable>,
+    history: Option<&MoveHistory>,
     ply: usize,
 ) -> i32 {
     // TT move gets highest priority
@@ -51,18 +51,20 @@ pub fn score_move(
         return SCORE_PROMOTION;
     }
 
-    // 4. Killer moves
-    if let Some(killers) = killers {
-        if killers.is_killer(ply, m) {
-            return if Some(m) == killers.get_primary(ply) {
+    if let Some(h) = history {
+        // 4. Killer moves
+        if h.killers.is_killer(ply, m) {
+            return if Some(m) == h.killers.get_primary(ply) {
                 SCORE_KILLER_PRIMARY
             } else {
                 SCORE_KILLER_SECONDARY
             };
         }
+        
+        // 5. History Heuristic
+        return h.history.get(pos.side_to_move, m.from(), m.to());
     }
 
-    // TODO: History Heuristic / Default Quiet
     0
 }
 

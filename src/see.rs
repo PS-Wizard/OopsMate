@@ -78,8 +78,10 @@ impl Position {
         let rook_mask = ROOK_MASKS[to];
 
         // All sliders (Queens + Bishops, Queens + Rooks)
-        let bishops_queens = self.pieces[Piece::Bishop as usize].0 | self.pieces[Piece::Queen as usize].0;
-        let rooks_queens = self.pieces[Piece::Rook as usize].0 | self.pieces[Piece::Queen as usize].0;
+        let bishops_queens =
+            self.pieces[Piece::Bishop as usize].0 | self.pieces[Piece::Queen as usize].0;
+        let rooks_queens =
+            self.pieces[Piece::Rook as usize].0 | self.pieces[Piece::Queen as usize].0;
 
         let mut side = self.side_to_move.flip();
 

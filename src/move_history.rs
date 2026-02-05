@@ -1,7 +1,8 @@
-use crate::Move;
+use crate::{types::Color, Move};
 
 const MAX_DEPTH: usize = 128;
 const KILLERS_PER_PLY: usize = 2;
+const MAX_HISTORY: i32 = 50_000; 
 
 /// Killer move table
 /// Stores the best quiet moves that caused beta cutoffs at each ply
@@ -94,6 +95,73 @@ impl Default for KillerTable {
     }
 }
 
+/// History Heuristic Table
+/// Stores scores for quiet moves that caused beta cutoffs
+pub struct HistoryTable {
+    // [color][from][to]
+    table: [[[i32; 64]; 64]; 2],
+}
+
+impl HistoryTable {
+    #[inline(always)]
+    pub fn new() -> Self {
+        HistoryTable {
+            table: [[[0; 64]; 64]; 2],
+        }
+    }
+
+    #[inline(always)]
+    pub fn update(&mut self, color: Color, from: usize, to: usize, bonus: i16) {
+        let entry = &mut self.table[color as usize][from][to];
+        
+        // Simple saturation (FAST)
+        // Ensure we stay within bounds without expensive division
+        *entry = (*entry + bonus as i32).clamp(-MAX_HISTORY, MAX_HISTORY);
+    }
+
+    #[inline(always)]
+    pub fn get(&self, color: Color, from: usize, to: usize) -> i32 {
+        self.table[color as usize][from][to]
+    }
+
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        self.table = [[[0; 64]; 64]; 2];
+    }
+}
+
+impl Default for HistoryTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Container for all move history heuristics
+pub struct MoveHistory {
+    pub killers: KillerTable,
+    pub history: HistoryTable,
+}
+
+impl MoveHistory {
+    pub fn new() -> Self {
+        MoveHistory {
+            killers: KillerTable::new(),
+            history: HistoryTable::new(),
+        }
+    }
+    
+    pub fn clear(&mut self) {
+        self.killers.clear();
+        self.history.clear();
+    }
+}
+
+impl Default for MoveHistory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod test_history {
     use super::*;
@@ -168,5 +236,34 @@ mod test_history {
         assert!(!killers.is_killer(5, mv2));
         assert!(!killers.is_killer(7, mv1));
         assert!(killers.is_killer(7, mv2));
+    }
+
+    #[test]
+    fn test_history_update() {
+        let mut history = HistoryTable::new();
+        let color = Color::White;
+        let from = 10;
+        let to = 20;
+
+        assert_eq!(history.get(color, from, to), 0);
+
+        history.update(color, from, to, 100);
+        let val1 = history.get(color, from, to);
+        assert!(val1 > 0);
+
+        history.update(color, from, to, 100);
+        let val2 = history.get(color, from, to);
+        assert!(val2 > val1);
+        
+        // Test penalty
+        history.update(color, from, to, -500);
+        let val3 = history.get(color, from, to);
+        assert!(val3 < val2);
+        
+        // Check clamping/saturation
+        for _ in 0..1000 {
+            history.update(color, from, to, 1000);
+        }
+        assert!(history.get(color, from, to) <= MAX_HISTORY as i32);
     }
 }
