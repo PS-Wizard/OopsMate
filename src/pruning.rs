@@ -10,7 +10,7 @@ use std::sync::OnceLock;
 // ============================================================================
 
 const LMR_MIN_DEPTH: u8 = 3;
-const LMR_FULL_DEPTH_MOVES: usize = 3;
+const LMR_FULL_DEPTH_MOVES: usize = 2;
 
 const MAX_DEPTH: usize = 64;
 const MAX_MOVES: usize = 256;
@@ -136,13 +136,13 @@ const MAX_RFP_DEPTH: u8 = 7;
 #[rustfmt::skip]
 const RFP_MARGINS: [i32; 8] = [
     0,   // depth 0 (not used)
-    150, // depth 1
-    250, // depth 2
-    350, // depth 3
+    100, // depth 1
+    200, // depth 2
+    300, // depth 3
+    400,
     450,
-    500,
-    600,
-    700,
+    550,
+    650,
 ];
 
 /// Check if we can apply reverse futility pruning to this position
@@ -229,7 +229,7 @@ pub fn try_null_move_pruning(
     let null_pos = make_null_move(pos);
 
     // Calculate reduction depth
-    let reduction = if depth >= 7 { 3 } else { 2 };
+    let reduction = if depth >= 7 { 4 } else { 3 };
     let null_depth = depth.saturating_sub(1 + reduction);
 
     // Search with null window
@@ -329,13 +329,13 @@ const MAX_FUTILITY_DEPTH: u8 = 7;
 #[rustfmt::skip]
 const FUTILITY_MARGINS: [i32; 8] = [
     0,   // depth 0 (not used, handled by qsearch)
-    100, // depth 1
-    200, // depth 2
-    300,
-    400,
-    500,
-    600,
-    700,
+    90,  // depth 1
+    180, // depth 2
+    270,
+    360,
+    450,
+    540,
+    630,
 ];
 
 /// Check if we can apply futility pruning to this position/search state
@@ -434,9 +434,9 @@ mod tests {
     fn test_early_reduction_trigger() {
         let mv = Move::new(0, 8, crate::types::MoveType::Quiet);
 
-        // Should start reducing at move 3 instead of 4
-        assert!(should_reduce_lmr(5, 3, false, false, mv));
-        assert!(!should_reduce_lmr(5, 2, false, false, mv));
+        // Should start reducing at move 2 instead of 3
+        assert!(should_reduce_lmr(5, 2, false, false, mv));
+        assert!(!should_reduce_lmr(5, 1, false, false, mv));
     }
 
     #[test]
@@ -477,9 +477,9 @@ mod tests {
 
     #[test]
     fn test_rfp_margins() {
-        assert_eq!(get_rfp_margin(1), 150);
-        assert_eq!(get_rfp_margin(2), 250);
-        assert_eq!(get_rfp_margin(3), 350);
+        assert_eq!(get_rfp_margin(1), 100);
+        assert_eq!(get_rfp_margin(2), 200);
+        assert_eq!(get_rfp_margin(3), 300);
     }
 
     #[test]
