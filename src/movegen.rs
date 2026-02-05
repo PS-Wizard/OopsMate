@@ -417,7 +417,6 @@ impl Position {
                 let target = 1u64 << to;
                 if (target & pin_ray & check_mask) != 0 {
                     collector.push(Move::new(from, to, MoveType::PromotionQueen));
-                    // Only queen promotions in qsearch for speed
                 }
             }
 
@@ -649,7 +648,9 @@ impl Position {
         check_mask: u64,
         enemies: u64,
     ) {
-        let pieces = self.our(unsafe { std::mem::transmute(PIECE as u8) }).0;
+        let pieces = self.our(unsafe {
+            std::mem::transmute(PIECE as u8)
+        }).0;
 
         // Knights can't move if pinned
         if PIECE == Piece::Knight as usize {

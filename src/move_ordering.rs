@@ -1,6 +1,5 @@
 use crate::{move_history::KillerTable, Move, Position};
 
-// Piece values for MVV-LVA
 pub const PIECE_VALUES: [i32; 6] = [
     100,   // Pawn
     320,   // Knight
@@ -12,10 +11,11 @@ pub const PIECE_VALUES: [i32; 6] = [
 
 // Move ordering priority scores
 const SCORE_TT_MOVE: i32 = 1_000_000;
-const SCORE_WINNING_CAPTURE: i32 = 100_000;
-const SCORE_KILLER_PRIMARY: i32 = 9_000;
-const SCORE_KILLER_SECONDARY: i32 = 8_000;
-const SCORE_PROMOTION: i32 = 5_000;
+const SCORE_GOOD_CAPTURE: i32 = 100_000; // SEE >= 0
+const SCORE_PROMOTION: i32 = 90_000; // Quiet promotion
+const SCORE_KILLER_PRIMARY: i32 = 20_000;
+const SCORE_KILLER_SECONDARY: i32 = 15_000;
+const SCORE_BAD_CAPTURE: i32 = 5_000; // SEE < 0 (Still better than random quiet moves?)
 
 /// Score a move for ordering in main search
 #[inline(always)]
@@ -33,50 +33,39 @@ pub fn score_move(
         }
     }
 
-    // Promotions
-    if m.is_promotion() {
-        if m.is_capture() {
-            // Capture promotion
-            if let (Some((victim_piece, _)), Some(_)) =
-                (pos.piece_at(m.to()), pos.piece_at(m.from()))
-            {
-                return SCORE_WINNING_CAPTURE + 900 + PIECE_VALUES[victim_piece as usize] * 10;
-            }
-        } else {
-            return SCORE_PROMOTION; // Quiet promotion
-        }
-    }
-
-    // Then captures...
-    // MVV-LVA for captures
+    // Captures & Promotions (Resolved via SEE)
     if m.is_capture() {
-        if let (Some((victim_piece, _)), Some((attacker_piece, _))) =
-            (pos.piece_at(m.to()), pos.piece_at(m.from()))
-        {
-            return SCORE_WINNING_CAPTURE + PIECE_VALUES[victim_piece as usize] * 10
-                - PIECE_VALUES[attacker_piece as usize];
+        let see_score = pos.see(&m);
+
+        if see_score >= 0 {
+            // Good capture: Prioritize by SEE score (Winning Queen > Winning Pawn)
+            return SCORE_GOOD_CAPTURE + see_score;
+        } else {
+            // Bad capture: Lose material.
+            return SCORE_BAD_CAPTURE + see_score;
         }
     }
 
-    // Killer moves
-    match killers {
-        Some(killers) => {
-            if killers.is_killer(ply, m) {
-                return if Some(m) == killers.get_primary(ply) {
-                    SCORE_KILLER_PRIMARY
-                } else {
-                    SCORE_KILLER_SECONDARY
-                };
-            }
-        }
-        None => {}
+    // 3. Quiet Promotions
+    if m.is_promotion() {
+        return SCORE_PROMOTION;
     }
 
+    // 4. Killer moves
+    if let Some(killers) = killers {
+        if killers.is_killer(ply, m) {
+            return if Some(m) == killers.get_primary(ply) {
+                SCORE_KILLER_PRIMARY
+            } else {
+                SCORE_KILLER_SECONDARY
+            };
+        }
+    }
+
+    // TODO: History Heuristic / Default Quiet
     0
 }
 
-/// Order moves in-place using partial selection sort
-/// Only sorts the next move to search, making it O(n) per move
 #[inline(always)]
 pub fn pick_next_move(moves: &mut [Move], scores: &mut [i32], index: usize) {
     if index >= moves.len() {
@@ -87,8 +76,9 @@ pub fn pick_next_move(moves: &mut [Move], scores: &mut [i32], index: usize) {
     let mut best_score = unsafe { *scores.get_unchecked(index) };
 
     for i in (index + 1)..moves.len() {
-        if scores[i] > best_score {
-            best_score = unsafe { *scores.get_unchecked(i) };
+        let score = unsafe { *scores.get_unchecked(i) };
+        if score > best_score {
+            best_score = score;
             best_idx = i;
         }
     }
