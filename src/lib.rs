@@ -7,28 +7,14 @@ pub mod movegen;
 pub mod see;
 
 pub mod search;
-pub mod aspiration;
-pub mod negamax;
-pub mod pvs;
-pub mod null_move;
-
+pub mod pruning;
 pub mod tpt;
 pub mod zobrist;
-
 pub mod uci;
 pub mod time_control;
-
 pub mod move_ordering;
 pub mod qsearch;
-pub mod lmr;
-pub mod iid;
-
 pub mod move_history;
-
-pub mod futility;
-pub mod reverse_futility;
-
-pub mod razoring;
 
 pub use position::Position;
 pub use types::*;
