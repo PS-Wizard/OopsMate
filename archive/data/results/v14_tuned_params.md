@@ -62,3 +62,32 @@ Player: SF-2000
    "Win: White wins by adjudication": 17
 Finished match
 [wizard@nixos ~/Projects/OopsMate/archive/data/opponents] ->
+
+## Against Untuned OopsMate ( v13 )
+
+Finished game 97 (OopsMate-tuned vs OopsMate-baseline): 1/2-1/2 {Draw by 3-fold repetition}
+Score of OopsMate-tuned vs OopsMate-baseline: 13 - 11 - 76  [0.510] 100
+...      OopsMate-tuned playing White: 5 - 6 - 39  [0.490] 50
+...      OopsMate-tuned playing Black: 8 - 5 - 37  [0.530] 50
+...      White vs Black: 10 - 14 - 76  [0.480] 100
+Elo difference: 6.9 +/- 33.4, LOS: 65.8 %, DrawRatio: 76.0 %
+SPRT: llr 0 (0.0%), lbound -inf, ubound inf
+
+Player: OopsMate-tuned
+   "Draw by 3-fold repetition": 75
+   "Draw by fifty moves rule": 1
+   "Loss: Black mates": 5
+   "Loss: White loses on time": 1
+   "Loss: White mates": 5
+   "Win: Black mates": 8
+   "Win: White mates": 5
+Player: OopsMate-baseline
+   "Draw by 3-fold repetition": 75
+   "Draw by fifty moves rule": 1
+   "Loss: Black mates": 8
+   "Loss: White mates": 5
+   "Win: Black mates": 5
+   "Win: White loses on time": 1
+   "Win: White mates": 5
+Finished match
+[wizard@nixos ~/Projects/OopsMate/archive/data/opponents] ->
