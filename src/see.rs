@@ -36,8 +36,7 @@ impl Position {
         };
 
         // 2. The Attacker: The piece making the move
-        // We need to look up the piece at 'from' because 'm.piece()' isn't always available
-        // in compact Move structs, but assuming you have it or look it up:
+        // We look up the piece at 'from'. Since piece_at is now O(1), this is fast.
         let (mut attacker_piece, _) = self.piece_at(from).expect("SEE: Moving piece not found");
 
         // Handle promotion value immediately for the first move
@@ -74,6 +73,14 @@ impl Position {
         // Get all attackers to the target square
         let mut attackers = self.attackers_to_board(to, occupancy);
 
+        // The diagonal/orthogonal masks for the target square
+        let bishop_mask = BISHOP_MASKS[to];
+        let rook_mask = ROOK_MASKS[to];
+
+        // All sliders (Queens + Bishops, Queens + Rooks)
+        let bishops_queens = self.pieces[Piece::Bishop as usize].0 | self.pieces[Piece::Queen as usize].0;
+        let rooks_queens = self.pieces[Piece::Rook as usize].0 | self.pieces[Piece::Queen as usize].0;
+
         let mut side = self.side_to_move.flip();
 
         // the SEE loop
@@ -101,32 +108,18 @@ impl Position {
             occupancy ^= 1u64 << lva_sq;
             attackers ^= 1u64 << lva_sq; // Clear the used attacker
 
-            // Add hidden sliding attackers (Queens, Rooks, Bishops)
-            // We blindly update both diagonal and orthogonal because PEXT is fast
-            // and branching is slow.
-            let bishop_idx = unsafe { _pext_u64(occupancy, BISHOP_MASKS[to]) as usize };
-            let bishop_attacks = BISHOP_ATTACKS[to][bishop_idx];
-            if (bishop_attacks
-                & (self.pieces[Piece::Bishop as usize].0 | self.pieces[Piece::Queen as usize].0))
-                != 0
-            {
-                attackers |= bishop_attacks
-                    & (self.pieces[Piece::Bishop as usize].0
-                        | self.pieces[Piece::Queen as usize].0);
+            // Add hidden sliding attackers (X-Rays)
+            // Optimization: Only update diagonals if the removed piece was on a diagonal
+            if (1u64 << lva_sq) & bishop_mask != 0 {
+                let bishop_idx = unsafe { _pext_u64(occupancy, bishop_mask) as usize };
+                attackers |= BISHOP_ATTACKS[to][bishop_idx] & bishops_queens;
             }
 
-            // 2. Orthogonal X-Rays (Rooks/Queens)
-            let rook_idx = unsafe { _pext_u64(occupancy, ROOK_MASKS[to]) as usize };
-            let rook_attacks = ROOK_ATTACKS[to][rook_idx];
-            if (rook_attacks
-                & (self.pieces[Piece::Rook as usize].0 | self.pieces[Piece::Queen as usize].0))
-                != 0
-            {
-                attackers |= rook_attacks
-                    & (self.pieces[Piece::Rook as usize].0 | self.pieces[Piece::Queen as usize].0);
+            // Only update orthogonals if the removed piece was on a rank/file
+            if (1u64 << lva_sq) & rook_mask != 0 {
+                let rook_idx = unsafe { _pext_u64(occupancy, rook_mask) as usize };
+                attackers |= ROOK_ATTACKS[to][rook_idx] & rooks_queens;
             }
-
-            // Mask attackers to only valid pieces on board (to prevent ghost attacks from removed pieces)
             attackers &= occupancy;
         }
 
