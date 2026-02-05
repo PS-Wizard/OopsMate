@@ -648,9 +648,7 @@ impl Position {
         check_mask: u64,
         enemies: u64,
     ) {
-        let pieces = self.our(unsafe {
-            std::mem::transmute(PIECE as u8)
-        }).0;
+        let pieces = self.our(unsafe { std::mem::transmute(PIECE as u8) }).0;
 
         // Knights can't move if pinned
         if PIECE == Piece::Knight as usize {
