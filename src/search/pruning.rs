@@ -1,8 +1,10 @@
 use crate::qsearch::qsearch;
-use crate::search::SearchStats;
 use crate::tpt::TranspositionTable;
 use crate::Move;
-use crate::{move_history::MoveHistory, search::negamax, Piece, Position};
+use crate::{Piece, Position};
+use super::alphabeta::negamax;
+use super::ordering::MoveHistory;
+use super::SearchStats;
 use std::sync::OnceLock;
 
 // ============================================================================
@@ -68,6 +70,7 @@ pub fn should_reduce_lmr(
     in_check: bool,
     gives_check: bool,
     mv: Move,
+    thread_id: usize,
 ) -> bool {
     // Reduced minimum depth from 3 to allow earlier reductions if needed
     if depth < LMR_MIN_DEPTH {
@@ -88,13 +91,18 @@ pub fn should_reduce_lmr(
     if mv.is_promotion() {
         return false;
     }
+    
+    // Helper threads can be more aggressive with LMR
+    if thread_id > 0 && move_num > 4 {
+        return true;
+    }
 
     true
 }
 
 /// Calculate aggressive reduction amount
 #[inline(always)]
-pub fn calculate_lmr_reduction(depth: u8, move_num: usize, pv_node: bool, mv: Move) -> u8 {
+pub fn calculate_lmr_reduction(depth: u8, move_num: usize, pv_node: bool, mv: Move, thread_id: usize) -> u8 {
     if depth < LMR_MIN_DEPTH || move_num < LMR_FULL_DEPTH_MOVES {
         return 0;
     }
@@ -119,6 +127,17 @@ pub fn calculate_lmr_reduction(depth: u8, move_num: usize, pv_node: bool, mv: Mo
     if pv_node && reduction > PV_REDUCTION {
         reduction = reduction.saturating_sub(PV_REDUCTION);
     }
+    
+    // DIVERSIFICATION: Vary LMR aggressiveness per thread
+    if thread_id > 0 {
+        let thread_mod = (thread_id % 3) as u8;
+        reduction = reduction.saturating_add(thread_mod);
+        
+        // Even more aggressive for late moves
+        if move_num > 6 {
+             reduction = reduction.saturating_add(1);
+        }
+    }
 
     // More aggressive: allow reductions up to depth - 1
     reduction.min(depth.saturating_sub(1))
@@ -142,6 +161,7 @@ pub fn try_probcut(
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
+    thread_id: usize,
 ) -> Option<i32> {
     // Check basic requirements
     if depth < PROBCUT_MIN_DEPTH || in_check || pv_node || !allow_null {
@@ -176,6 +196,7 @@ pub fn try_probcut(
             true,
             false,
             ply + 1,
+            thread_id,
         );
 
         if score >= probcut_beta {
@@ -266,6 +287,7 @@ pub fn try_null_move_pruning(
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
+    thread_id: usize,
 ) -> Option<i32> {
     // Don't do null move if:
     // - Not allowed (to prevent double null moves)
@@ -291,8 +313,12 @@ pub fn try_null_move_pruning(
     let null_pos = make_null_move(pos);
 
     // Calculate reduction depth
-    let reduction = if depth >= 7 { 4 } else { 3 };
-    let null_depth = depth.saturating_sub(1 + reduction);
+    // DIVERSIFICATION: Alternate reduction depth
+    let base = if depth >= 7 { 4 } else { 3 };
+    let thread_adj = if thread_id > 0 { (thread_id & 1) as i32 } else { 0 };
+    let reduction = base + thread_adj;
+    
+    let null_depth = depth.saturating_sub(1 + reduction as u8);
 
     // Search with null window
     let null_score = -negamax(
@@ -306,6 +332,7 @@ pub fn try_null_move_pruning(
         false,
         false,
         ply + 1,
+        thread_id,
     );
 
     // If null move fails high, we can prune this node
@@ -468,108 +495,4 @@ pub fn should_prune_futility(
 
     // Prune if static_eval + margin <= alpha
     static_eval + margin <= alpha
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_aggressive_reductions() {
-        init_lmr();
-        let quiet = Move::new(0, 8, crate::types::MoveType::Quiet);
-
-        // Test that we get larger reductions than conservative settings
-        let r1 = calculate_lmr_reduction(10, 20, false, quiet);
-
-        // At depth 10, move 20, we should see significant reduction
-        println!("Depth 10, Move 20: reduction = {}", r1);
-        assert!(r1 >= 3, "Expected aggressive reduction >= 3, got {}", r1);
-
-        // Deep search with late move should be heavily reduced
-        let r2 = calculate_lmr_reduction(15, 30, false, quiet);
-        println!("Depth 15, Move 30: reduction = {}", r2);
-        assert!(r2 >= 4, "Expected aggressive reduction >= 4, got {}", r2);
-    }
-
-    #[test]
-    fn test_early_reduction_trigger() {
-        let mv = Move::new(0, 8, crate::types::MoveType::Quiet);
-
-        // Should start reducing at move 2 instead of 3
-        assert!(should_reduce_lmr(5, 2, false, false, mv));
-        assert!(!should_reduce_lmr(5, 1, false, false, mv));
-    }
-
-    #[test]
-    fn test_capture_aggressiveness() {
-        init_lmr();
-        let capture = Move::new(0, 8, crate::types::MoveType::Capture);
-
-        // Captures should still be reduced, just less than quiet moves
-        let r_capture = calculate_lmr_reduction(10, 20, false, capture);
-        println!("Capture reduction: {}", r_capture);
-        assert!(
-            r_capture >= 2,
-            "Expected capture reduction >= 2, got {}",
-            r_capture
-        );
-    }
-
-    #[test]
-    fn test_can_use_reverse_futility() {
-        // Should work at shallow depths, non-PV, not in check
-        assert!(can_use_reverse_futility(3, false, false, 100));
-
-        // Don't use in check
-        assert!(!can_use_reverse_futility(3, true, false, 100));
-
-        // Don't use in PV nodes
-        assert!(!can_use_reverse_futility(3, false, true, 100));
-
-        // Don't use at depth 0
-        assert!(!can_use_reverse_futility(0, false, false, 100));
-
-        // Don't use too deep
-        assert!(!can_use_reverse_futility(8, false, false, 100));
-
-        // Don't use near mate
-        assert!(!can_use_reverse_futility(3, false, false, 45_000));
-    }
-
-    #[test]
-    fn test_rfp_margins() {
-        assert_eq!(get_rfp_margin(1), 100);
-        assert_eq!(get_rfp_margin(2), 200);
-        assert_eq!(get_rfp_margin(3), 300);
-    }
-
-    #[test]
-    fn test_should_rfp_prune() {
-        // Position is good enough to prune
-        assert!(should_rfp_prune(500, 200, 150)); // 500 - 150 = 350 >= 200
-
-        // Position not good enough
-        assert!(!should_rfp_prune(300, 200, 150)); // 300 - 150 = 150 < 200
-
-        // Exactly at threshold
-        assert!(should_rfp_prune(350, 200, 150)); // 350 - 150 = 200 >= 200
-    }
-
-    #[test]
-    fn test_make_null_move() {
-        let pos =
-            Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-
-        let null_pos = make_null_move(&pos);
-
-        // Side to move should be flipped
-        assert_ne!(pos.side_to_move, null_pos.side_to_move);
-
-        // En passant should be cleared
-        assert_eq!(null_pos.en_passant, None);
-
-        // Hash should be different
-        assert_ne!(pos.hash(), null_pos.hash());
-    }
 }

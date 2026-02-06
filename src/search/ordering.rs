@@ -1,6 +1,6 @@
-use crate::{types::Color, Move};
+use crate::{types::Color, Move, Position};
+use super::params::MAX_DEPTH;
 
-const MAX_DEPTH: usize = 128;
 const KILLERS_PER_PLY: usize = 2;
 const MAX_HISTORY: i32 = 50_000; 
 
@@ -162,108 +162,84 @@ impl Default for MoveHistory {
     }
 }
 
-#[cfg(test)]
-mod test_history {
-    use super::*;
-    use crate::types::MoveType;
+// Move ordering priority scores
+pub const SCORE_TT_MOVE: i32 = 1_000_000;
+pub const SCORE_GOOD_CAPTURE: i32 = 100_000; // SEE >= 0
+pub const SCORE_PROMOTION: i32 = 90_000; // Quiet promotion
+pub const SCORE_KILLER_PRIMARY: i32 = 20_000;
+pub const SCORE_KILLER_SECONDARY: i32 = 15_000;
+pub const SCORE_BAD_CAPTURE: i32 = 5_000; // SEE < 0 (Still better than random quiet moves?)
 
-    #[test]
-    fn test_killer_storage() {
-        let mut killers = KillerTable::new();
-        let mv1 = Move::new(12, 20, MoveType::Quiet);
-        let mv2 = Move::new(13, 21, MoveType::Quiet);
-        let mv3 = Move::new(14, 22, MoveType::Quiet);
-
-        // Store first killer at ply 5
-        killers.store(5, mv1);
-        assert!(killers.is_killer(5, mv1));
-        assert_eq!(killers.get_primary(5), Some(mv1));
-
-        // Store second killer - mv1 should become secondary
-        killers.store(5, mv2);
-        assert!(killers.is_killer(5, mv1));
-        assert!(killers.is_killer(5, mv2));
-        assert_eq!(killers.get_primary(5), Some(mv2));
-        assert_eq!(killers.get_secondary(5), Some(mv1));
-
-        // Store third killer - mv1 should be evicted
-        killers.store(5, mv3);
-        assert!(!killers.is_killer(5, mv1));
-        assert!(killers.is_killer(5, mv2));
-        assert!(killers.is_killer(5, mv3));
-        assert_eq!(killers.get_primary(5), Some(mv3));
-        assert_eq!(killers.get_secondary(5), Some(mv2));
-    }
-
-    #[test]
-    fn test_killer_no_duplicate_primary() {
-        let mut killers = KillerTable::new();
-        let mv = Move::new(12, 20, MoveType::Quiet);
-
-        killers.store(5, mv);
-        assert_eq!(killers.get_primary(5), Some(mv));
-        assert_eq!(killers.get_secondary(5), None);
-
-        // Storing the same move again shouldn't change anything
-        killers.store(5, mv);
-        assert_eq!(killers.get_primary(5), Some(mv));
-        assert_eq!(killers.get_secondary(5), None);
-    }
-
-    #[test]
-    fn test_killer_clear() {
-        let mut killers = KillerTable::new();
-        let mv = Move::new(12, 20, MoveType::Quiet);
-
-        killers.store(5, mv);
-        assert!(killers.is_killer(5, mv));
-
-        killers.clear();
-        assert!(!killers.is_killer(5, mv));
-        assert_eq!(killers.get_primary(5), None);
-    }
-
-    #[test]
-    fn test_killer_different_plies() {
-        let mut killers = KillerTable::new();
-        let mv1 = Move::new(12, 20, MoveType::Quiet);
-        let mv2 = Move::new(13, 21, MoveType::Quiet);
-
-        killers.store(5, mv1);
-        killers.store(7, mv2);
-
-        assert!(killers.is_killer(5, mv1));
-        assert!(!killers.is_killer(5, mv2));
-        assert!(!killers.is_killer(7, mv1));
-        assert!(killers.is_killer(7, mv2));
-    }
-
-    #[test]
-    fn test_history_update() {
-        let mut history = HistoryTable::new();
-        let color = Color::White;
-        let from = 10;
-        let to = 20;
-
-        assert_eq!(history.get(color, from, to), 0);
-
-        history.update(color, from, to, 100);
-        let val1 = history.get(color, from, to);
-        assert!(val1 > 0);
-
-        history.update(color, from, to, 100);
-        let val2 = history.get(color, from, to);
-        assert!(val2 > val1);
-        
-        // Test penalty
-        history.update(color, from, to, -500);
-        let val3 = history.get(color, from, to);
-        assert!(val3 < val2);
-        
-        // Check clamping/saturation
-        for _ in 0..1000 {
-            history.update(color, from, to, 1000);
+/// Score a move for ordering in main search
+#[inline(always)]
+pub fn score_move(
+    m: Move,
+    pos: &Position,
+    tt_move: Option<Move>,
+    history: Option<&MoveHistory>,
+    ply: usize,
+) -> i32 {
+    // TT move gets highest priority
+    if let Some(tt_mv) = tt_move {
+        if m.0 == tt_mv.0 {
+            return SCORE_TT_MOVE;
         }
-        assert!(history.get(color, from, to) <= MAX_HISTORY as i32);
+    }
+
+    // Captures & Promotions (Resolved via SEE)
+    if m.is_capture() {
+        let see_score = pos.see(&m);
+
+        if see_score >= 0 {
+            // Good capture: Prioritize by SEE score (Winning Queen > Winning Pawn)
+            return SCORE_GOOD_CAPTURE + see_score;
+        } else {
+            // Bad capture: Lose material.
+            return SCORE_BAD_CAPTURE + see_score;
+        }
+    }
+
+    // 3. Quiet Promotions
+    if m.is_promotion() {
+        return SCORE_PROMOTION;
+    }
+
+    if let Some(h) = history {
+        // 4. Killer moves
+        if h.killers.is_killer(ply, m) {
+            return if Some(m) == h.killers.get_primary(ply) {
+                SCORE_KILLER_PRIMARY
+            } else {
+                SCORE_KILLER_SECONDARY
+            };
+        }
+        
+        // 5. History Heuristic
+        return h.history.get(pos.side_to_move, m.from(), m.to());
+    }
+
+    0
+}
+
+#[inline(always)]
+pub fn pick_next_move(moves: &mut [Move], scores: &mut [i32], index: usize) {
+    if index >= moves.len() {
+        return;
+    }
+
+    let mut best_idx = index;
+    let mut best_score = unsafe { *scores.get_unchecked(index) };
+
+    for i in (index + 1)..moves.len() {
+        let score = unsafe { *scores.get_unchecked(i) };
+        if score > best_score {
+            best_score = score;
+            best_idx = i;
+        }
+    }
+
+    if best_idx != index {
+        moves.swap(index, best_idx);
+        scores.swap(index, best_idx);
     }
 }

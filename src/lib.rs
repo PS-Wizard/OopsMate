@@ -6,9 +6,6 @@ pub mod movegen;
 
 pub mod see;
 
-pub mod move_history;
-pub mod move_ordering;
-pub mod pruning;
 pub mod qsearch;
 pub mod search;
 pub mod time_control;
@@ -22,7 +19,7 @@ pub use types::*;
 #[cfg(test)]
 mod benchmark_tests {
     use super::*;
-    use crate::pruning::init_lmr;
+    use crate::search::init_lmr;
     use crate::search::search;
     use crate::tpt::TranspositionTable;
     use std::time::Instant;
@@ -163,9 +160,9 @@ mod benchmark_tests {
         init_lmr();
         let pos = Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap();
         
-        let depth = 14;
+        let depth = 18;
         
-        println!("Running Multithread Benchmark (KiwiPete Depth 14)");
+        println!("Running Multithread Benchmark (KiwiPete Depth 18)");
 
         // 1 Thread
         let tt1 = Arc::new(TranspositionTable::new_mb(64));
