@@ -5,7 +5,7 @@ use crate::{
     pruning::{
         calculate_lmr_reduction, can_use_futility_pruning, can_use_reverse_futility,
         get_futility_margin, get_rfp_margin, should_prune_futility, should_reduce_lmr,
-        should_rfp_prune, try_null_move_pruning, try_razoring,
+        should_rfp_prune, try_null_move_pruning, try_probcut, try_razoring,
     },
     qsearch::qsearch,
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
@@ -374,6 +374,14 @@ pub fn negamax(
 
     // Static evaluation for pruning decisions
     let static_eval = evaluate(pos);
+
+    // PROBCUT
+    // "Can I prune this subtree by proving it fails high with a shallow search?"
+    if let Some(score) = try_probcut(
+        pos, depth, beta, pv_node, in_check, allow_null, tt, history, stats, ply,
+    ) {
+        return score;
+    }
 
     // RAZORING (depth 1-3, losing badly)
     // "Am I so far behind that even tactics can't save me?"
