@@ -125,6 +125,68 @@ pub fn calculate_lmr_reduction(depth: u8, move_num: usize, pv_node: bool, mv: Mo
 }
 
 // ============================================================================
+//  PROBCUT
+// ============================================================================
+
+const PROBCUT_MARGIN: i32 = 150;
+const PROBCUT_MIN_DEPTH: u8 = 5;
+
+pub fn try_probcut(
+    pos: &Position,
+    depth: u8,
+    beta: i32,
+    pv_node: bool,
+    in_check: bool,
+    allow_null: bool,
+    tt: &mut TranspositionTable,
+    history: &mut MoveHistory,
+    stats: &mut SearchStats,
+    ply: usize,
+) -> Option<i32> {
+    // Check basic requirements
+    if depth < PROBCUT_MIN_DEPTH || in_check || pv_node || !allow_null {
+        return None;
+    }
+
+    // Don't use near mate scores
+    const MATE_BOUND: i32 = 40_000;
+    if beta.abs() > MATE_BOUND {
+        return None;
+    }
+
+    let probcut_beta = beta + PROBCUT_MARGIN;
+    let probcut_depth = depth - 5;
+
+    let mut collector = crate::MoveCollector::new();
+    pos.generate_captures(&mut collector);
+    let moves = collector.as_slice();
+
+    for &mv in moves {
+        let new_pos = pos.make_move(&mv);
+        
+        // Search with narrow window around raised beta
+        let score = -negamax(
+            &new_pos,
+            probcut_depth,
+            -probcut_beta,
+            -probcut_beta + 1,
+            tt,
+            history,
+            stats,
+            true,
+            false,
+            ply + 1,
+        );
+
+        if score >= probcut_beta {
+            return Some(beta);
+        }
+    }
+
+    None
+}
+
+// ============================================================================
 //  REVERSE FUTILITY PRUNING
 // ============================================================================
 
