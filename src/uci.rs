@@ -15,8 +15,8 @@ impl UciEngine {
     pub fn new() -> Self {
         UciEngine {
             position: Position::new(),
-            tt: Arc::new(TranspositionTable::new_mb(64)), // Default 64MB
-            threads: 1,
+            tt: Arc::new(TranspositionTable::new_mb(256)), 
+            threads: 4,
         }
     }
 
@@ -62,7 +62,7 @@ impl UciEngine {
         println!("id name OopsMate");
         println!("id author Swoyam P.");
         println!("option name Hash type spin default 64 min 1 max 1024");
-        println!("option name Threads type spin default 1 min 1 max 256");
+        println!("option name Threads type spin default 4 min 1 max 256");
         println!("uciok");
         let _ = std::io::stdout().flush();
     }
