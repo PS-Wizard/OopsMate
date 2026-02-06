@@ -3,17 +3,20 @@ use crate::{
     Position,
 };
 use std::io::{self, BufRead, Write};
+use std::sync::Arc;
 
 pub struct UciEngine {
     position: Position,
-    tt: TranspositionTable,
+    tt: Arc<TranspositionTable>,
+    threads: usize,
 }
 
 impl UciEngine {
     pub fn new() -> Self {
         UciEngine {
             position: Position::new(),
-            tt: TranspositionTable::new_mb(256),
+            tt: Arc::new(TranspositionTable::new_mb(64)), // Default 64MB
+            threads: 1,
         }
     }
 
@@ -38,11 +41,15 @@ impl UciEngine {
                     println!("readyok");
                     let _ = std::io::stdout().flush();
                 }
+                "setoption" => self.handle_setoption(&parts[1..]),
                 "ucinewgame" => self.handle_new_game(),
                 "position" => self.handle_position(&parts[1..]),
                 "go" => self.handle_go(&parts[1..]),
                 "quit" => break,
                 "stop" => {
+                     // Stop handled by search checking stdin/flag.
+                     // Here we just print bestmove 0000 to satisfy protocol if not searching.
+                     // Ideally we signal search to stop.
                     println!("bestmove 0000");
                     let _ = std::io::stdout().flush();
                 }
@@ -55,8 +62,44 @@ impl UciEngine {
         println!("id name OopsMate");
         println!("id author Swoyam P.");
         println!("option name Hash type spin default 64 min 1 max 1024");
+        println!("option name Threads type spin default 1 min 1 max 256");
         println!("uciok");
         let _ = std::io::stdout().flush();
+    }
+
+    fn handle_setoption(&mut self, parts: &[&str]) {
+        // setoption name Hash value 128
+        // setoption name Threads value 4
+        if parts.len() < 4 || parts[0] != "name" {
+            return;
+        }
+
+        let mut name_end = 1;
+        while name_end < parts.len() && parts[name_end] != "value" {
+            name_end += 1;
+        }
+
+        let name = parts[1..name_end].join(" ").to_lowercase();
+        
+        if name_end + 1 >= parts.len() {
+            return;
+        }
+        
+        let value = parts[name_end + 1];
+
+        match name.as_str() {
+            "hash" => {
+                if let Ok(mb) = value.parse::<usize>() {
+                     self.tt = Arc::new(TranspositionTable::new_mb(mb));
+                }
+            }
+            "threads" => {
+                if let Ok(t) = value.parse::<usize>() {
+                    self.threads = t.clamp(1, 256);
+                }
+            }
+            _ => {}
+        }
     }
 
     fn handle_new_game(&mut self) {
@@ -95,8 +138,6 @@ impl UciEngine {
             moves_idx = parts.iter().position(|&s| s == "moves");
         }
 
-        // Apply moves directly without validation
-        // The GUI/engine sending the moves is responsible for legality
         if let Some(idx) = moves_idx {
             for move_str in &parts[idx + 1..] {
                 if let Some(m) = Self::parse_move_fast(move_str, &self.position) {
@@ -109,8 +150,6 @@ impl UciEngine {
         }
     }
 
-    /// Fast move parsing without legal move generation
-    /// Assumes the move is legal (as GUIs should only send legal moves)
     fn parse_move_fast(move_str: &str, pos: &Position) -> Option<Move> {
         if move_str.len() < 4 {
             return None;
@@ -121,12 +160,10 @@ impl UciEngine {
 
         let (piece, _color) = pos.piece_at(from)?;
 
-        // Determine move type based on position and move
         use crate::types::{MoveType, Piece};
 
         let is_capture = pos.piece_at(to).is_some();
 
-        // Handle promotions
         if move_str.len() == 5 {
             let promo = move_str.chars().nth(4)?;
             let move_type = match (promo, is_capture) {
@@ -143,26 +180,21 @@ impl UciEngine {
             return Some(Move::new(from, to, move_type));
         }
 
-        // Check for castling
         if piece == Piece::King && ((from as i32 - to as i32).abs() == 2) {
             return Some(Move::new(from, to, MoveType::Castle));
         }
 
-        // Check for en passant
         if piece == Piece::Pawn {
             if let Some(ep_sq) = pos.en_passant {
                 if to == ep_sq as usize && !is_capture {
                     return Some(Move::new(from, to, MoveType::EnPassant));
                 }
             }
-
-            // Check for double push
             if (from as i32 - to as i32).abs() == 16 {
                 return Some(Move::new(from, to, MoveType::DoublePush));
             }
         }
 
-        // Regular move or capture
         let move_type = if is_capture {
             MoveType::Capture
         } else {
@@ -193,7 +225,7 @@ impl UciEngine {
         let mut winc = 0;
         let mut binc = 0;
         let mut movestogo = None;
-        let mut depth = 50; // Default max depth (will be limited by time)
+        let mut depth = 50;
         let mut infinite = false;
         let mut movetime = None;
 
@@ -204,57 +236,43 @@ impl UciEngine {
                     if i + 1 < parts.len() {
                         wtime = parts[i + 1].parse().ok();
                         i += 2;
-                    } else {
-                        i += 1;
-                    }
+                    } else { i += 1; }
                 }
                 "btime" => {
                     if i + 1 < parts.len() {
                         btime = parts[i + 1].parse().ok();
                         i += 2;
-                    } else {
-                        i += 1;
-                    }
+                    } else { i += 1; }
                 }
                 "winc" => {
                     if i + 1 < parts.len() {
                         winc = parts[i + 1].parse().unwrap_or(0);
                         i += 2;
-                    } else {
-                        i += 1;
-                    }
+                    } else { i += 1; }
                 }
                 "binc" => {
                     if i + 1 < parts.len() {
                         binc = parts[i + 1].parse().unwrap_or(0);
                         i += 2;
-                    } else {
-                        i += 1;
-                    }
+                    } else { i += 1; }
                 }
                 "movestogo" => {
                     if i + 1 < parts.len() {
                         movestogo = parts[i + 1].parse().ok();
                         i += 2;
-                    } else {
-                        i += 1;
-                    }
+                    } else { i += 1; }
                 }
                 "depth" => {
                     if i + 1 < parts.len() {
                         depth = parts[i + 1].parse().unwrap_or(50);
                         i += 2;
-                    } else {
-                        i += 1;
-                    }
+                    } else { i += 1; }
                 }
                 "movetime" => {
                     if i + 1 < parts.len() {
                         movetime = parts[i + 1].parse().ok();
                         i += 2;
-                    } else {
-                        i += 1;
-                    }
+                    } else { i += 1; }
                 }
                 "infinite" => {
                     infinite = true;
@@ -264,13 +282,11 @@ impl UciEngine {
             }
         }
 
-        // Calculate time allocation
         let allocated_time = if infinite {
             None
         } else if let Some(mt) = movetime {
             Some(mt)
         } else if wtime.is_some() || btime.is_some() {
-            // Only use time management if time was actually provided
             let our_time = match self.position.side_to_move {
                 crate::types::Color::White => wtime.unwrap_or(60000),
                 crate::types::Color::Black => btime.unwrap_or(60000),
@@ -281,17 +297,21 @@ impl UciEngine {
             };
             Some(calculate_time_allocation(our_time, our_inc, movestogo))
         } else {
-            None // No time limit for depth-only search
+            None
         };
 
-        // Search with iterative deepening
-        if let Some(info) = search(&mut self.position, depth, allocated_time, &mut self.tt) {
+        if let Some(info) = search(
+            &mut self.position,
+            depth,
+            allocated_time,
+            self.tt.clone(),
+            self.threads,
+        ) {
             println!("bestmove {}", Self::move_to_uci(&info.best_move));
         } else {
             println!("bestmove 0000");
         }
 
-        // Flush stdout to ensure CuteChess receives the bestmove immediately
         let _ = std::io::stdout().flush();
     }
 

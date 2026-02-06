@@ -11,6 +11,8 @@ use crate::{
     tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND},
     Move, MoveCollector, Position,
 };
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::{io::Write, time::Instant};
 
 // ============================================================================
@@ -31,14 +33,27 @@ const IID_MIN_DEPTH: u8 = 4;
 pub struct SearchStats {
     pub nodes: u64,
     pub tt_hits: u64,
+    pub stop_signal: Option<Arc<AtomicBool>>,
 }
 
 impl SearchStats {
-    pub fn new() -> Self {
+    pub fn new(stop_signal: Option<Arc<AtomicBool>>) -> Self {
         SearchStats {
             nodes: 0,
             tt_hits: 0,
+            stop_signal,
         }
+    }
+
+    #[inline(always)]
+    pub fn should_stop(&self) -> bool {
+        // Check periodically (every 2048 nodes)
+        if self.nodes & 2047 == 0 {
+            if let Some(signal) = &self.stop_signal {
+                return signal.load(Ordering::Relaxed);
+            }
+        }
+        false
     }
 }
 
@@ -60,16 +75,75 @@ pub fn search(
     pos: &Position,
     max_depth: u8,
     max_time_ms: Option<u64>,
-    tt: &mut TranspositionTable,
+    tt: Arc<TranspositionTable>,
+    threads: usize,
+) -> Option<SearchInfo> {
+    let stop_signal = Arc::new(AtomicBool::new(false));
+    let threads = threads.max(1);
+
+    // Mark new search for TT aging - only done once by master
+    tt.new_search();
+
+    // Spawn helper threads
+    let mut handles = Vec::new();
+    if threads > 1 {
+        for id in 1..threads {
+            let pos_clone = *pos; // Position is Copy? No, it's a struct.
+            // Check if Position is Copy. In types.rs? Board is array.
+            // Position struct usually implements Clone/Copy if small.
+            // Let's assume Clone is available.
+            let tt_clone = tt.clone();
+            let signal_clone = stop_signal.clone();
+            
+            handles.push(std::thread::spawn(move || {
+                search_driver(
+                    &pos_clone,
+                    max_depth,
+                    None, // Helpers don't manage time directly
+                    &tt_clone,
+                    signal_clone,
+                    id,
+                )
+            }));
+        }
+    }
+
+    // Run master search
+    let info = search_driver(
+        pos,
+        max_depth,
+        max_time_ms,
+        &tt,
+        stop_signal.clone(),
+        0,
+    );
+
+    // Signal helpers to stop
+    stop_signal.store(true, Ordering::Relaxed);
+
+    // Join helpers
+    for handle in handles {
+        let _ = handle.join();
+    }
+
+    info
+}
+
+/// Driver for the iterative deepening loop
+fn search_driver(
+    pos: &Position,
+    max_depth: u8,
+    max_time_ms: Option<u64>,
+    tt: &TranspositionTable,
+    stop_signal: Arc<AtomicBool>,
+    thread_id: usize,
 ) -> Option<SearchInfo> {
     let start_time = Instant::now();
-    let mut stats = SearchStats::new();
+    let mut stats = SearchStats::new(Some(stop_signal.clone()));
     let mut history = MoveHistory::new();
     let mut best_move = None;
     let mut best_score = 0; // Initialize to 0 for first aspiration window
-
-    // Mark new search for TT aging
-    tt.new_search();
+    let is_master = thread_id == 0;
 
     // Generate moves once to check for game over
     let mut collector = MoveCollector::new();
@@ -80,40 +154,60 @@ pub fn search(
         return None;
     }
 
+    // Diversification: simple depth offset logic or LMR noise?
+    // Let's stick to standard loop but helpers might break if stopped.
+    // Also helpers could start slightly differently?
+    // For now, identical loop.
+
     // Iterative deepening loop
     for depth in 1..=max_depth {
         let depth_start = Instant::now();
 
+        // Check stop signal before starting depth
+        if stop_signal.load(Ordering::Relaxed) {
+            break;
+        }
+
         // search_aspiration handles both shallow (full window) and deep (aspiration) searches
-        // It also handles TT storage internally, so we don't need to store again here
         let (iteration_best_score, iteration_best_move) =
             search_aspiration(pos, depth, best_score, tt, &mut history, &mut stats);
+
+        // Check if we stopped during search
+        if stop_signal.load(Ordering::Relaxed) {
+            break;
+        }
 
         // Update best move for this depth
         best_move = Some(iteration_best_move);
         best_score = iteration_best_score;
 
-        // Print UCI info
-        print_uci_info(
-            depth,
-            best_score,
-            &stats,
-            start_time,
-            tt,
-            &iteration_best_move,
-        );
+        // Print UCI info (Master only)
+        if is_master {
+            print_uci_info(
+                depth,
+                best_score,
+                &stats,
+                start_time,
+                tt,
+                &iteration_best_move,
+            );
+        }
 
         let current_depth_time = depth_start.elapsed().as_millis() as u64;
 
-        // Time management - break if we're likely to run out of time
-        if should_stop_search(max_time_ms, start_time, current_depth_time) {
-            break;
-        }
-
-        // Check time during search
-        if let Some(max_time) = max_time_ms {
-            if start_time.elapsed().as_millis() as u64 >= max_time {
+        // Time management - break if we're likely to run out of time (Master only)
+        if is_master {
+            if should_stop_search(max_time_ms, start_time, current_depth_time) {
+                stop_signal.store(true, Ordering::Relaxed);
                 break;
+            }
+
+            // Check time during search
+            if let Some(max_time) = max_time_ms {
+                if start_time.elapsed().as_millis() as u64 >= max_time {
+                    stop_signal.store(true, Ordering::Relaxed);
+                    break;
+                }
             }
         }
     }
@@ -137,7 +231,7 @@ fn search_aspiration(
     pos: &Position,
     depth: u8,
     prev_score: i32,
-    tt: &mut TranspositionTable,
+    tt: &TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
 ) -> (i32, Move) {
@@ -179,9 +273,13 @@ fn search_aspiration(
     let mut beta = prev_score + delta;
 
     loop {
-        // We pass 'depth' to let search_root know if it should use the optimization
+        // We pass 'depth' to let search_root know if should use the optimization
         let (score, best_move) =
             search_root(pos, moves_slice, depth, alpha, beta, tt, history, stats);
+
+        if stats.should_stop() {
+            return (score, best_move);
+        }
 
         // Success Inside window
         if score > alpha && score < beta {
@@ -216,7 +314,7 @@ fn search_root(
     depth: u8,
     mut alpha: i32,
     beta: i32,
-    tt: &mut TranspositionTable,
+    tt: &TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
 ) -> (i32, Move) {
@@ -293,10 +391,11 @@ fn search_root(
             }
         };
 
+        if stats.should_stop() {
+            return (best_score, best_move);
+        }
+
         // crafty's optimization
-        // If the PV move (i=0) fails low (score <= alpha), abort immediately.
-        // We do not waste time searching the remaining moves against this invalid alpha.
-        // https://www.chessprogramming.org/PVS_and_Aspiration
         if i == 0 && score <= alpha {
             return (score, mv);
         }
@@ -336,7 +435,7 @@ pub fn negamax(
     depth: u8,
     mut alpha: i32,
     beta: i32,
-    tt: &mut TranspositionTable,
+    tt: &TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     allow_null: bool,
@@ -344,6 +443,11 @@ pub fn negamax(
     ply: usize,
 ) -> i32 {
     stats.nodes += 1;
+
+    // Check stop signal
+    if stats.should_stop() {
+        return 0; // Return neutral score or handle abort
+    }
 
     let hash = pos.hash();
 
@@ -376,21 +480,18 @@ pub fn negamax(
     let static_eval = evaluate(pos);
 
     // PROBCUT
-    // "Can I prune this subtree by proving it fails high with a shallow search?"
     if let Some(score) = try_probcut(
         pos, depth, beta, pv_node, in_check, allow_null, tt, history, stats, ply,
     ) {
         return score;
     }
 
-    // RAZORING (depth 1-3, losing badly)
-    // "Am I so far behind that even tactics can't save me?"
+    // RAZORING
     if let Some(score) = try_razoring(pos, depth, alpha, in_check, pv_node, static_eval, stats) {
         return score;
     }
 
     // Reverse futility pruning
-    // "Am I winning by so much I can just return?"
     if can_use_reverse_futility(depth, in_check, pv_node, beta) {
         let rfp_margin = get_rfp_margin(depth);
         if should_rfp_prune(static_eval, beta, rfp_margin) {
@@ -399,15 +500,13 @@ pub fn negamax(
     }
 
     // Try null move pruning
-    // "Let me verify I'm winning by giving opponent free move"
     if let Some(score) = try_null_move_pruning(
         pos, depth, beta, allow_null, in_check, tt, history, stats, ply,
     ) {
         return score;
     }
 
-    // Internal Iterative Deepening-  get a good move if we don't have a TT move
-    // "Let me do a quick search to find the best move for ordering"
+    // Internal Iterative Deepening
     let iid_move = try_iid(
         pos,
         depth,
@@ -426,7 +525,6 @@ pub fn negamax(
     let tt_move = tt_move.or(iid_move);
 
     // Futility pruning setup
-    // "Prepare to skip hopeless quiet moves later"
     let use_futility = can_use_futility_pruning(depth, in_check, pv_node, alpha, beta);
     let (static_eval, futility_margin) = if use_futility {
         let margin = get_futility_margin(depth);
@@ -471,8 +569,7 @@ pub fn negamax(
         let gives_check = new_pos.is_in_check();
         let check_extension = if gives_check { 1 } else { 0 };
 
-        // Futility pruning - skip quiet moves in losing positions
-        // "This quiet move can't raise alpha, skip it"
+        // Futility pruning
         if use_futility && i > 0 {
             if should_prune_futility(mv, gives_check, static_eval, alpha, futility_margin) {
                 continue;
@@ -530,7 +627,6 @@ pub fn negamax(
                 )
             };
 
-            // Re-search with full window if the null window search failed high
             if s > alpha && s < beta {
                 s = -negamax(
                     &new_pos,
@@ -549,13 +645,14 @@ pub fn negamax(
             s
         };
 
+        if stats.should_stop() {
+            return 0; // Abort
+        }
+
         // Beta cutoff
         if score >= beta {
-            // Store killer move if it's quiet
             if !mv.is_capture() && !mv.is_promotion() {
                 history.killers.store(ply, mv);
-                
-                // History Heuristic: Reward the cutoff move
                 let bonus = (depth as i16 * depth as i16).min(400);
                 history.history.update(pos.side_to_move, mv.from(), mv.to(), bonus);
             }
@@ -575,7 +672,6 @@ pub fn negamax(
         }
     }
 
-    // Store result in transposition table
     let flag = if best_score <= alpha {
         UPPER_BOUND
     } else {
@@ -590,10 +686,6 @@ pub fn negamax(
 //  PVS
 // ============================================================================
 
-/// Search a move with PVS and LMR
-/// - First move (move_num == 0): uses full window
-/// - Later moves: uses null window, re-searches if it fails high
-/// - Applies LMR reductions based on move characteristics
 #[inline(always)]
 pub fn search_move(
     pos: &Position,
@@ -605,12 +697,11 @@ pub fn search_move(
     in_check: bool,
     gives_check: bool,
     pv_node: bool,
-    tt: &mut TranspositionTable,
+    tt: &TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
 ) -> i32 {
-    // First move gets full window search
     if move_num == 0 {
         return -negamax(
             &*pos,
@@ -626,11 +717,9 @@ pub fn search_move(
         );
     }
 
-    // Later moves: try LMR + null window, re-search if needed
     let do_lmr = should_reduce_lmr(depth, move_num, in_check, gives_check, mv);
 
     let mut score = if do_lmr {
-        // LMR: search with reduced depth and null window
         let reduction = calculate_lmr_reduction(depth, move_num, pv_node, mv);
         let reduced_depth = depth.saturating_sub(1 + reduction);
 
@@ -647,7 +736,6 @@ pub fn search_move(
             ply + 1,
         )
     } else {
-        // No LMR: just null window at full depth
         -negamax(
             &*pos,
             depth - 1,
@@ -662,7 +750,6 @@ pub fn search_move(
         )
     };
 
-    // Re-search with full window if null window failed high
     if score > alpha && score < beta {
         score = -negamax(
             &*pos,
@@ -685,9 +772,6 @@ pub fn search_move(
 //  INTERNAL ITERATIVE DEEPENING (IID)
 // ============================================================================
 
-/// Depth reduction for IID search
-/// For PV nodes: reduce by depth/4 + 2
-/// For non-PV nodes: reduce by depth/3 + 1
 #[inline(always)]
 fn iid_reduction(depth: u8, pv_node: bool) -> u8 {
     if pv_node {
@@ -697,8 +781,6 @@ fn iid_reduction(depth: u8, pv_node: bool) -> u8 {
     }
 }
 
-/// Perform internal iterative deepening to find a good move
-/// Returns the best move found, or None if IID shouldn't be performed
 #[inline(always)]
 pub fn try_iid(
     pos: &crate::Position,
@@ -708,7 +790,7 @@ pub fn try_iid(
     pv_node: bool,
     has_tt_move: bool,
     in_check: bool,
-    tt: &mut TranspositionTable,
+    tt: &TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
@@ -717,7 +799,6 @@ pub fn try_iid(
         return None;
     }
 
-    // For non-PV nodes, require even deeper to justify the cost
     if !pv_node && depth < IID_MIN_DEPTH + 2 {
         return None;
     }
@@ -725,13 +806,11 @@ pub fn try_iid(
     let reduction = iid_reduction(depth, pv_node);
     let iid_depth = depth.saturating_sub(reduction);
 
-    // Perform reduced search
     negamax(
-        pos, iid_depth, alpha, beta, tt, history, stats, true, // allow_null
+        pos, iid_depth, alpha, beta, tt, history, stats, true, 
         pv_node, ply,
     );
 
-    // After search, probe TT for the move it found
     tt.probe(pos.hash()).map(|entry| entry.best_move)
 }
 
@@ -844,9 +923,9 @@ mod tests {
         use crate::{tpt::TranspositionTable, Position};
 
         let pos = Position::new();
-        let mut tt = TranspositionTable::new_mb(16);
+        let tt = TranspositionTable::new_mb(16);
         let mut history = MoveHistory::new();
-        let mut stats = SearchStats::new();
+        let mut stats = SearchStats::new(None);
 
         // Should not trigger at shallow depths
         let result = try_iid(
@@ -857,7 +936,7 @@ mod tests {
             true,
             false,
             false,
-            &mut tt,
+            &tt,
             &mut history,
             &mut stats,
             0,
@@ -873,7 +952,7 @@ mod tests {
             true,
             false,
             false,
-            &mut tt,
+            &tt,
             &mut history,
             &mut stats,
             0,
@@ -885,9 +964,9 @@ mod tests {
     fn test_pvs_first_move() {
         let pos =
             Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-        let mut tt = TranspositionTable::new_mb(16);
+        let tt = TranspositionTable::new_mb(16);
         let mut history = MoveHistory::new();
-        let mut stats = SearchStats::new();
+        let mut stats = SearchStats::new(None);
 
         let mut collector = crate::MoveCollector::new();
         pos.generate_moves(&mut collector);
@@ -904,7 +983,7 @@ mod tests {
                 false,
                 false,
                 true,
-                &mut tt,
+                &tt,
                 &mut history,
                 &mut stats,
                 0,
@@ -918,9 +997,9 @@ mod tests {
     fn test_pvs_later_move() {
         let pos =
             Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-        let mut tt = TranspositionTable::new_mb(16);
+        let tt = TranspositionTable::new_mb(16);
         let mut history = MoveHistory::new();
-        let mut stats = SearchStats::new();
+        let mut stats = SearchStats::new(None);
 
         let mut collector = crate::MoveCollector::new();
         pos.generate_moves(&mut collector);
@@ -937,7 +1016,7 @@ mod tests {
                 false,
                 false,
                 true,
-                &mut tt,
+                &tt,
                 &mut history,
                 &mut stats,
                 0,
@@ -951,6 +1030,7 @@ mod tests {
     #[ignore = "Overflows On Debug / Need Release"]
     fn test_iterative_deepening() {
         use crate::pruning::init_lmr;
+        use std::sync::Arc;
 
         let depth = 18;
         // let pos = Position::new();
@@ -959,13 +1039,13 @@ mod tests {
         )
         .unwrap_or_default();
 
-        let mut tt = TranspositionTable::new_mb(256);
+        let tt = Arc::new(TranspositionTable::new_mb(512));
         init_lmr();
 
         println!("Starting iterative deepening search to depth {}...", depth);
         let start = std::time::Instant::now();
 
-        let result = search(&pos, depth, None, &mut tt);
+        let result = search(&pos, depth, None, tt.clone(), 1);
 
         let duration = start.elapsed();
 

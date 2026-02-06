@@ -36,6 +36,7 @@ mod benchmark_tests {
     #[test]
     #[ignore = "Long running benchmark"]
     fn run_benchmark_suite() {
+        use std::sync::Arc;
         init_lmr();
         
         let positions = [
@@ -76,13 +77,13 @@ mod benchmark_tests {
                 .unwrap_or_else(|_| panic!("Invalid FEN: {}", pos_def.fen));
             
             // 256MB TT
-            let mut tt = TranspositionTable::new_mb(256);
+            let tt = Arc::new(TranspositionTable::new_mb(256));
             
             println!("\nRunning: {}", pos_def.name);
             println!("FEN: {}", pos_def.fen);
             
             let start = Instant::now();
-            let result = search(&pos, pos_def.depth, None, &mut tt);
+            let result = search(&pos, pos_def.depth, None, tt, 1);
             let duration = start.elapsed();
             
             if let Some(info) = result {
@@ -153,5 +154,34 @@ mod benchmark_tests {
         } else {
             format!("{}{}", from_sq, to_sq)
         }
+    }
+
+    #[test]
+    #[ignore]
+    fn run_multithread_benchmark() {
+        use std::sync::Arc;
+        init_lmr();
+        let pos = Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap();
+        
+        let depth = 14;
+        
+        println!("Running Multithread Benchmark (KiwiPete Depth 14)");
+
+        // 1 Thread
+        let tt1 = Arc::new(TranspositionTable::new_mb(64));
+        let start1 = Instant::now();
+        search(&pos, depth, None, tt1, 1);
+        let time1 = start1.elapsed();
+        println!("1 Thread: {:.3}s", time1.as_secs_f64());
+        
+        // 4 Threads
+        let tt4 = Arc::new(TranspositionTable::new_mb(64));
+        let start4 = Instant::now();
+        search(&pos, depth, None, tt4, 4);
+        let time4 = start4.elapsed();
+        println!("4 Threads: {:.3}s", time4.as_secs_f64());
+        
+        println!("Speedup: {:.2}x", time1.as_secs_f64() / time4.as_secs_f64());
+        assert!(time4 < time1, "Multithreading should be faster!");
     }
 }
