@@ -1,5 +1,5 @@
 use crate::evaluate::evaluate;
-use crate::move_ordering::{pick_next_move, score_move};
+use crate::search::{pick_next_move, score_move};
 use crate::search::SearchStats;
 use crate::{Move, MoveCollector, Position};
 
