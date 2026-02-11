@@ -15,7 +15,7 @@ impl UciEngine {
     pub fn new() -> Self {
         UciEngine {
             position: Position::new(),
-            tt: Arc::new(TranspositionTable::new_mb(256)), 
+            tt: Arc::new(TranspositionTable::new_mb(256)),
             threads: 4,
         }
     }
@@ -47,9 +47,9 @@ impl UciEngine {
                 "go" => self.handle_go(&parts[1..]),
                 "quit" => break,
                 "stop" => {
-                     // Stop handled by search checking stdin/flag.
-                     // Here we just print bestmove 0000 to satisfy protocol if not searching.
-                     // Ideally we signal search to stop.
+                    // Stop handled by search checking stdin/flag.
+                    // Here we just print bestmove 0000 to satisfy protocol if not searching.
+                    // Ideally we signal search to stop.
                     println!("bestmove 0000");
                     let _ = std::io::stdout().flush();
                 }
@@ -80,17 +80,17 @@ impl UciEngine {
         }
 
         let name = parts[1..name_end].join(" ").to_lowercase();
-        
+
         if name_end + 1 >= parts.len() {
             return;
         }
-        
+
         let value = parts[name_end + 1];
 
         match name.as_str() {
             "hash" => {
                 if let Ok(mb) = value.parse::<usize>() {
-                     self.tt = Arc::new(TranspositionTable::new_mb(mb));
+                    self.tt = Arc::new(TranspositionTable::new_mb(mb));
                 }
             }
             "threads" => {
@@ -141,7 +141,7 @@ impl UciEngine {
         if let Some(idx) = moves_idx {
             for move_str in &parts[idx + 1..] {
                 if let Some(m) = Self::parse_move_fast(move_str, &self.position) {
-                    self.position = self.position.make_move(&m);
+                    self.position.make_move(m);
                 } else {
                     eprintln!("Invalid move format: {}", move_str);
                     break;
@@ -236,43 +236,57 @@ impl UciEngine {
                     if i + 1 < parts.len() {
                         wtime = parts[i + 1].parse().ok();
                         i += 2;
-                    } else { i += 1; }
+                    } else {
+                        i += 1;
+                    }
                 }
                 "btime" => {
                     if i + 1 < parts.len() {
                         btime = parts[i + 1].parse().ok();
                         i += 2;
-                    } else { i += 1; }
+                    } else {
+                        i += 1;
+                    }
                 }
                 "winc" => {
                     if i + 1 < parts.len() {
                         winc = parts[i + 1].parse().unwrap_or(0);
                         i += 2;
-                    } else { i += 1; }
+                    } else {
+                        i += 1;
+                    }
                 }
                 "binc" => {
                     if i + 1 < parts.len() {
                         binc = parts[i + 1].parse().unwrap_or(0);
                         i += 2;
-                    } else { i += 1; }
+                    } else {
+                        i += 1;
+                    }
                 }
                 "movestogo" => {
                     if i + 1 < parts.len() {
                         movestogo = parts[i + 1].parse().ok();
                         i += 2;
-                    } else { i += 1; }
+                    } else {
+                        i += 1;
+                    }
                 }
                 "depth" => {
                     if i + 1 < parts.len() {
                         depth = parts[i + 1].parse().unwrap_or(50);
                         i += 2;
-                    } else { i += 1; }
+                    } else {
+                        i += 1;
+                    }
                 }
                 "movetime" => {
                     if i + 1 < parts.len() {
                         movetime = parts[i + 1].parse().ok();
                         i += 2;
-                    } else { i += 1; }
+                    } else {
+                        i += 1;
+                    }
                 }
                 "infinite" => {
                     infinite = true;
@@ -301,7 +315,7 @@ impl UciEngine {
         };
 
         if let Some(info) = search(
-            &mut self.position,
+            &self.position,
             depth,
             allocated_time,
             self.tt.clone(),

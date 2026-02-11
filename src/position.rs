@@ -3,7 +3,16 @@ use crate::{
     zobrist::{CASTLE_KEYS, EP_KEYS, PIECE_KEYS, SIDE_KEY},
 };
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug)]
+pub struct GameState {
+    pub castling_rights: CastleRights,
+    pub en_passant: Option<u8>,
+    pub halfmove: u16,
+    pub hash: u64,
+    pub captured_piece: Option<Piece>,
+}
+
+#[derive(Clone, Debug)]
 pub struct Position {
     pub pieces: [Bitboard; 6],
     pub colors: [Bitboard; 2],
@@ -14,12 +23,7 @@ pub struct Position {
     pub halfmove: u16,
     pub fullmove: u16,
     pub hash: u64,
-}
-
-impl Clone for Position {
-    fn clone(&self) -> Self {
-        unsafe { std::ptr::read(self) }
-    }
+    pub history: Vec<GameState>,
 }
 
 impl Position {
@@ -44,6 +48,7 @@ impl Position {
             halfmove: 0,
             fullmove: 1,
             hash: 0,
+            history: Vec::with_capacity(1024),
         };
 
         let mut sq = 56;
@@ -181,18 +186,31 @@ impl Position {
     }
 
     #[inline(always)]
-    pub fn make_move(&self, m: &Move) -> Position {
-        let mut new_pos = self.clone();
-        new_pos.apply_move(&m);
-        new_pos
-    }
-
-    #[inline(always)]
-    fn apply_move(&mut self, m: &Move) {
+    pub fn make_move(&mut self, m: Move) {
         let from = m.from();
         let to = m.to();
         let move_type = m.move_type();
         let (piece, color) = self.piece_at(from).expect("No piece at from");
+        let (captured_piece, _) = if m.is_capture() {
+            // Special case for En Passant
+            if move_type == MoveType::EnPassant {
+                (Some(Piece::Pawn), Color::White) // Color doesn't matter for the Option<Piece> we store
+            } else {
+                let (p, c) = self.piece_at(to).unwrap();
+                (Some(p), c)
+            }
+        } else {
+            (None, Color::White)
+        };
+
+        // Push state
+        self.history.push(GameState {
+            castling_rights: self.castling_rights,
+            en_passant: self.en_passant,
+            halfmove: self.halfmove,
+            hash: self.hash,
+            captured_piece,
+        });
 
         self.hash ^= CASTLE_KEYS[self.castling_rights.0 as usize];
         if let Some(ep) = self.en_passant {
@@ -315,6 +333,120 @@ impl Position {
 
         self.hash ^= SIDE_KEY;
         self.side_to_move = self.side_to_move.flip();
+    }
+
+    #[inline(always)]
+    pub fn make_null_move(&mut self) {
+        self.history.push(GameState {
+            castling_rights: self.castling_rights,
+            en_passant: self.en_passant,
+            halfmove: self.halfmove,
+            hash: self.hash,
+            captured_piece: None,
+        });
+
+        if let Some(ep) = self.en_passant {
+            self.hash ^= EP_KEYS[(ep % 8) as usize];
+            self.en_passant = None;
+        }
+
+        self.hash ^= SIDE_KEY;
+        self.side_to_move = self.side_to_move.flip();
+    }
+
+    #[inline(always)]
+    pub fn unmake_null_move(&mut self) {
+        let state = self.history.pop().expect("No history to unmake null move");
+        self.en_passant = state.en_passant;
+        self.hash = state.hash;
+        self.side_to_move = self.side_to_move.flip();
+    }
+
+    #[inline(always)]
+    pub fn unmake_move(&mut self, m: Move) {
+        let state = self.history.pop().expect("No history to unmake");
+
+        // Restore simple state
+        self.castling_rights = state.castling_rights;
+        self.en_passant = state.en_passant;
+        self.halfmove = state.halfmove;
+        self.hash = state.hash;
+
+        let to = m.to();
+        let from = m.from();
+        let move_type = m.move_type();
+
+        self.side_to_move = self.side_to_move.flip();
+        let color = self.side_to_move;
+
+        if color == Color::Black {
+            self.fullmove -= 1;
+        }
+
+        match move_type {
+            MoveType::Quiet => {
+                let (piece, _) = self.piece_at(to).unwrap();
+                self.remove_piece(to);
+                self.add_piece(from, color, piece);
+            }
+            MoveType::Capture => {
+                let (piece, _) = self.piece_at(to).unwrap();
+                self.remove_piece(to);
+                self.add_piece(from, color, piece);
+
+                let captured = state.captured_piece.unwrap();
+                self.add_piece(to, color.flip(), captured);
+            }
+            MoveType::DoublePush => {
+                let (piece, _) = self.piece_at(to).unwrap();
+                self.remove_piece(to);
+                self.add_piece(from, color, piece);
+            }
+            MoveType::EnPassant => {
+                let (piece, _) = self.piece_at(to).unwrap();
+                self.remove_piece(to);
+                self.add_piece(from, color, piece);
+
+                let capture_sq = if color == Color::White {
+                    to - 8
+                } else {
+                    to + 8
+                };
+                self.add_piece(capture_sq, color.flip(), Piece::Pawn);
+            }
+            MoveType::Castle => {
+                let (piece, _) = self.piece_at(to).unwrap(); // King
+                self.remove_piece(to);
+                self.add_piece(from, color, piece);
+
+                let (rook_from, rook_to) = match to {
+                    6 => (7, 5),
+                    2 => (0, 3),
+                    62 => (63, 61),
+                    58 => (56, 59),
+                    _ => panic!("Invalid castle"),
+                };
+                self.remove_piece(rook_to);
+                self.add_piece(rook_from, color, Piece::Rook);
+            }
+            MoveType::PromotionKnight
+            | MoveType::PromotionBishop
+            | MoveType::PromotionRook
+            | MoveType::PromotionQueen => {
+                self.remove_piece(to);
+                self.add_piece(from, color, Piece::Pawn);
+            }
+            MoveType::CapturePromotionKnight
+            | MoveType::CapturePromotionBishop
+            | MoveType::CapturePromotionRook
+            | MoveType::CapturePromotionQueen => {
+                self.remove_piece(to);
+                self.add_piece(from, color, Piece::Pawn);
+
+                let captured = state.captured_piece.unwrap();
+                self.add_piece(to, color.flip(), captured);
+            }
+        }
     }
 
     pub fn is_game_over(&self) -> bool {

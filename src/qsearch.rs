@@ -1,13 +1,13 @@
 use crate::evaluate::evaluate;
-use crate::search::{pick_next_move, score_move};
 use crate::search::SearchStats;
+use crate::search::{pick_next_move, score_move};
 use crate::{Move, MoveCollector, Position};
 
 const MAX_MOVES: usize = 256;
 
 /// Quiescence search; searches captures until position is "quiet"
 pub fn qsearch(
-    pos: &Position,
+    pos: &mut Position,
     mut alpha: i32,
     beta: i32,
     stats: &mut SearchStats,
@@ -80,8 +80,9 @@ pub fn qsearch(
         );
         let mv = capture_list[i];
 
-        let new_pos = pos.make_move(&mv);
-        let score = -qsearch(&new_pos, -beta, -alpha, stats, ply + 1);
+        pos.make_move(mv);
+        let score = -qsearch(pos, -beta, -alpha, stats, ply + 1);
+        pos.unmake_move(mv);
 
         if score >= beta {
             return beta;

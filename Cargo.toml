@@ -25,6 +25,3 @@ debug = true
 [profile.bench]
 inherits = "release"
 
-[[bench]]
-name = "movegen"
-harness = false

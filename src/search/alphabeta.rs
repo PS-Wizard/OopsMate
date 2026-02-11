@@ -1,7 +1,7 @@
-use super::SearchStats;
-use super::ordering::{score_move, pick_next_move, MoveHistory};
+use super::ordering::{pick_next_move, score_move, MoveHistory};
+use super::params::{IID_MIN_DEPTH, INFINITY, MATE_VALUE, MAX_MOVES};
 use super::pruning::*;
-use super::params::{INFINITY, MATE_VALUE, MAX_MOVES, IID_MIN_DEPTH};
+use super::SearchStats;
 use crate::evaluate::evaluate;
 use crate::qsearch::qsearch;
 use crate::tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND};
@@ -13,7 +13,7 @@ use crate::{Move, MoveCollector, Position};
 
 #[allow(clippy::too_many_arguments)]
 pub fn negamax(
-    pos: &Position,
+    pos: &mut Position,
     depth: u8,
     mut alpha: i32,
     beta: i32,
@@ -64,7 +64,7 @@ pub fn negamax(
 
     // PROBCUT
     if let Some(score) = try_probcut(
-        pos, depth, beta, pv_node, in_check, allow_null, tt, history, stats, ply, thread_id
+        pos, depth, beta, pv_node, in_check, allow_null, tt, history, stats, ply, thread_id,
     ) {
         return score;
     }
@@ -84,7 +84,7 @@ pub fn negamax(
 
     // Try null move pruning
     if let Some(score) = try_null_move_pruning(
-        pos, depth, beta, allow_null, in_check, tt, history, stats, ply, thread_id
+        pos, depth, beta, allow_null, in_check, tt, history, stats, ply, thread_id,
     ) {
         return score;
     }
@@ -149,13 +149,14 @@ pub fn negamax(
         pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
         let mv = move_list[i];
 
-        let new_pos = pos.make_move(&mv);
-        let gives_check = new_pos.is_in_check();
+        pos.make_move(mv);
+        let gives_check = pos.is_in_check();
         let check_extension = if gives_check { 1 } else { 0 };
 
         // Futility pruning
         if use_futility && i > 0 {
             if should_prune_futility(mv, gives_check, static_eval, alpha, futility_margin) {
+                pos.unmake_move(mv);
                 continue;
             }
         }
@@ -163,7 +164,7 @@ pub fn negamax(
         let score = if i == 0 {
             // First move: full depth, full window
             -negamax(
-                &new_pos,
+                pos,
                 depth - 1,
                 -beta,
                 -alpha,
@@ -178,14 +179,16 @@ pub fn negamax(
         } else {
             // PVS for subsequent moves
             let is_hash_move = tt_move.map_or(false, |tt_mv| mv.0 == tt_mv.0);
-            let mut s = if should_reduce_lmr(depth, i, in_check, gives_check, mv, thread_id) & !is_hash_move {
+            let mut s = if should_reduce_lmr(depth, i, in_check, gives_check, mv, thread_id)
+                & !is_hash_move
+            {
                 let reduction = calculate_lmr_reduction(depth, i, pv_node, mv, thread_id);
                 let reduced_depth = depth
                     .saturating_sub(1 + reduction)
                     .saturating_add(check_extension);
 
                 -negamax(
-                    &new_pos,
+                    pos,
                     reduced_depth,
                     -alpha - 1,
                     -alpha,
@@ -200,7 +203,7 @@ pub fn negamax(
             } else {
                 // Null window search
                 -negamax(
-                    &new_pos,
+                    pos,
                     depth - 1 + check_extension,
                     -alpha - 1,
                     -alpha,
@@ -216,7 +219,7 @@ pub fn negamax(
 
             if s > alpha && s < beta {
                 s = -negamax(
-                    &new_pos,
+                    pos,
                     depth - 1 + check_extension,
                     -beta,
                     -alpha,
@@ -232,6 +235,7 @@ pub fn negamax(
 
             s
         };
+        pos.unmake_move(mv);
 
         if stats.should_stop() {
             return 0; // Abort
@@ -242,7 +246,9 @@ pub fn negamax(
             if !mv.is_capture() && !mv.is_promotion() {
                 history.killers.store(ply, mv);
                 let bonus = (depth as i16 * depth as i16).min(400);
-                history.history.update(pos.side_to_move, mv.from(), mv.to(), bonus);
+                history
+                    .history
+                    .update(pos.side_to_move, mv.from(), mv.to(), bonus);
             }
 
             tt.store(hash, mv, beta, depth, LOWER_BOUND);
@@ -276,7 +282,7 @@ pub fn negamax(
 
 #[inline(always)]
 pub fn search_move(
-    pos: &Position,
+    pos: &mut Position,
     mv: Move,
     depth: u8,
     alpha: i32,
@@ -293,7 +299,7 @@ pub fn search_move(
 ) -> i32 {
     if move_num == 0 {
         return -negamax(
-            &*pos,
+            pos,
             depth - 1,
             -beta,
             -alpha,
@@ -314,7 +320,7 @@ pub fn search_move(
         let reduced_depth = depth.saturating_sub(1 + reduction);
 
         -negamax(
-            &*pos,
+            pos,
             reduced_depth,
             -alpha - 1,
             -alpha,
@@ -328,7 +334,7 @@ pub fn search_move(
         )
     } else {
         -negamax(
-            &*pos,
+            pos,
             depth - 1,
             -alpha - 1,
             -alpha,
@@ -344,7 +350,7 @@ pub fn search_move(
 
     if score > alpha && score < beta {
         score = -negamax(
-            &*pos,
+            pos,
             depth - 1,
             -beta,
             -alpha,
@@ -363,7 +369,7 @@ pub fn search_move(
 
 #[inline(always)]
 pub fn search_root(
-    pos: &Position,
+    pos: &mut Position,
     moves: &mut [Move],
     depth: u8,
     mut alpha: i32,
@@ -386,11 +392,11 @@ pub fn search_root(
     // DIVERSIFICATION: Perturb scores for helper threads
     if thread_id > 0 && move_count > 1 {
         for i in 0..move_count {
-             // If it's not the TT move
-             if scores[i] != super::ordering::SCORE_TT_MOVE {
-                 let noise = ((i + thread_id) * 987654321) % 4000;
-                 scores[i] = scores[i].saturating_add(noise as i32);
-             }
+            // If it's not the TT move
+            if scores[i] != super::ordering::SCORE_TT_MOVE {
+                let noise = ((i + thread_id) * 987654321) % 4000;
+                scores[i] = scores[i].saturating_add(noise as i32);
+            }
         }
     }
 
@@ -400,12 +406,13 @@ pub fn search_root(
     for i in 0..move_count {
         pick_next_move(moves, &mut scores, i);
         let mv = moves[i];
-        let newpos = pos.make_move(&mv);
-        let gives_check = newpos.is_in_check();
+
+        pos.make_move(mv);
+        let gives_check = pos.is_in_check();
 
         let score = if i == 0 {
             search_move(
-                &newpos,
+                pos,
                 mv,
                 depth,
                 alpha,
@@ -423,7 +430,7 @@ pub fn search_root(
         } else {
             // PVS for other moves
             let s = search_move(
-                &newpos,
+                pos,
                 mv,
                 depth,
                 alpha,
@@ -440,7 +447,7 @@ pub fn search_root(
             );
             if s > alpha && s < beta {
                 search_move(
-                    &newpos,
+                    pos,
                     mv,
                     depth,
                     alpha,
@@ -459,6 +466,7 @@ pub fn search_root(
                 s
             }
         };
+        pos.unmake_move(mv);
 
         if stats.should_stop() {
             return (best_score, best_move);
@@ -509,7 +517,7 @@ fn iid_reduction(depth: u8, pv_node: bool) -> u8 {
 
 #[inline(always)]
 pub fn try_iid(
-    pos: &crate::Position,
+    pos: &mut crate::Position,
     depth: u8,
     alpha: i32,
     beta: i32,
@@ -534,8 +542,7 @@ pub fn try_iid(
     let iid_depth = depth.saturating_sub(reduction);
 
     negamax(
-        pos, iid_depth, alpha, beta, tt, history, stats, true, 
-        pv_node, ply, thread_id,
+        pos, iid_depth, alpha, beta, tt, history, stats, true, pv_node, ply, thread_id,
     );
 
     tt.probe(pos.hash()).map(|entry| entry.best_move)

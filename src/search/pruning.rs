@@ -1,10 +1,10 @@
+use super::alphabeta::negamax;
+use super::ordering::MoveHistory;
+use super::SearchStats;
 use crate::qsearch::qsearch;
 use crate::tpt::TranspositionTable;
 use crate::Move;
 use crate::{Piece, Position};
-use super::alphabeta::negamax;
-use super::ordering::MoveHistory;
-use super::SearchStats;
 use std::sync::OnceLock;
 
 // ============================================================================
@@ -91,7 +91,7 @@ pub fn should_reduce_lmr(
     if mv.is_promotion() {
         return false;
     }
-    
+
     // Helper threads can be more aggressive with LMR
     if thread_id > 0 && move_num > 4 {
         return true;
@@ -102,7 +102,13 @@ pub fn should_reduce_lmr(
 
 /// Calculate aggressive reduction amount
 #[inline(always)]
-pub fn calculate_lmr_reduction(depth: u8, move_num: usize, pv_node: bool, mv: Move, thread_id: usize) -> u8 {
+pub fn calculate_lmr_reduction(
+    depth: u8,
+    move_num: usize,
+    pv_node: bool,
+    mv: Move,
+    thread_id: usize,
+) -> u8 {
     if depth < LMR_MIN_DEPTH || move_num < LMR_FULL_DEPTH_MOVES {
         return 0;
     }
@@ -127,15 +133,15 @@ pub fn calculate_lmr_reduction(depth: u8, move_num: usize, pv_node: bool, mv: Mo
     if pv_node && reduction > PV_REDUCTION {
         reduction = reduction.saturating_sub(PV_REDUCTION);
     }
-    
+
     // DIVERSIFICATION: Vary LMR aggressiveness per thread
     if thread_id > 0 {
         let thread_mod = (thread_id % 3) as u8;
         reduction = reduction.saturating_add(thread_mod);
-        
+
         // Even more aggressive for late moves
         if move_num > 6 {
-             reduction = reduction.saturating_add(1);
+            reduction = reduction.saturating_add(1);
         }
     }
 
@@ -151,7 +157,7 @@ const PROBCUT_MARGIN: i32 = 150;
 const PROBCUT_MIN_DEPTH: u8 = 5;
 
 pub fn try_probcut(
-    pos: &Position,
+    pos: &mut Position,
     depth: u8,
     beta: i32,
     pv_node: bool,
@@ -182,11 +188,11 @@ pub fn try_probcut(
     let moves = collector.as_slice();
 
     for &mv in moves {
-        let new_pos = pos.make_move(&mv);
-        
+        pos.make_move(mv);
+
         // Search with narrow window around raised beta
         let score = -negamax(
-            &new_pos,
+            pos,
             probcut_depth,
             -probcut_beta,
             -probcut_beta + 1,
@@ -198,6 +204,8 @@ pub fn try_probcut(
             ply + 1,
             thread_id,
         );
+
+        pos.unmake_move(mv);
 
         if score >= probcut_beta {
             return Some(beta);
@@ -278,7 +286,7 @@ pub fn should_rfp_prune(static_eval: i32, beta: i32, margin: i32) -> bool {
 /// Attempts null move pruning - returns Some(score) if pruning succeeds, None otherwise
 #[inline(always)]
 pub fn try_null_move_pruning(
-    pos: &Position,
+    pos: &mut Position,
     depth: u8,
     beta: i32,
     allow_null: bool,
@@ -309,20 +317,24 @@ pub fn try_null_move_pruning(
         return None;
     }
 
-    // Create null move position
-    let null_pos = make_null_move(pos);
+    // Make null move
+    pos.make_null_move();
 
     // Calculate reduction depth
     // DIVERSIFICATION: Alternate reduction depth
     let base = if depth >= 7 { 4 } else { 3 };
-    let thread_adj = if thread_id > 0 { (thread_id & 1) as i32 } else { 0 };
+    let thread_adj = if thread_id > 0 {
+        (thread_id & 1) as i32
+    } else {
+        0
+    };
     let reduction = base + thread_adj;
-    
+
     let null_depth = depth.saturating_sub(1 + reduction as u8);
 
     // Search with null window
     let null_score = -negamax(
-        &null_pos,
+        pos,
         null_depth,
         -beta,
         -beta + 1,
@@ -335,22 +347,14 @@ pub fn try_null_move_pruning(
         thread_id,
     );
 
+    pos.unmake_null_move();
+
     // If null move fails high, we can prune this node
     if null_score >= beta {
         Some(beta)
     } else {
         None
     }
-}
-
-/// Creates a position after making a null move (passing the turn)
-#[inline(always)]
-fn make_null_move(pos: &Position) -> Position {
-    let mut null_pos = *pos;
-    null_pos.side_to_move = null_pos.side_to_move.flip();
-    null_pos.hash ^= crate::zobrist::SIDE_KEY;
-    null_pos.en_passant = None;
-    null_pos
 }
 
 // ============================================================================
@@ -369,7 +373,7 @@ const RAZOR_MARGINS: [i32; 4] = [
 /// Try razoring - return Some(score) if we can prune, None otherwise
 #[inline(always)]
 pub fn try_razoring(
-    pos: &Position,
+    pos: &mut Position,
     depth: u8,
     alpha: i32,
     in_check: bool,
