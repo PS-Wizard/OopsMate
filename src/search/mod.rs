@@ -81,7 +81,7 @@ pub fn search(
     let mut handles = Vec::new();
     if threads > 1 {
         for id in 1..threads {
-            let pos_clone = *pos; 
+            let pos_clone = pos.clone(); 
             let tt_clone = tt.clone();
             let signal_clone = stop_signal.clone();
             

@@ -1,9 +1,9 @@
-use super::{SearchInfo, SearchStats, print_uci_info, should_stop_search};
 use super::alphabeta::search_root;
 use super::ordering::MoveHistory;
 use super::params::{ASPIRATION_DEPTH, INFINITY, MAX_MOVES};
-use crate::{Move, MoveCollector, Position};
+use super::{print_uci_info, should_stop_search, SearchInfo, SearchStats};
 use crate::tpt::TranspositionTable;
+use crate::{Move, MoveCollector, Position};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
@@ -17,6 +17,7 @@ pub fn search_driver(
     stop_signal: Arc<AtomicBool>,
     thread_id: usize,
 ) -> Option<SearchInfo> {
+    let mut pos = pos.clone();
     let start_time = Instant::now();
     let mut stats = SearchStats::new(Some(stop_signal.clone()));
     let mut history = MoveHistory::new();
@@ -49,8 +50,15 @@ pub fn search_driver(
         }
 
         // search_aspiration handles both shallow (full window) and deep (aspiration) searches
-        let (iteration_best_score, iteration_best_move) =
-            search_aspiration(pos, depth, best_score, tt, &mut history, &mut stats, thread_id);
+        let (iteration_best_score, iteration_best_move) = search_aspiration(
+            &mut pos,
+            depth,
+            best_score,
+            tt,
+            &mut history,
+            &mut stats,
+            thread_id,
+        );
 
         // Check if we stopped during search
         if stop_signal.load(Ordering::Relaxed) {
@@ -108,7 +116,7 @@ pub fn search_driver(
 
 #[inline(always)]
 fn search_aspiration(
-    pos: &Position,
+    pos: &mut Position,
     depth: u8,
     prev_score: i32,
     tt: &TranspositionTable,
@@ -152,10 +160,10 @@ fn search_aspiration(
     // Aspiration Loop
     // DIVERSIFICATION: Aspiration Window Variation
     let mut delta = match thread_id % 4 {
-        0 => 25,   // Narrow (master) - standard
-        1 => 50,   // Medium
-        2 => 100,  // Wide
-        _ => 200,  // Very wide
+        0 => 25,  // Narrow (master) - standard
+        1 => 50,  // Medium
+        2 => 100, // Wide
+        _ => 200, // Very wide
     };
 
     let mut alpha = prev_score - delta;
@@ -163,8 +171,17 @@ fn search_aspiration(
 
     loop {
         // We pass 'depth' to let search_root know if should use the optimization
-        let (score, best_move) =
-            search_root(pos, moves_slice, depth, alpha, beta, tt, history, stats, thread_id);
+        let (score, best_move) = search_root(
+            pos,
+            moves_slice,
+            depth,
+            alpha,
+            beta,
+            tt,
+            history,
+            stats,
+            thread_id,
+        );
 
         if stats.should_stop() {
             return (score, best_move);
