@@ -201,6 +201,8 @@ pub fn try_probcut(
             stats,
             true,
             false,
+            true, // cut_node
+            None,
             ply + 1,
             thread_id,
         );
@@ -343,6 +345,8 @@ pub fn try_null_move_pruning(
         stats,
         false,
         false,
+        true, // cut_node
+        None,
         ply + 1,
         thread_id,
     );

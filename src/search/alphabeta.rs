@@ -14,7 +14,7 @@ use crate::{Move, MoveCollector, Position};
 #[allow(clippy::too_many_arguments)]
 pub fn negamax(
     pos: &mut Position,
-    depth: u8,
+    mut depth: u8,
     mut alpha: i32,
     beta: i32,
     tt: &TranspositionTable,
@@ -22,6 +22,8 @@ pub fn negamax(
     stats: &mut SearchStats,
     allow_null: bool,
     pv_node: bool,
+    cut_node: bool,
+    excluded_move: Option<Move>,
     ply: usize,
     thread_id: usize,
 ) -> i32 {
@@ -35,10 +37,11 @@ pub fn negamax(
     let hash = pos.hash();
 
     // Probe transposition table - check for early cutoff
+    let tt_entry = tt.probe(hash);
     let tt_move = {
-        let tt_entry = tt.probe(hash);
         if let Some(entry) = tt_entry {
-            if entry.depth >= depth {
+            if entry.depth >= depth && excluded_move.is_none() {
+                // Don't cut off if we are in singular extension search (excluded_move is Some)
                 stats.tt_hits += 1;
                 match entry.flag {
                     EXACT => return entry.score,
@@ -87,6 +90,45 @@ pub fn negamax(
         pos, depth, beta, allow_null, in_check, tt, history, stats, ply, thread_id,
     ) {
         return score;
+    }
+
+    // Singular Extensions
+    // If we have a TT move that caused a cutoff (LOWER_BOUND) and we are deep enough
+    if !pv_node && excluded_move.is_none() && depth >= 8 && tt_move.is_some() && !in_check {
+        if let Some(entry) = tt_entry {
+            if entry.depth >= depth.saturating_sub(3) && entry.flag == LOWER_BOUND {
+                let singular_beta = entry.score.saturating_sub(depth as i32 * 2); // Simple margin
+                let singular_depth = depth / 2;
+
+                // Verify if the move is singular by searching ONLY OTHER moves
+                // We do this by passing excluded_move = tt_move
+                // If the result is < singular_beta, it means no other move is good enough
+                let score = negamax(
+                    pos,
+                    singular_depth,
+                    singular_beta - 1,
+                    singular_beta,
+                    tt,
+                    history,
+                    stats,
+                    allow_null,
+                    false,   // cut_node
+                    true,    // cut_node
+                    tt_move, // excluded_move
+                    ply,
+                    thread_id,
+                );
+
+                if score < singular_beta {
+                    depth += 1; // Extend
+                } else if score >= beta {
+                    // Multi-cut pruning: if other moves are also good, we might prune?
+                    // Stockfish does logic here, simple version: just return beta if hard fail high?
+                    // For now, just the extension.
+                    return singular_beta;
+                }
+            }
+        }
     }
 
     // Internal Iterative Deepening
@@ -149,6 +191,12 @@ pub fn negamax(
         pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
         let mv = move_list[i];
 
+        if let Some(excluded) = excluded_move {
+            if mv.0 == excluded.0 {
+                continue;
+            }
+        }
+
         pos.make_move(mv);
         let gives_check = pos.is_in_check();
         let check_extension = if gives_check { 1 } else { 0 };
@@ -173,6 +221,8 @@ pub fn negamax(
                 stats,
                 true,
                 pv_node,
+                false, // cut_node (first move of PV node is PV, first move of cut node is ... ?)
+                None,
                 ply + 1,
                 thread_id,
             )
@@ -197,6 +247,8 @@ pub fn negamax(
                     stats,
                     true,
                     false,
+                    true, // cut_node (LMR/Null window searches are usually cut nodes)
+                    None,
                     ply + 1,
                     thread_id,
                 )
@@ -212,6 +264,8 @@ pub fn negamax(
                     stats,
                     true,
                     false,
+                    true, // cut_node
+                    None,
                     ply + 1,
                     thread_id,
                 )
@@ -228,6 +282,8 @@ pub fn negamax(
                     stats,
                     true,
                     pv_node,
+                    false, // re-search is likely PV
+                    None,
                     ply + 1,
                     thread_id,
                 );
@@ -308,6 +364,8 @@ pub fn search_move(
             stats,
             gives_check,
             pv_node,
+            false,
+            None,
             ply + 1,
             thread_id,
         );
@@ -329,6 +387,8 @@ pub fn search_move(
             stats,
             gives_check,
             false,
+            true,
+            None,
             ply + 1,
             thread_id,
         )
@@ -343,6 +403,8 @@ pub fn search_move(
             stats,
             gives_check,
             false,
+            true,
+            None,
             ply + 1,
             thread_id,
         )
@@ -359,6 +421,8 @@ pub fn search_move(
             stats,
             gives_check,
             pv_node,
+            false,
+            None,
             ply + 1,
             thread_id,
         );
@@ -542,7 +606,7 @@ pub fn try_iid(
     let iid_depth = depth.saturating_sub(reduction);
 
     negamax(
-        pos, iid_depth, alpha, beta, tt, history, stats, true, pv_node, ply, thread_id,
+        pos, iid_depth, alpha, beta, tt, history, stats, true, pv_node, false, None, ply, thread_id,
     );
 
     tt.probe(pos.hash()).map(|entry| entry.best_move)
