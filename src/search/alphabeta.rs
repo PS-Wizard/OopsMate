@@ -87,7 +87,17 @@ pub fn negamax(
 
     // Try null move pruning
     if let Some(score) = try_null_move_pruning(
-        pos, depth, beta, allow_null, in_check, tt, history, stats, ply, thread_id,
+        pos,
+        depth,
+        beta,
+        allow_null,
+        in_check,
+        static_eval,
+        tt,
+        history,
+        stats,
+        ply,
+        thread_id,
     ) {
         return score;
     }

@@ -288,6 +288,7 @@ pub fn try_null_move_pruning(
     beta: i32,
     allow_null: bool,
     in_check: bool,
+    static_eval: i32,
     tt: &TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
@@ -299,6 +300,11 @@ pub fn try_null_move_pruning(
     // - In check (illegal to pass when in check)
     // - Not deep enough
     if !allow_null || in_check || depth < 3 {
+        return None;
+    }
+
+    // Don't do null move if static eval is too low (Stockfish condition)
+    if static_eval < beta {
         return None;
     }
 
@@ -318,16 +324,14 @@ pub fn try_null_move_pruning(
     pos.make_null_move();
 
     // Calculate reduction depth
-    // DIVERSIFICATION: Alternate reduction depth
-    let base = if depth >= 7 { 4 } else { 3 };
-    let thread_adj = if thread_id > 0 {
-        (thread_id & 1) as i32
-    } else {
-        0
-    };
-    let reduction = base + thread_adj;
+    // Dynamic reduction: depth / 3 + 3 + (eval - beta) / 200
+    let eval_excess = (static_eval.saturating_sub(beta)).max(0);
+    let reduction_bonus = (eval_excess / 200).min(4); // Cap bonus
 
-    let null_depth = depth.saturating_sub(1 + reduction as u8);
+    let base = depth / 3 + 3;
+    let reduction = base + reduction_bonus as u8;
+
+    let null_depth = depth.saturating_sub(reduction);
 
     // Search with null window
     let null_score = -negamax(
