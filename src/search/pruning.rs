@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 //  LATE MOVE REDUCTION (LMR)
 // ============================================================================
 
-const LMR_MIN_DEPTH: u8 = 3;
+const LMR_MIN_DEPTH: u8 = 2;
 const LMR_FULL_DEPTH_MOVES: usize = 2;
 
 const MAX_DEPTH: usize = 64;
@@ -19,7 +19,7 @@ const MAX_MOVES: usize = 256;
 
 // aggressive base formula constants
 const QUIET_BASE: f32 = 0.85;
-const QUIET_DIVISOR: f32 = 2.25;
+const QUIET_DIVISOR: f32 = 2.0;
 const CAPTURE_BASE: f32 = 0.10;
 const CAPTURE_DIVISOR: f32 = 2.85;
 
@@ -67,8 +67,8 @@ fn get_lmr_table() -> &'static [[u8; MAX_MOVES]; MAX_DEPTH] {
 pub fn should_reduce_lmr(
     depth: u8,
     move_num: usize,
-    in_check: bool,
-    gives_check: bool,
+    _in_check: bool,
+    _gives_check: bool,
     mv: Move,
     thread_id: usize,
 ) -> bool {
@@ -79,11 +79,6 @@ pub fn should_reduce_lmr(
 
     // Start reducing after move 3 instead of 4
     if move_num < LMR_FULL_DEPTH_MOVES {
-        return false;
-    }
-
-    // Don't reduce check moves
-    if in_check || gives_check {
         return false;
     }
 
