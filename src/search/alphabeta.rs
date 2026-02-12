@@ -22,7 +22,7 @@ pub fn negamax(
     stats: &mut SearchStats,
     allow_null: bool,
     pv_node: bool,
-    cut_node: bool,
+    _cut_node: bool,
     excluded_move: Option<Move>,
     ply: usize,
     thread_id: usize,
@@ -132,9 +132,6 @@ pub fn negamax(
                 if score < singular_beta {
                     depth += 1; // Extend
                 } else if score >= beta {
-                    // Multi-cut pruning: if other moves are also good, we might prune?
-                    // Stockfish does logic here, simple version: just return beta if hard fail high?
-                    // For now, just the extension.
                     return singular_beta;
                 }
             }
@@ -231,7 +228,7 @@ pub fn negamax(
                 stats,
                 true,
                 pv_node,
-                false, // cut_node (first move of PV node is PV, first move of cut node is ... ?)
+                false, // cut_node
                 None,
                 ply + 1,
                 thread_id,
