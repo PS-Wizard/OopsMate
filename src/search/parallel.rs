@@ -137,9 +137,7 @@ fn search_aspiration(
 
     let mut moves = [Move(0); MAX_MOVES];
     let count = collector.len();
-    for i in 0..count {
-        moves[i] = collector.as_slice()[i];
-    }
+    moves[..count].copy_from_slice(&collector.as_slice()[..count]);
     let moves_slice = &mut moves[..count];
 
     // If shallow, just search full window

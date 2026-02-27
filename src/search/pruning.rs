@@ -32,8 +32,8 @@ static LMR_TABLE: OnceLock<[[u8; MAX_MOVES]; MAX_DEPTH]> = OnceLock::new();
 fn init_lmr_table() -> [[u8; MAX_MOVES]; MAX_DEPTH] {
     let mut table = [[0u8; MAX_MOVES]; MAX_DEPTH];
 
-    for depth in 1..MAX_DEPTH {
-        for move_num in 1..MAX_MOVES {
+    for (depth, row) in table.iter_mut().enumerate().take(MAX_DEPTH).skip(1) {
+        for (move_num, cell) in row.iter_mut().enumerate().take(MAX_MOVES).skip(1) {
             if depth >= LMR_MIN_DEPTH as usize && move_num >= LMR_FULL_DEPTH_MOVES {
                 // More aggressive formula: lower base, smaller divisor
                 let d = (depth as f32).ln();
@@ -42,7 +42,7 @@ fn init_lmr_table() -> [[u8; MAX_MOVES]; MAX_DEPTH] {
 
                 // Allow deeper reductions (depth - 1 instead of depth - 2)
                 let max_reduction = (depth as i32 - 1).max(0) as f32;
-                table[depth][move_num] = reduction.min(max_reduction).max(0.0) as u8;
+                *cell = reduction.min(max_reduction).max(0.0) as u8;
             }
         }
     }
@@ -151,6 +151,7 @@ pub fn calculate_lmr_reduction(
 const PROBCUT_MARGIN: i32 = 150;
 const PROBCUT_MIN_DEPTH: u8 = 5;
 
+#[allow(clippy::too_many_arguments)]
 pub fn try_probcut(
     pos: &mut Position,
     depth: u8,
@@ -281,6 +282,7 @@ pub fn should_rfp_prune(static_eval: i32, beta: i32, margin: i32) -> bool {
 // ============================================================================
 
 /// Attempts null move pruning - returns Some(score) if pruning succeeds, None otherwise
+#[allow(clippy::too_many_arguments)]
 #[inline(always)]
 pub fn try_null_move_pruning(
     pos: &mut Position,

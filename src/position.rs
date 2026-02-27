@@ -98,8 +98,8 @@ impl Position {
         pos.castling_rights = CastleRights(rights);
 
         if parts[3] != "-" {
-            let file = (parts[3].as_bytes()[0] - b'a') as u8;
-            let rank = (parts[3].as_bytes()[1] - b'1') as u8;
+            let file = parts[3].as_bytes()[0] - b'a';
+            let rank = parts[3].as_bytes()[1] - b'1';
             pos.en_passant = Some(rank * 8 + file);
         }
 
@@ -117,8 +117,8 @@ impl Position {
     #[inline(always)]
     pub fn compute_hash(&self) -> u64 {
         let mut h = 0u64;
-        for sq in 0..64 {
-            if let Some((piece, color)) = self.piece_at(sq) {
+        for (sq, entry) in self.board.iter().enumerate() {
+            if let Some((piece, color)) = *entry {
                 h ^= PIECE_KEYS[color as usize][piece as usize][sq];
             }
         }

@@ -207,7 +207,7 @@ impl Position {
             }
 
             // Double push
-            if from >= 8 && from < 16 {
+            if (8..16).contains(&from) {
                 let to2 = from + 16;
                 let target2 = 1u64 << to2;
                 let single_to = from + 8;
@@ -277,7 +277,7 @@ impl Position {
                 }
             }
 
-            if from >= 48 && from < 56 {
+            if (48..56).contains(&from) {
                 let to2 = from - 16;
                 let target2 = 1u64 << to2;
                 let single_to = from - 8;
@@ -343,10 +343,8 @@ impl Position {
                 continue;
             }
 
-            if (pinned >> from) & 1 != 0 {
-                if (ep_target & THROUGH[king_sq][from]) == 0 {
-                    continue;
-                }
+            if (pinned >> from) & 1 != 0 && (ep_target & THROUGH[king_sq][from]) == 0 {
+                continue;
             }
 
             let king_rank = king_sq / 8;
@@ -413,7 +411,7 @@ impl Position {
 
             // Promotions (including non-captures)
             let to = from + 8;
-            if to >= 56 && to < 64 && (empty >> to) & 1 != 0 {
+            if (56..64).contains(&to) && (empty >> to) & 1 != 0 {
                 let target = 1u64 << to;
                 if (target & pin_ray & check_mask) != 0 {
                     collector.push(Move::new(from, to, MoveType::PromotionQueen));
@@ -648,7 +646,9 @@ impl Position {
         check_mask: u64,
         enemies: u64,
     ) {
-        let pieces = self.our(unsafe { std::mem::transmute(PIECE as u8) }).0;
+        let pieces = self
+            .our(unsafe { std::mem::transmute::<u8, Piece>(PIECE as u8) })
+            .0;
 
         // Knights can't move if pinned
         if PIECE == Piece::Knight as usize {
@@ -768,39 +768,35 @@ impl Position {
 
         match self.side_to_move {
             Color::White => {
-                if self.castling_rights.can_castle_kingside(Color::White) {
-                    if (occupied & 0x60) == 0
-                        && !self.is_square_attacked(5, enemy)
-                        && !self.is_square_attacked(6, enemy)
-                    {
-                        collector.push(Move::new(king_sq, 6, MoveType::Castle));
-                    }
+                if self.castling_rights.can_castle_kingside(Color::White)
+                    && (occupied & 0x60) == 0
+                    && !self.is_square_attacked(5, enemy)
+                    && !self.is_square_attacked(6, enemy)
+                {
+                    collector.push(Move::new(king_sq, 6, MoveType::Castle));
                 }
-                if self.castling_rights.can_castle_queenside(Color::White) {
-                    if (occupied & 0x0E) == 0
-                        && !self.is_square_attacked(3, enemy)
-                        && !self.is_square_attacked(2, enemy)
-                    {
-                        collector.push(Move::new(king_sq, 2, MoveType::Castle));
-                    }
+                if self.castling_rights.can_castle_queenside(Color::White)
+                    && (occupied & 0x0E) == 0
+                    && !self.is_square_attacked(3, enemy)
+                    && !self.is_square_attacked(2, enemy)
+                {
+                    collector.push(Move::new(king_sq, 2, MoveType::Castle));
                 }
             }
             Color::Black => {
-                if self.castling_rights.can_castle_kingside(Color::Black) {
-                    if (occupied & 0x6000000000000000) == 0
-                        && !self.is_square_attacked(61, enemy)
-                        && !self.is_square_attacked(62, enemy)
-                    {
-                        collector.push(Move::new(king_sq, 62, MoveType::Castle));
-                    }
+                if self.castling_rights.can_castle_kingside(Color::Black)
+                    && (occupied & 0x6000000000000000) == 0
+                    && !self.is_square_attacked(61, enemy)
+                    && !self.is_square_attacked(62, enemy)
+                {
+                    collector.push(Move::new(king_sq, 62, MoveType::Castle));
                 }
-                if self.castling_rights.can_castle_queenside(Color::Black) {
-                    if (occupied & 0x0E00000000000000) == 0
-                        && !self.is_square_attacked(59, enemy)
-                        && !self.is_square_attacked(58, enemy)
-                    {
-                        collector.push(Move::new(king_sq, 58, MoveType::Castle));
-                    }
+                if self.castling_rights.can_castle_queenside(Color::Black)
+                    && (occupied & 0x0E00000000000000) == 0
+                    && !self.is_square_attacked(59, enemy)
+                    && !self.is_square_attacked(58, enemy)
+                {
+                    collector.push(Move::new(king_sq, 58, MoveType::Castle));
                 }
             }
         }

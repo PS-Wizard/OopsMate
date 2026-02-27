@@ -362,3 +362,10 @@ impl UciEngine {
         }
     }
 }
+
+impl Default for UciEngine {
+    #[inline(always)]
+    fn default() -> Self {
+        Self::new()
+    }
+}

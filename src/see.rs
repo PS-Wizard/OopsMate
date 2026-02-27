@@ -86,12 +86,9 @@ impl Position {
         let mut side = self.side_to_move.flip();
 
         // the SEE loop
-        loop {
+        while let Some(pair) = self.get_lva(attackers, side) {
             // Find Least Valuable Aggressor (LVA) for the current side
-            let (lva_piece, lva_sq) = match self.get_lva(attackers, side) {
-                Some(pair) => pair,
-                None => break, // No more attackers
-            };
+            let (lva_piece, lva_sq) = pair;
 
             // Speculative Store
             d += 1;

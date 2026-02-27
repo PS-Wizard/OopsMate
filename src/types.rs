@@ -35,6 +35,13 @@ impl Bitboard {
     }
 }
 
+impl Default for Bitboard {
+    #[inline(always)]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl std::ops::BitOr for Bitboard {
     type Output = Self;
     #[inline(always)]
@@ -245,5 +252,12 @@ impl MoveCollector {
     #[inline(always)]
     pub fn as_slice(&self) -> &[Move] {
         unsafe { std::slice::from_raw_parts(self.moves.as_ptr() as *const Move, self.count) }
+    }
+}
+
+impl Default for MoveCollector {
+    #[inline(always)]
+    fn default() -> Self {
+        Self::new()
     }
 }

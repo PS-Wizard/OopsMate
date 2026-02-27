@@ -209,11 +209,12 @@ pub fn negamax(
         let check_extension = if gives_check { 1 } else { 0 };
 
         // Futility pruning
-        if use_futility && i > 0 {
-            if should_prune_futility(mv, gives_check, static_eval, alpha, futility_margin) {
-                pos.unmake_move(mv);
-                continue;
-            }
+        if use_futility
+            && i > 0
+            && should_prune_futility(mv, gives_check, static_eval, alpha, futility_margin)
+        {
+            pos.unmake_move(mv);
+            continue;
         }
 
         let score = if i == 0 {
@@ -235,7 +236,7 @@ pub fn negamax(
             )
         } else {
             // PVS for subsequent moves
-            let is_hash_move = tt_move.map_or(false, |tt_mv| mv.0 == tt_mv.0);
+            let is_hash_move = tt_move.is_some_and(|tt_mv| mv.0 == tt_mv.0);
             let mut s = if should_reduce_lmr(depth, i, in_check, gives_check, mv, thread_id)
                 & !is_hash_move
             {
@@ -343,6 +344,7 @@ pub fn negamax(
 //  PVS
 // ============================================================================
 
+#[allow(clippy::too_many_arguments)]
 #[inline(always)]
 pub fn search_move(
     pos: &mut Position,
@@ -438,6 +440,7 @@ pub fn search_move(
     score
 }
 
+#[allow(clippy::too_many_arguments)]
 #[inline(always)]
 pub fn search_root(
     pos: &mut Position,
@@ -462,11 +465,11 @@ pub fn search_root(
 
     // DIVERSIFICATION: Perturb scores for helper threads
     if thread_id > 0 && move_count > 1 {
-        for i in 0..move_count {
+        for (i, score) in scores.iter_mut().enumerate().take(move_count) {
             // If it's not the TT move
-            if scores[i] != super::ordering::SCORE_TT_MOVE {
+            if *score != super::ordering::SCORE_TT_MOVE {
                 let noise = ((i + thread_id) * 987654321) % 4000;
-                scores[i] = scores[i].saturating_add(noise as i32);
+                *score = (*score).saturating_add(noise as i32);
             }
         }
     }
@@ -586,6 +589,7 @@ fn iid_reduction(depth: u8, pv_node: bool) -> u8 {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[inline(always)]
 pub fn try_iid(
     pos: &mut crate::Position,
