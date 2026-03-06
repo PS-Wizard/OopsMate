@@ -462,10 +462,81 @@ impl Position {
     pub fn is_stalemate(&self) -> bool {
         !self.is_in_check() && self.is_game_over()
     }
+
+    #[inline(always)]
+    pub const fn is_fifty_move_draw(&self) -> bool {
+        self.halfmove >= 100
+    }
+
+    pub fn is_repetition(&self) -> bool {
+        if self.halfmove < 4 {
+            return false;
+        }
+
+        let hash = self.hash;
+        let max_back = (self.halfmove as usize).min(self.history.len());
+
+        for prev in self
+            .history
+            .iter()
+            .rev()
+            .skip(1)
+            .take(max_back.saturating_sub(1))
+            .step_by(2)
+        {
+            if prev.hash == hash {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 impl Default for Position {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dummy_state(hash: u64) -> GameState {
+        GameState {
+            castling_rights: CastleRights::NONE,
+            en_passant: None,
+            halfmove: 1,
+            hash,
+            captured_piece: None,
+        }
+    }
+
+    #[test]
+    fn detects_fifty_move_draw() {
+        let mut pos = Position::new();
+        pos.halfmove = 100;
+        assert!(pos.is_fifty_move_draw());
+    }
+
+    #[test]
+    fn detects_repetition_by_hash_in_recent_history() {
+        let mut pos = Position::new();
+        let h = pos.hash();
+        pos.halfmove = 8;
+        pos.history = vec![dummy_state(11), dummy_state(22), dummy_state(h), dummy_state(44)];
+
+        assert!(pos.is_repetition());
+    }
+
+    #[test]
+    fn ignores_positions_before_halfmove_window() {
+        let mut pos = Position::new();
+        let h = pos.hash();
+        pos.halfmove = 4;
+        pos.history = vec![dummy_state(h), dummy_state(55), dummy_state(66), dummy_state(77), dummy_state(88)];
+
+        assert!(!pos.is_repetition());
     }
 }

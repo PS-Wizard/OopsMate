@@ -34,6 +34,10 @@ pub fn negamax(
         return 0; // Return neutral score or handle abort
     }
 
+    if pos.is_fifty_move_draw() || (ply > 0 && pos.is_repetition()) {
+        return 0;
+    }
+
     let hash = pos.hash();
 
     // Probe transposition table - check for early cutoff

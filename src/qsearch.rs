@@ -15,6 +15,10 @@ pub fn qsearch(
 ) -> i32 {
     stats.nodes += 1;
 
+    if pos.is_fifty_move_draw() || pos.is_repetition() {
+        return 0;
+    }
+
     // MAX QSEARCH DEPTH
     if ply >= 64 {
         return evaluate(pos);
