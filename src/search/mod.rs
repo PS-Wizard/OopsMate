@@ -6,18 +6,15 @@ pub mod pruning;
 
 pub use alphabeta::*;
 pub use ordering::*;
+pub use parallel::*;
 pub use params::*;
 pub use pruning::*;
-pub use parallel::*;
 
-use crate::{
-    tpt::TranspositionTable,
-    Move, Position,
-};
+use crate::{tpt::TranspositionTable, Move, Position};
+use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
-use std::io::Write;
 
 // ============================================================================
 //  STRUCTS
@@ -81,10 +78,10 @@ pub fn search(
     let mut handles = Vec::new();
     if threads > 1 {
         for id in 1..threads {
-            let pos_clone = pos.clone(); 
+            let pos_clone = pos.clone();
             let tt_clone = tt.clone();
             let signal_clone = stop_signal.clone();
-            
+
             handles.push(std::thread::spawn(move || {
                 parallel::search_driver(
                     &pos_clone,
@@ -99,14 +96,7 @@ pub fn search(
     }
 
     // Run master search
-    let info = parallel::search_driver(
-        pos,
-        max_depth,
-        max_time_ms,
-        &tt,
-        stop_signal.clone(),
-        0,
-    );
+    let info = parallel::search_driver(pos, max_depth, max_time_ms, &tt, stop_signal.clone(), 0);
 
     // Signal helpers to stop
     stop_signal.store(true, Ordering::Relaxed);
@@ -208,46 +198,60 @@ pub fn move_to_uci(m: &Move) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::thread;
+
+    fn run_with_large_stack<F>(f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        thread::Builder::new()
+            .stack_size(32 * 1024 * 1024)
+            .spawn(f)
+            .expect("failed to spawn test thread")
+            .join()
+            .expect("test thread panicked");
+    }
 
     #[test]
-    #[ignore = "Overflows On Debug / Need Release"]
+    #[ignore = "Long-running search validation"]
     fn test_iterative_deepening() {
-        use crate::search::init_lmr;
-        use std::sync::Arc;
+        run_with_large_stack(|| {
+            use crate::search::init_lmr;
+            use std::sync::Arc;
 
-        let depth = 18;
-        // let pos = Position::new();
-        let pos = Position::from_fen(
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-        )
-        .unwrap_or_default();
+            let depth = 18;
+            let pos = Position::from_fen(
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            )
+            .unwrap_or_default();
 
-        let tt = Arc::new(TranspositionTable::new_mb(512));
-        init_lmr();
+            let tt = Arc::new(TranspositionTable::new_mb(512));
+            init_lmr();
 
-        println!("Starting iterative deepening search to depth {}...", depth);
-        let start = std::time::Instant::now();
+            println!("Starting iterative deepening search to depth {}...", depth);
+            let start = std::time::Instant::now();
 
-        let result = search(&pos, depth, None, tt.clone(), 1);
+            let result = search(&pos, depth, None, tt.clone(), 1);
 
-        let duration = start.elapsed();
+            let duration = start.elapsed();
 
-        if let Some(info) = result {
-            println!(
-                "Best move: {} (depth {}, score {}, nodes {}, time {:.3}s, nps {})",
-                move_to_uci(&info.best_move),
-                info.depth,
-                info.score,
-                info.nodes,
-                duration.as_secs_f64(),
-                if duration.as_millis() > 0 {
-                    (info.nodes * 1000) / duration.as_millis() as u64
-                } else {
-                    0
-                }
-            );
-        } else {
-            println!("No move found");
-        }
+            if let Some(info) = result {
+                println!(
+                    "Best move: {} (depth {}, score {}, nodes {}, time {:.3}s, nps {})",
+                    move_to_uci(&info.best_move),
+                    info.depth,
+                    info.score,
+                    info.nodes,
+                    duration.as_secs_f64(),
+                    if duration.as_millis() > 0 {
+                        (info.nodes * 1000) / duration.as_millis() as u64
+                    } else {
+                        0
+                    }
+                );
+            } else {
+                println!("No move found");
+            }
+        });
     }
 }

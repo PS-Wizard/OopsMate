@@ -3,9 +3,14 @@
 version = 4
 
 [[package]]
+name = "nnuebie"
+version = "0.1.0"
+
+[[package]]
 name = "oops_mate"
 version = "0.1.0"
 dependencies = [
+ "nnuebie",
  "strikes",
  "utilities",
 ]

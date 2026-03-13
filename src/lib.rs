@@ -35,7 +35,7 @@ mod benchmark_tests {
     fn run_benchmark_suite() {
         use std::sync::Arc;
         init_lmr();
-        
+
         let positions = [
             BenchPos {
                 name: "Start Position",
@@ -61,28 +61,28 @@ mod benchmark_tests {
                 name: "Tactical (WAC-2)",
                 fen: "2rr3k/pp3pp1/1nnqbN1p/3p4/2pP4/2P3Q1/PPB2PPP/R1B1R1K1 w - - 0 1",
                 depth: 13, // Fast tactical search
-            }
+            },
         ];
 
         let mut total_nodes = 0;
         let mut total_time_ms = 0;
 
         println!("\n{:=^80}", " BENCHMARK SUITE ");
-        
+
         for pos_def in &positions {
             let pos = Position::from_fen(pos_def.fen)
                 .unwrap_or_else(|_| panic!("Invalid FEN: {}", pos_def.fen));
-            
+
             // 256MB TT
             let tt = Arc::new(TranspositionTable::new_mb(256));
-            
+
             println!("\nRunning: {}", pos_def.name);
             println!("FEN: {}", pos_def.fen);
-            
+
             let start = Instant::now();
             let result = search(&pos, pos_def.depth, None, tt, 1);
             let duration = start.elapsed();
-            
+
             if let Some(info) = result {
                 let time_ms = duration.as_millis() as u64;
                 let nps = if time_ms > 0 {
@@ -90,7 +90,7 @@ mod benchmark_tests {
                 } else {
                     0
                 };
-                
+
                 total_nodes += info.nodes;
                 total_time_ms += time_ms;
 
@@ -136,7 +136,7 @@ mod benchmark_tests {
         );
 
         if m.is_promotion() {
-             let promo = match m.move_type() {
+            let promo = match m.move_type() {
                 crate::types::MoveType::PromotionQueen
                 | crate::types::MoveType::CapturePromotionQueen => 'q',
                 crate::types::MoveType::PromotionRook
@@ -158,10 +158,13 @@ mod benchmark_tests {
     fn run_multithread_benchmark() {
         use std::sync::Arc;
         init_lmr();
-        let pos = Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap();
-        
+        let pos = Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        )
+        .unwrap();
+
         let depth = 18;
-        
+
         println!("Running Multithread Benchmark (KiwiPete Depth 18)");
 
         // 1 Thread
@@ -170,14 +173,14 @@ mod benchmark_tests {
         search(&pos, depth, None, tt1, 1);
         let time1 = start1.elapsed();
         println!("1 Thread: {:.3}s", time1.as_secs_f64());
-        
+
         // 4 Threads
         let tt4 = Arc::new(TranspositionTable::new_mb(64));
         let start4 = Instant::now();
         search(&pos, depth, None, tt4, 4);
         let time4 = start4.elapsed();
         println!("4 Threads: {:.3}s", time4.as_secs_f64());
-        
+
         println!("Speedup: {:.2}x", time1.as_secs_f64() / time4.as_secs_f64());
         assert!(time4 < time1, "Multithreading should be faster!");
     }

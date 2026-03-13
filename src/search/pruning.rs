@@ -1,6 +1,7 @@
 use super::alphabeta::negamax;
 use super::ordering::MoveHistory;
 use super::SearchStats;
+use crate::evaluate::{apply_move, apply_null_move, undo_move, undo_null_move, EvalProbe};
 use crate::qsearch::qsearch;
 use crate::tpt::TranspositionTable;
 use crate::Move;
@@ -154,6 +155,7 @@ const PROBCUT_MIN_DEPTH: u8 = 5;
 #[allow(clippy::too_many_arguments)]
 pub fn try_probcut(
     pos: &mut Position,
+    probe: &mut EvalProbe,
     depth: u8,
     beta: i32,
     pv_node: bool,
@@ -184,11 +186,13 @@ pub fn try_probcut(
     let moves = collector.as_slice();
 
     for &mv in moves {
+        let delta = apply_move(probe, pos, mv);
         pos.make_move(mv);
 
         // Search with narrow window around raised beta
         let score = -negamax(
             pos,
+            probe,
             probcut_depth,
             -probcut_beta,
             -probcut_beta + 1,
@@ -204,6 +208,7 @@ pub fn try_probcut(
         );
 
         pos.unmake_move(mv);
+        undo_move(probe, delta);
 
         if score >= probcut_beta {
             return Some(beta);
@@ -286,6 +291,7 @@ pub fn should_rfp_prune(static_eval: i32, beta: i32, margin: i32) -> bool {
 #[inline(always)]
 pub fn try_null_move_pruning(
     pos: &mut Position,
+    probe: &mut EvalProbe,
     depth: u8,
     beta: i32,
     allow_null: bool,
@@ -323,6 +329,7 @@ pub fn try_null_move_pruning(
     }
 
     // Make null move
+    apply_null_move(probe, pos);
     pos.make_null_move();
 
     // Calculate reduction depth
@@ -338,6 +345,7 @@ pub fn try_null_move_pruning(
     // Search with null window
     let null_score = -negamax(
         pos,
+        probe,
         null_depth,
         -beta,
         -beta + 1,
@@ -353,6 +361,7 @@ pub fn try_null_move_pruning(
     );
 
     pos.unmake_null_move();
+    undo_null_move(probe);
 
     // If null move fails high, we can prune this node
     if null_score >= beta {
@@ -379,6 +388,7 @@ const RAZOR_MARGINS: [i32; 4] = [
 #[inline(always)]
 pub fn try_razoring(
     pos: &mut Position,
+    probe: &mut EvalProbe,
     depth: u8,
     alpha: i32,
     in_check: bool,
@@ -407,7 +417,7 @@ pub fn try_razoring(
     // If static eval is way below alpha, even with margin
     if static_eval + margin < alpha {
         // Verify with qsearch
-        let razor_score = qsearch(pos, alpha - margin, alpha - margin + 1, stats, 0);
+        let razor_score = qsearch(pos, probe, alpha - margin, alpha - margin + 1, stats, 0);
 
         if razor_score < alpha - margin {
             return Some(razor_score);

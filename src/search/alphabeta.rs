@@ -2,7 +2,7 @@ use super::ordering::{pick_next_move, score_move, MoveHistory};
 use super::params::{IID_MIN_DEPTH, INFINITY, MATE_VALUE, MAX_MOVES};
 use super::pruning::*;
 use super::SearchStats;
-use crate::evaluate::evaluate;
+use crate::evaluate::{apply_move, evaluate_with_probe, undo_move, EvalProbe};
 use crate::qsearch::qsearch;
 use crate::tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND};
 use crate::{Move, MoveCollector, Position};
@@ -14,6 +14,7 @@ use crate::{Move, MoveCollector, Position};
 #[allow(clippy::too_many_arguments)]
 pub fn negamax(
     pos: &mut Position,
+    probe: &mut EvalProbe,
     mut depth: u8,
     mut alpha: i32,
     beta: i32,
@@ -62,22 +63,31 @@ pub fn negamax(
 
     // Base case - drop into quiescence search
     if depth == 0 {
-        return qsearch(pos, alpha, beta, stats, 0);
+        return qsearch(pos, probe, alpha, beta, stats, 0);
     }
     let in_check = pos.is_in_check();
 
     // Static evaluation for pruning decisions
-    let static_eval = evaluate(pos);
+    let static_eval = evaluate_with_probe(pos, probe);
 
     // PROBCUT
     if let Some(score) = try_probcut(
-        pos, depth, beta, pv_node, in_check, allow_null, tt, history, stats, ply, thread_id,
+        pos, probe, depth, beta, pv_node, in_check, allow_null, tt, history, stats, ply, thread_id,
     ) {
         return score;
     }
 
     // RAZORING
-    if let Some(score) = try_razoring(pos, depth, alpha, in_check, pv_node, static_eval, stats) {
+    if let Some(score) = try_razoring(
+        pos,
+        probe,
+        depth,
+        alpha,
+        in_check,
+        pv_node,
+        static_eval,
+        stats,
+    ) {
         return score;
     }
 
@@ -92,6 +102,7 @@ pub fn negamax(
     // Try null move pruning
     if let Some(score) = try_null_move_pruning(
         pos,
+        probe,
         depth,
         beta,
         allow_null,
@@ -119,6 +130,7 @@ pub fn negamax(
                 // If the result is < singular_beta, it means no other move is good enough
                 let score = negamax(
                     pos,
+                    probe,
                     singular_depth,
                     singular_beta - 1,
                     singular_beta,
@@ -145,6 +157,7 @@ pub fn negamax(
     // Internal Iterative Deepening
     let iid_move = try_iid(
         pos,
+        probe,
         depth,
         alpha,
         beta,
@@ -208,6 +221,7 @@ pub fn negamax(
             }
         }
 
+        let delta = apply_move(probe, pos, mv);
         pos.make_move(mv);
         let gives_check = pos.is_in_check();
         let check_extension = if gives_check { 1 } else { 0 };
@@ -218,6 +232,7 @@ pub fn negamax(
             && should_prune_futility(mv, gives_check, static_eval, alpha, futility_margin)
         {
             pos.unmake_move(mv);
+            undo_move(probe, delta);
             continue;
         }
 
@@ -225,6 +240,7 @@ pub fn negamax(
             // First move: full depth, full window
             -negamax(
                 pos,
+                probe,
                 depth - 1,
                 -beta,
                 -alpha,
@@ -251,6 +267,7 @@ pub fn negamax(
 
                 -negamax(
                     pos,
+                    probe,
                     reduced_depth,
                     -alpha - 1,
                     -alpha,
@@ -268,6 +285,7 @@ pub fn negamax(
                 // Null window search
                 -negamax(
                     pos,
+                    probe,
                     depth - 1 + check_extension,
                     -alpha - 1,
                     -alpha,
@@ -286,6 +304,7 @@ pub fn negamax(
             if s > alpha && s < beta {
                 s = -negamax(
                     pos,
+                    probe,
                     depth - 1 + check_extension,
                     -beta,
                     -alpha,
@@ -304,6 +323,7 @@ pub fn negamax(
             s
         };
         pos.unmake_move(mv);
+        undo_move(probe, delta);
 
         if stats.should_stop() {
             return 0; // Abort
@@ -352,6 +372,7 @@ pub fn negamax(
 #[inline(always)]
 pub fn search_move(
     pos: &mut Position,
+    probe: &mut EvalProbe,
     mv: Move,
     depth: u8,
     alpha: i32,
@@ -369,6 +390,7 @@ pub fn search_move(
     if move_num == 0 {
         return -negamax(
             pos,
+            probe,
             depth - 1,
             -beta,
             -alpha,
@@ -392,6 +414,7 @@ pub fn search_move(
 
         -negamax(
             pos,
+            probe,
             reduced_depth,
             -alpha - 1,
             -alpha,
@@ -408,6 +431,7 @@ pub fn search_move(
     } else {
         -negamax(
             pos,
+            probe,
             depth - 1,
             -alpha - 1,
             -alpha,
@@ -426,6 +450,7 @@ pub fn search_move(
     if score > alpha && score < beta {
         score = -negamax(
             pos,
+            probe,
             depth - 1,
             -beta,
             -alpha,
@@ -448,6 +473,7 @@ pub fn search_move(
 #[inline(always)]
 pub fn search_root(
     pos: &mut Position,
+    probe: &mut EvalProbe,
     moves: &mut [Move],
     depth: u8,
     mut alpha: i32,
@@ -485,12 +511,14 @@ pub fn search_root(
         pick_next_move(moves, &mut scores, i);
         let mv = moves[i];
 
+        let delta = apply_move(probe, pos, mv);
         pos.make_move(mv);
         let gives_check = pos.is_in_check();
 
         let score = if i == 0 {
             search_move(
                 pos,
+                probe,
                 mv,
                 depth,
                 alpha,
@@ -509,6 +537,7 @@ pub fn search_root(
             // PVS for other moves
             let s = search_move(
                 pos,
+                probe,
                 mv,
                 depth,
                 alpha,
@@ -526,6 +555,7 @@ pub fn search_root(
             if s > alpha && s < beta {
                 search_move(
                     pos,
+                    probe,
                     mv,
                     depth,
                     alpha,
@@ -545,6 +575,7 @@ pub fn search_root(
             }
         };
         pos.unmake_move(mv);
+        undo_move(probe, delta);
 
         if stats.should_stop() {
             return (best_score, best_move);
@@ -597,6 +628,7 @@ fn iid_reduction(depth: u8, pv_node: bool) -> u8 {
 #[inline(always)]
 pub fn try_iid(
     pos: &mut crate::Position,
+    probe: &mut EvalProbe,
     depth: u8,
     alpha: i32,
     beta: i32,
@@ -621,7 +653,8 @@ pub fn try_iid(
     let iid_depth = depth.saturating_sub(reduction);
 
     negamax(
-        pos, iid_depth, alpha, beta, tt, history, stats, true, pv_node, false, None, ply, thread_id,
+        pos, probe, iid_depth, alpha, beta, tt, history, stats, true, pv_node, false, None, ply,
+        thread_id,
     );
 
     tt.probe(pos.hash()).map(|entry| entry.best_move)

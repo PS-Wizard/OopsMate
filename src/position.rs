@@ -350,6 +350,7 @@ impl Position {
             self.en_passant = None;
         }
 
+        self.halfmove += 1;
         self.hash ^= SIDE_KEY;
         self.side_to_move = self.side_to_move.flip();
     }
@@ -358,6 +359,7 @@ impl Position {
     pub fn unmake_null_move(&mut self) {
         let state = self.history.pop().expect("No history to unmake null move");
         self.en_passant = state.en_passant;
+        self.halfmove = state.halfmove;
         self.hash = state.hash;
         self.side_to_move = self.side_to_move.flip();
     }
@@ -525,7 +527,12 @@ mod tests {
         let mut pos = Position::new();
         let h = pos.hash();
         pos.halfmove = 8;
-        pos.history = vec![dummy_state(11), dummy_state(22), dummy_state(h), dummy_state(44)];
+        pos.history = vec![
+            dummy_state(11),
+            dummy_state(22),
+            dummy_state(h),
+            dummy_state(44),
+        ];
 
         assert!(pos.is_repetition());
     }
@@ -535,7 +542,13 @@ mod tests {
         let mut pos = Position::new();
         let h = pos.hash();
         pos.halfmove = 4;
-        pos.history = vec![dummy_state(h), dummy_state(55), dummy_state(66), dummy_state(77), dummy_state(88)];
+        pos.history = vec![
+            dummy_state(h),
+            dummy_state(55),
+            dummy_state(66),
+            dummy_state(77),
+            dummy_state(88),
+        ];
 
         assert!(!pos.is_repetition());
     }

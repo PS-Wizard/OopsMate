@@ -16,7 +16,7 @@ impl UciEngine {
         UciEngine {
             position: Position::new(),
             tt: Arc::new(TranspositionTable::new_mb(256)),
-            threads: 4,
+            threads: 1,
         }
     }
 

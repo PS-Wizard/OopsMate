@@ -2,6 +2,7 @@ use super::alphabeta::search_root;
 use super::ordering::MoveHistory;
 use super::params::{ASPIRATION_DEPTH, INFINITY, MAX_MOVES};
 use super::{print_uci_info, should_stop_search, SearchInfo, SearchStats};
+use crate::evaluate::{new_probe, EvalProbe};
 use crate::tpt::TranspositionTable;
 use crate::{Move, MoveCollector, Position};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -18,6 +19,7 @@ pub fn search_driver(
     thread_id: usize,
 ) -> Option<SearchInfo> {
     let mut pos = pos.clone();
+    let mut probe = Box::new(new_probe(&pos));
     let start_time = Instant::now();
     let mut stats = SearchStats::new(Some(stop_signal.clone()));
     let mut history = MoveHistory::new();
@@ -52,6 +54,7 @@ pub fn search_driver(
         // search_aspiration handles both shallow (full window) and deep (aspiration) searches
         let (iteration_best_score, iteration_best_move) = search_aspiration(
             &mut pos,
+            &mut probe,
             depth,
             best_score,
             tt,
@@ -117,6 +120,7 @@ pub fn search_driver(
 #[inline(always)]
 fn search_aspiration(
     pos: &mut Position,
+    probe: &mut EvalProbe,
     depth: u8,
     prev_score: i32,
     tt: &TranspositionTable,
@@ -144,6 +148,7 @@ fn search_aspiration(
     if depth < ASPIRATION_DEPTH {
         return search_root(
             pos,
+            probe,
             moves_slice,
             depth,
             -INFINITY,
@@ -171,6 +176,7 @@ fn search_aspiration(
         // We pass 'depth' to let search_root know if should use the optimization
         let (score, best_move) = search_root(
             pos,
+            probe,
             moves_slice,
             depth,
             alpha,

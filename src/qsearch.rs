@@ -1,4 +1,4 @@
-use crate::evaluate::evaluate;
+use crate::evaluate::{apply_move, evaluate_with_probe, undo_move, EvalProbe};
 use crate::search::SearchStats;
 use crate::search::{pick_next_move, score_move};
 use crate::{Move, MoveCollector, Position};
@@ -8,6 +8,7 @@ const MAX_MOVES: usize = 256;
 /// Quiescence search; searches captures until position is "quiet"
 pub fn qsearch(
     pos: &mut Position,
+    probe: &mut EvalProbe,
     mut alpha: i32,
     beta: i32,
     stats: &mut SearchStats,
@@ -21,10 +22,10 @@ pub fn qsearch(
 
     // MAX QSEARCH DEPTH
     if ply >= 64 {
-        return evaluate(pos);
+        return evaluate_with_probe(pos, probe);
     }
 
-    let stand_pat = evaluate(pos);
+    let stand_pat = evaluate_with_probe(pos, probe);
 
     if stand_pat >= beta {
         return beta;
@@ -84,9 +85,11 @@ pub fn qsearch(
         );
         let mv = capture_list[i];
 
+        let delta = apply_move(probe, pos, mv);
         pos.make_move(mv);
-        let score = -qsearch(pos, -beta, -alpha, stats, ply + 1);
+        let score = -qsearch(pos, probe, -beta, -alpha, stats, ply + 1);
         pos.unmake_move(mv);
+        undo_move(probe, delta);
 
         if score >= beta {
             return beta;

@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 strikes = { path = "./crates/strikes/" } 
 utilities = { path = "./crates/utilities/" } 
+nnuebie = { path = "./crates/nnuebie" }
 
 [[bin]]
 name = "oops_mate"
@@ -24,4 +25,3 @@ debug = true
 
 [profile.bench]
 inherits = "release"
-

@@ -48,7 +48,7 @@ impl TranspositionTable {
     pub fn new_mb(mb: usize) -> Self {
         let bytes = mb * 1024 * 1024;
         // Mimic old entry size (24 bytes) to keep table size identical for regression testing
-        let entry_size = 24; 
+        let entry_size = 24;
         let entries = bytes / entry_size;
 
         // Round down to power of 2 for fast indexing
@@ -89,7 +89,7 @@ impl TranspositionTable {
         }
 
         let entry = unsafe { self.table.get_unchecked(idx) };
-        
+
         let data = entry.data.load(Ordering::Relaxed);
         let signature = entry.signature.load(Ordering::Relaxed);
 
@@ -122,26 +122,26 @@ impl TranspositionTable {
         let old_data = entry.data.load(Ordering::Relaxed);
         let old_signature = entry.signature.load(Ordering::Relaxed);
         let old_hash = old_data ^ old_signature;
-        
+
         let mut replace = false;
         let gen = self.generation.load(Ordering::Relaxed);
-        
+
         if old_hash == 0 {
             // Empty
             replace = true;
         } else if old_hash == hash {
             // Same position
             // The previous logic was `entry.key == hash`. It always replaced if key matched!
-            replace = true; 
+            replace = true;
         } else {
             // Collision
             // Replace if old is from previous generation (age mismatch)
-            // AND new depth >= old depth? 
+            // AND new depth >= old depth?
             // Previous logic: `(entry.age != self.generation && depth >= entry.depth)`
-            
+
             let old_age = ((old_data >> 58) & 0x3F) as u8;
             let current_age_bits = gen & 0x3F;
-            
+
             if old_age != current_age_bits && depth >= ((old_data >> 48) & 0xFF) as u8 {
                 replace = true;
             }
@@ -187,7 +187,7 @@ impl TranspositionTable {
             let entry = unsafe { self.table.get_unchecked(i) };
             let data = entry.data.load(Ordering::Relaxed);
             let signature = entry.signature.load(Ordering::Relaxed);
-            
+
             if (data ^ signature) != 0 {
                 filled += 1;
             }

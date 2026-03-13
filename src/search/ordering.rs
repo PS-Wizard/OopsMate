@@ -1,8 +1,8 @@
-use crate::{types::Color, Move, Position};
 use super::params::MAX_DEPTH;
+use crate::{types::Color, Move, Position};
 
 const KILLERS_PER_PLY: usize = 2;
-const MAX_HISTORY: i32 = 50_000; 
+const MAX_HISTORY: i32 = 50_000;
 
 /// Killer move table
 /// Stores the best quiet moves that caused beta cutoffs at each ply
@@ -113,7 +113,7 @@ impl HistoryTable {
     #[inline(always)]
     pub fn update(&mut self, color: Color, from: usize, to: usize, bonus: i16) {
         let entry = &mut self.table[color as usize][from][to];
-        
+
         // Simple saturation (FAST)
         // Ensure we stay within bounds without expensive division
         *entry = (*entry + bonus as i32).clamp(-MAX_HISTORY, MAX_HISTORY);
@@ -149,7 +149,7 @@ impl MoveHistory {
             history: HistoryTable::new(),
         }
     }
-    
+
     pub fn clear(&mut self) {
         self.killers.clear();
         self.history.clear();
@@ -213,7 +213,7 @@ pub fn score_move(
                 SCORE_KILLER_SECONDARY
             };
         }
-        
+
         // 5. History Heuristic
         return h.history.get(pos.side_to_move, m.from(), m.to());
     }
