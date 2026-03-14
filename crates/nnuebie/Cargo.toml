@@ -1,0 +1,25 @@
+[package]
+name = "nnuebie"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[features]
+default = ["simd_avx2"]
+simd_avx2 = []
+simd_scalar = []
+
+[[bin]]
+name = "validate"
+path = "src/bin/validate.rs"
+
+[[bin]]
+name = "benchmark"
+path = "src/bin/benchmark.rs"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"

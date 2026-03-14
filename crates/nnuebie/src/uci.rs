@@ -1,0 +1,56 @@
+use crate::features::{BISHOP, KNIGHT, PAWN, QUEEN, ROOK};
+use crate::{Piece, Square};
+
+pub struct WinRateParams {
+    pub a: f64,
+    pub b: f64,
+}
+
+// See Stockfish uci.cpp
+pub fn win_rate_params(material: i32) -> WinRateParams {
+    // The fitted model only uses data for material counts in [17, 78], and is anchored at count 58.
+    let m = (material.clamp(17, 78) as f64) / 58.0;
+
+    let as_coeffs = [-13.50030198, 40.92780883, -36.82753545, 386.83004070];
+    let bs_coeffs = [96.53354896, -165.79058388, 90.89679019, 49.29561889];
+
+    let a = (((as_coeffs[0] * m + as_coeffs[1]) * m + as_coeffs[2]) * m) + as_coeffs[3];
+    let b = (((bs_coeffs[0] * m + bs_coeffs[1]) * m + bs_coeffs[2]) * m) + bs_coeffs[3];
+
+    WinRateParams { a, b }
+}
+
+pub fn to_centipawns(value: i32, material: i32) -> i32 {
+    let params = win_rate_params(material);
+    (100.0 * (value as f64) / params.a).round() as i32
+}
+
+pub fn calculate_material(pieces: &[(usize, usize, usize)]) -> i32 {
+    let mut material = 0;
+    for &(_, pt, _) in pieces {
+        match pt {
+            PAWN => material += 1,
+            KNIGHT => material += 3,
+            BISHOP => material += 3,
+            ROOK => material += 5,
+            QUEEN => material += 9,
+            _ => {}
+        }
+    }
+    material
+}
+
+pub fn calculate_material_from_pieces(pieces: &[(Piece, Square)]) -> i32 {
+    let mut material = 0;
+    for &(piece, _) in pieces {
+        match piece {
+            Piece::WhitePawn | Piece::BlackPawn => material += 1,
+            Piece::WhiteKnight | Piece::BlackKnight => material += 3,
+            Piece::WhiteBishop | Piece::BlackBishop => material += 3,
+            Piece::WhiteRook | Piece::BlackRook => material += 5,
+            Piece::WhiteQueen | Piece::BlackQueen => material += 9,
+            _ => {}
+        }
+    }
+    material
+}

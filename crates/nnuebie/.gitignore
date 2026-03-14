@@ -1,0 +1,5 @@
+target
+.opencode/
+*.nnue
+AGENTS.md
+perf.data
