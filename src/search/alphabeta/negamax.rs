@@ -1,9 +1,10 @@
 use super::iid::try_iid;
 use crate::evaluate::{apply_move, evaluate_with_probe, undo_move, EvalProbe};
 use crate::search::ordering::{pick_next_move, score_move, MoveHistory};
-use crate::search::params::{INFINITY, MATE_VALUE, MAX_MOVES};
+use crate::search::params::{INFINITY, MAX_MOVES};
 use crate::search::pruning::*;
 use crate::search::qsearch::qsearch;
+use crate::search::score::{checkmate_score, score_from_tt, score_to_tt};
 use crate::search::SearchStats;
 use crate::tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND};
 use crate::{Move, MoveCollector, Position};
@@ -26,6 +27,7 @@ pub fn negamax(
     thread_id: usize,
 ) -> i32 {
     stats.nodes += 1;
+    let alpha_start = alpha;
 
     if stats.should_stop() {
         return 0;
@@ -36,7 +38,10 @@ pub fn negamax(
     }
 
     let hash = pos.hash();
-    let tt_entry = tt.probe(hash);
+    let tt_entry = tt.probe(hash).map(|mut entry| {
+        entry.score = score_from_tt(entry.score, ply);
+        entry
+    });
     let tt_move = if let Some(entry) = tt_entry {
         if entry.depth >= depth && excluded_move.is_none() {
             stats.tt_hits += 1;
@@ -162,11 +167,7 @@ pub fn negamax(
     let moves = collector.as_slice();
 
     if moves.is_empty() {
-        return if in_check {
-            -MATE_VALUE - (depth as i32)
-        } else {
-            0
-        };
+        return if in_check { checkmate_score(ply) } else { 0 };
     }
 
     let move_count = moves.len();
@@ -225,7 +226,7 @@ pub fn negamax(
         } else {
             let is_hash_move = tt_move.is_some_and(|tt_mv| mv.0 == tt_mv.0);
             let mut s = if should_reduce_lmr(depth, i, in_check, gives_check, mv, thread_id)
-                & !is_hash_move
+                && !is_hash_move
             {
                 let reduction = calculate_lmr_reduction(depth, i, pv_node, mv, thread_id);
                 let reduced_depth = depth
@@ -304,7 +305,7 @@ pub fn negamax(
                     .update(pos.side_to_move, mv.from(), mv.to(), bonus);
             }
 
-            tt.store(hash, mv, beta, depth, LOWER_BOUND);
+            tt.store(hash, mv, score_to_tt(beta, ply), depth, LOWER_BOUND);
             return beta;
         }
 
@@ -318,12 +319,12 @@ pub fn negamax(
         }
     }
 
-    let flag = if best_score <= alpha {
+    let flag = if best_score <= alpha_start {
         UPPER_BOUND
     } else {
         EXACT
     };
-    tt.store(hash, best_move, best_score, depth, flag);
+    tt.store(hash, best_move, score_to_tt(best_score, ply), depth, flag);
 
     best_score
 }

@@ -4,6 +4,7 @@ mod parallel;
 mod params;
 mod pruning;
 pub(crate) mod qsearch;
+mod score;
 
 pub use pruning::init_lmr;
 
@@ -131,6 +132,7 @@ fn should_stop_search(
 
 #[cfg(test)]
 mod tests {
+    use super::score::{checkmate_score, score_from_tt, score_to_tt};
     use super::*;
     use std::thread;
 
@@ -187,5 +189,22 @@ mod tests {
                 println!("No move found");
             }
         });
+    }
+
+    #[test]
+    fn tt_mate_scores_roundtrip_across_ply() {
+        let mate_in_three = 48_997;
+        let stored = score_to_tt(mate_in_three, 5);
+        assert_eq!(score_from_tt(stored, 5), mate_in_three);
+
+        let getting_mated = -48_994;
+        let stored = score_to_tt(getting_mated, 6);
+        assert_eq!(score_from_tt(stored, 6), getting_mated);
+    }
+
+    #[test]
+    fn checkmate_scores_prefer_shorter_lines() {
+        assert!(checkmate_score(1) < checkmate_score(5));
+        assert_eq!(-checkmate_score(1), 48_999);
     }
 }

@@ -2,6 +2,7 @@ use super::move_search::search_move;
 use crate::evaluate::{apply_move, undo_move, EvalProbe};
 use crate::search::ordering::{pick_next_move, score_move, MoveHistory, SCORE_TT_MOVE};
 use crate::search::params::{INFINITY, MAX_MOVES};
+use crate::search::score::score_to_tt;
 use crate::search::SearchStats;
 use crate::tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND};
 use crate::{Move, Position};
@@ -21,6 +22,7 @@ pub fn search_root(
     thread_id: usize,
 ) -> (i32, Move) {
     let in_check = pos.is_in_check();
+    let alpha_start = alpha;
     let tt_move = tt.probe(pos.hash()).map(|e| e.best_move);
     let move_count = moves.len();
     let mut scores = [0i32; MAX_MOVES];
@@ -132,12 +134,18 @@ pub fn search_root(
 
     let flag = if best_score >= beta {
         LOWER_BOUND
-    } else if best_score <= alpha {
+    } else if best_score <= alpha_start {
         UPPER_BOUND
     } else {
         EXACT
     };
-    tt.store(pos.hash(), best_move, best_score, depth, flag);
+    tt.store(
+        pos.hash(),
+        best_move,
+        score_to_tt(best_score, 0),
+        depth,
+        flag,
+    );
 
     (best_score, best_move)
 }

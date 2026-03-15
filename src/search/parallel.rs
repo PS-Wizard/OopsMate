@@ -1,6 +1,7 @@
 use super::alphabeta::root::search_root;
 use super::ordering::MoveHistory;
 use super::params::{ASPIRATION_DEPTH, INFINITY, MAX_MOVES};
+use super::score::checkmate_score;
 use super::{print_uci_info, should_stop_search, SearchInfo, SearchStats};
 use crate::evaluate::{new_probe, EvalProbe};
 use crate::tpt::TranspositionTable;
@@ -24,6 +25,7 @@ pub fn search_driver(
     let mut history = MoveHistory::new();
     let mut best_move = None;
     let mut best_score = 0;
+    let mut completed_depth = 0;
     let is_master = thread_id == 0;
 
     let mut collector = MoveCollector::new();
@@ -60,6 +62,7 @@ pub fn search_driver(
 
         best_move = Some(iteration_best_move);
         best_score = iteration_best_score;
+        completed_depth = depth;
 
         if is_master {
             print_uci_info(
@@ -92,7 +95,7 @@ pub fn search_driver(
     best_move.map(|mv| SearchInfo {
         best_move: mv,
         score: best_score,
-        depth: max_depth,
+        depth: completed_depth,
         nodes: stats.nodes,
         time_ms: start_time.elapsed().as_millis() as u64,
         tt_hits: stats.tt_hits,
@@ -115,7 +118,7 @@ fn search_aspiration(
 
     if collector.as_slice().is_empty() {
         return if pos.is_in_check() {
-            (-49_000 - depth as i32, Move(0))
+            (checkmate_score(0), Move(0))
         } else {
             (0, Move(0))
         };
