@@ -1,14 +1,11 @@
-pub mod alphabeta;
-pub mod ordering;
-pub mod parallel;
-pub mod params;
-pub mod pruning;
+mod alphabeta;
+mod ordering;
+mod parallel;
+mod params;
+mod pruning;
+pub(crate) mod qsearch;
 
-pub use alphabeta::*;
-pub use ordering::*;
-pub use parallel::*;
-pub use params::*;
-pub use pruning::*;
+pub use pruning::init_lmr;
 
 use crate::{tpt::TranspositionTable, Move, Position};
 use std::io::Write;
@@ -16,19 +13,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
-// ============================================================================
-//  STRUCTS
-// ============================================================================
-
-pub struct SearchStats {
-    pub nodes: u64,
-    pub tt_hits: u64,
-    pub stop_signal: Option<Arc<AtomicBool>>,
+pub(crate) struct SearchStats {
+    pub(crate) nodes: u64,
+    pub(crate) tt_hits: u64,
+    stop_signal: Option<Arc<AtomicBool>>,
 }
 
 impl SearchStats {
-    pub fn new(stop_signal: Option<Arc<AtomicBool>>) -> Self {
-        SearchStats {
+    pub(crate) fn new(stop_signal: Option<Arc<AtomicBool>>) -> Self {
+        Self {
             nodes: 0,
             tt_hits: 0,
             stop_signal,
@@ -36,8 +29,7 @@ impl SearchStats {
     }
 
     #[inline(always)]
-    pub fn should_stop(&self) -> bool {
-        // Check periodically (every 2048 nodes)
+    pub(crate) fn should_stop(&self) -> bool {
         if self.nodes & 2047 == 0 {
             if let Some(signal) = &self.stop_signal {
                 return signal.load(Ordering::Relaxed);
@@ -56,11 +48,6 @@ pub struct SearchInfo {
     pub tt_hits: u64,
 }
 
-// ============================================================================
-//  MAIN SEARCH ENTRY POINT
-// ============================================================================
-
-/// Main search function with iterative deepening and aspiration windows
 pub fn search(
     pos: &Position,
     max_depth: u8,
@@ -71,10 +58,8 @@ pub fn search(
     let stop_signal = Arc::new(AtomicBool::new(false));
     let threads = threads.max(1);
 
-    // Mark new search for TT aging - only done once by master
     tt.new_search();
 
-    // Spawn helper threads
     let mut handles = Vec::new();
     if threads > 1 {
         for id in 1..threads {
@@ -83,25 +68,15 @@ pub fn search(
             let signal_clone = stop_signal.clone();
 
             handles.push(std::thread::spawn(move || {
-                parallel::search_driver(
-                    &pos_clone,
-                    max_depth,
-                    None, // Helpers don't manage time directly
-                    &tt_clone,
-                    signal_clone,
-                    id,
-                )
+                parallel::search_driver(&pos_clone, max_depth, None, &tt_clone, signal_clone, id)
             }));
         }
     }
 
-    // Run master search
     let info = parallel::search_driver(pos, max_depth, max_time_ms, &tt, stop_signal.clone(), 0);
 
-    // Signal helpers to stop
     stop_signal.store(true, Ordering::Relaxed);
 
-    // Join helpers
     for handle in handles {
         let _ = handle.join();
     }
@@ -109,11 +84,7 @@ pub fn search(
     info
 }
 
-// ============================================================================
-//  HELPERS
-// ============================================================================
-
-pub fn print_uci_info(
+fn print_uci_info(
     depth: u8,
     score: i32,
     stats: &SearchStats,
@@ -136,13 +107,13 @@ pub fn print_uci_info(
         elapsed,
         nps,
         tt.hashfull(),
-        move_to_uci(mv)
+        mv.to_uci()
     );
 
     let _ = std::io::stdout().flush();
 }
 
-pub fn should_stop_search(
+fn should_stop_search(
     max_time_ms: Option<u64>,
     start_time: Instant,
     current_depth_time: u64,
@@ -157,43 +128,6 @@ pub fn should_stop_search(
         false
     }
 }
-
-pub fn move_to_uci(m: &Move) -> String {
-    let from = m.from();
-    let to = m.to();
-
-    let from_sq = format!(
-        "{}{}",
-        (b'a' + (from % 8) as u8) as char,
-        (b'1' + (from / 8) as u8) as char
-    );
-    let to_sq = format!(
-        "{}{}",
-        (b'a' + (to % 8) as u8) as char,
-        (b'1' + (to / 8) as u8) as char
-    );
-
-    if m.is_promotion() {
-        let promo = match m.move_type() {
-            crate::types::MoveType::PromotionQueen
-            | crate::types::MoveType::CapturePromotionQueen => 'q',
-            crate::types::MoveType::PromotionRook
-            | crate::types::MoveType::CapturePromotionRook => 'r',
-            crate::types::MoveType::PromotionBishop
-            | crate::types::MoveType::CapturePromotionBishop => 'b',
-            crate::types::MoveType::PromotionKnight
-            | crate::types::MoveType::CapturePromotionKnight => 'n',
-            _ => unreachable!(),
-        };
-        format!("{}{}{}", from_sq, to_sq, promo)
-    } else {
-        format!("{}{}", from_sq, to_sq)
-    }
-}
-
-// ============================================================================
-//  TESTS
-// ============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -238,7 +172,7 @@ mod tests {
             if let Some(info) = result {
                 println!(
                     "Best move: {} (depth {}, score {}, nodes {}, time {:.3}s, nps {})",
-                    move_to_uci(&info.best_move),
+                    info.best_move.to_uci(),
                     info.depth,
                     info.score,
                     info.nodes,

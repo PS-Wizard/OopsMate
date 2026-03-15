@@ -1,9 +1,5 @@
 use std::mem::MaybeUninit;
 
-// ============================================================================
-// BITBOARD
-// ============================================================================
-
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Bitboard(pub u64);
@@ -65,10 +61,6 @@ impl std::ops::BitAnd for Bitboard {
     }
 }
 
-// ============================================================================
-// COLOR & PIECE
-// ============================================================================
-
 #[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Color {
@@ -93,10 +85,6 @@ pub enum Piece {
     Queen = 4,
     King = 5,
 }
-
-// ============================================================================
-// CASTLING RIGHTS
-// ============================================================================
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct CastleRights(pub u8);
@@ -143,10 +131,6 @@ impl CastleRights {
         }
     }
 }
-
-// ============================================================================
-// MOVE
-// ============================================================================
 
 #[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -199,11 +183,34 @@ impl Move {
     pub const fn is_promotion(self) -> bool {
         (self.0 >> 12) & 0x8 != 0
     }
-}
 
-// ============================================================================
-// MOVE COLLECTOR
-// ============================================================================
+    pub fn to_uci(self) -> String {
+        let from = self.from();
+        let to = self.to();
+        let mut uci = String::with_capacity(5);
+
+        uci.push((b'a' + (from % 8) as u8) as char);
+        uci.push((b'1' + (from / 8) as u8) as char);
+        uci.push((b'a' + (to % 8) as u8) as char);
+        uci.push((b'1' + (to / 8) as u8) as char);
+
+        if let Some(promotion) = self.promotion_suffix() {
+            uci.push(promotion);
+        }
+
+        uci
+    }
+
+    const fn promotion_suffix(self) -> Option<char> {
+        match self.move_type() {
+            MoveType::PromotionQueen | MoveType::CapturePromotionQueen => Some('q'),
+            MoveType::PromotionRook | MoveType::CapturePromotionRook => Some('r'),
+            MoveType::PromotionBishop | MoveType::CapturePromotionBishop => Some('b'),
+            MoveType::PromotionKnight | MoveType::CapturePromotionKnight => Some('n'),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct MoveCollector {

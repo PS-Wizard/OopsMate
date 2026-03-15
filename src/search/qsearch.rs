@@ -1,12 +1,11 @@
 use crate::evaluate::{apply_move, evaluate_with_probe, undo_move, EvalProbe};
+use crate::search::ordering::{pick_next_move, score_capture_from_see, SCORE_PROMOTION};
 use crate::search::SearchStats;
-use crate::search::{pick_next_move, score_move};
 use crate::{Move, MoveCollector, Position};
 
 const MAX_MOVES: usize = 256;
 
-/// Quiescence search; searches captures until position is "quiet"
-pub fn qsearch(
+pub(crate) fn qsearch(
     pos: &mut Position,
     probe: &mut EvalProbe,
     mut alpha: i32,
@@ -20,7 +19,6 @@ pub fn qsearch(
         return 0;
     }
 
-    // MAX QSEARCH DEPTH
     if ply >= 64 {
         return evaluate_with_probe(pos, probe);
     }
@@ -36,7 +34,6 @@ pub fn qsearch(
         alpha = stand_pat;
     }
 
-    // Delta pruning: if stand_pat + queen value can't raise alpha, prune
     if !pos.is_in_check() {
         const QUEEN_VALUE: i32 = 900;
         if stand_pat + QUEEN_VALUE + 300 < original_alpha {
@@ -53,26 +50,27 @@ pub fn qsearch(
     let mut capture_count = 0;
 
     for &m in moves {
-        // Only Captures and Promotions
         if m.is_capture() || m.is_promotion() {
-            // SEE PRUNING
-            if m.is_capture() {
+            let score = if m.is_capture() {
                 let see_score = pos.see(&m);
-
-                // If the exchange loses material (SEE < 0), prune it.
                 if see_score < 0 {
                     continue;
                 }
+                score_capture_from_see(see_score)
+            } else {
+                SCORE_PROMOTION
+            };
+
+            if m.is_capture() {
+                debug_assert!(score >= 0);
             }
 
             capture_list[capture_count] = m;
-
-            scores[capture_count] = score_move(m, pos, None, None, 0);
+            scores[capture_count] = score;
             capture_count += 1;
         }
     }
 
-    // If no moves passed SEE or generation, return the static eval
     if capture_count == 0 {
         return stand_pat;
     }
