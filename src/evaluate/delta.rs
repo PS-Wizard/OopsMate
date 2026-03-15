@@ -5,6 +5,7 @@ use super::{
 use crate::{Color, Move, MoveType, Piece, Position};
 
 #[inline(always)]
+/// Applies `mv` to `probe` using the same incremental semantics as the search.
 pub fn apply_move(probe: &mut EvalProbe, pos: &Position, mv: Move) -> EvalMoveDelta {
     let delta = build_move_delta(pos, mv);
     probe.apply_delta(delta);
@@ -12,16 +13,19 @@ pub fn apply_move(probe: &mut EvalProbe, pos: &Position, mv: Move) -> EvalMoveDe
 }
 
 #[inline(always)]
+/// Undoes a previously applied incremental evaluation delta.
 pub fn undo_move(probe: &mut EvalProbe, delta: EvalMoveDelta) {
     probe.undo_delta(delta);
 }
 
 #[inline(always)]
+/// Applies a null move to the evaluation probe.
 pub fn apply_null_move(probe: &mut EvalProbe, pos: &Position) {
     probe.make_null_move_with_rule50(pos.halfmove as i32 + 1);
 }
 
 #[inline(always)]
+/// Undoes the most recent null move on the evaluation probe.
 pub fn undo_null_move(probe: &mut EvalProbe) {
     probe.unmake_null_move();
 }

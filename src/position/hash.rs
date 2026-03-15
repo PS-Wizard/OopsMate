@@ -3,6 +3,7 @@ use crate::zobrist::{CASTLE_KEYS, EP_KEYS, PIECE_KEYS, SIDE_KEY};
 
 impl Position {
     #[inline(always)]
+    /// Recomputes the full Zobrist hash from board state.
     pub fn compute_hash(&self) -> u64 {
         let mut h = 0u64;
         for (sq, entry) in self.board.iter().enumerate() {

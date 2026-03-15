@@ -7,6 +7,7 @@ use crate::{
 
 impl Position {
     #[inline(always)]
+    /// Makes a legal move and updates all incremental state.
     pub fn make_move(&mut self, m: Move) {
         let from = m.from();
         let to = m.to();
@@ -150,6 +151,7 @@ impl Position {
     }
 
     #[inline(always)]
+    /// Makes a null move used by search heuristics such as null-move pruning.
     pub fn make_null_move(&mut self) {
         self.history.push(GameState {
             castling_rights: self.castling_rights,

@@ -6,6 +6,7 @@ use crate::{
 
 impl Position {
     #[inline(always)]
+    /// Reverts the most recently made null move.
     pub fn unmake_null_move(&mut self) {
         let state = self.history.pop().expect("No history to unmake null move");
         self.en_passant = state.en_passant;
@@ -15,6 +16,7 @@ impl Position {
     }
 
     #[inline(always)]
+    /// Reverts the most recently made legal move.
     pub fn unmake_move(&mut self, m: Move) {
         let state = self.history.pop().expect("No history to unmake");
 

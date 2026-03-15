@@ -2,6 +2,7 @@
 name = "oops_mate"
 version = "0.1.0"
 edition = "2021"
+description = "A modular UCI chess engine built on strikes and nnuebie"
 
 [dependencies]
 strikes = { path = "./crates/strikes/" } 

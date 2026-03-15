@@ -2,25 +2,31 @@ use super::Position;
 use crate::MoveCollector;
 
 impl Position {
+    /// Returns `true` when the side to move has no legal moves.
     pub fn is_game_over(&self) -> bool {
         let mut collector = MoveCollector::new();
         self.generate_moves(&mut collector);
         collector.is_empty()
     }
 
+    /// Returns `true` when the side to move is checkmated.
     pub fn is_checkmate(&self) -> bool {
         self.is_in_check() && self.is_game_over()
     }
 
+    /// Returns `true` when the side to move is stalemated.
     pub fn is_stalemate(&self) -> bool {
         !self.is_in_check() && self.is_game_over()
     }
 
     #[inline(always)]
+    /// Returns `true` when the fifty-move rule draw condition is met.
     pub const fn is_fifty_move_draw(&self) -> bool {
         self.halfmove >= 100
     }
 
+    /// Returns `true` if the current position has already occurred in the
+    /// reversible history window.
     pub fn is_repetition(&self) -> bool {
         if self.halfmove < 4 {
             return false;

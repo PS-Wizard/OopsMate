@@ -1,3 +1,5 @@
+//! Static exchange evaluation.
+
 use std::arch::x86_64::_pext_u64;
 
 use strikes::{
@@ -10,6 +12,11 @@ use crate::{Color, Move, MoveType, Piece, Position};
 const SEE_VALUES: [i32; 6] = [100, 300, 300, 500, 900, 20000];
 
 impl Position {
+    /// Computes the static exchange evaluation of `mv` on the current position.
+    ///
+    /// Positive values indicate a materially favorable exchange sequence for the
+    /// side to move, while negative values indicate that the capture sequence is
+    /// expected to lose material.
     pub fn see(&self, mv: &Move) -> i32 {
         let to = mv.to();
         let from = mv.from();

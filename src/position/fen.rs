@@ -2,6 +2,10 @@ use super::Position;
 use crate::types::{Bitboard, CastleRights, Color, Piece};
 
 impl Position {
+    /// Builds a position from a FEN string.
+    ///
+    /// The parser accepts the standard six-field FEN form. If the halfmove or
+    /// fullmove counters are omitted, they default to `0` and `1` respectively.
     pub fn from_fen(fen: &str) -> Result<Self, &'static str> {
         let parts: Vec<&str> = fen.split_whitespace().collect();
         if parts.len() < 4 {

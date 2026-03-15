@@ -3,6 +3,7 @@ use crate::{search::search, time_control::calculate_time_allocation, Position};
 use std::io::{self, BufRead, Write};
 
 impl UciEngine {
+    /// Starts the blocking UCI command loop on standard input and output.
     pub fn run(&mut self) {
         let stdin = io::stdin();
         let mut lines = stdin.lock().lines();

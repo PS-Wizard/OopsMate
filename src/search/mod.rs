@@ -1,3 +1,8 @@
+//! Search orchestration.
+//!
+//! This module owns iterative deepening, aspiration windows, pruning setup, and
+//! the public `search` entry point used by the UCI driver.
+
 mod alphabeta;
 mod ordering;
 mod parallel;
@@ -6,6 +11,7 @@ mod pruning;
 pub(crate) mod qsearch;
 mod score;
 
+/// Initializes late-move-reduction tables used by the search.
 pub use pruning::init_lmr;
 
 use crate::{tpt::TranspositionTable, Move, Position};
@@ -14,6 +20,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
+/// Mutable counters and stop state carried through a single search.
 pub(crate) struct SearchStats {
     pub(crate) nodes: u64,
     pub(crate) tt_hits: u64,
@@ -40,15 +47,23 @@ impl SearchStats {
     }
 }
 
+/// Result returned by a completed search.
 pub struct SearchInfo {
+    /// Best move found at the completed search depth.
     pub best_move: Move,
+    /// Score in centipawns or mate-score space.
     pub score: i32,
+    /// Deepest fully completed root depth.
     pub depth: u8,
+    /// Total nodes visited.
     pub nodes: u64,
+    /// Elapsed time in milliseconds.
     pub time_ms: u64,
+    /// Number of transposition table hits.
     pub tt_hits: u64,
 }
 
+/// Runs an iterative-deepening search from `pos` and returns the best completed result.
 pub fn search(
     pos: &Position,
     max_depth: u8,
