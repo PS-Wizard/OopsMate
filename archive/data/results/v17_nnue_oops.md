@@ -110,3 +110,44 @@ Player: Goldfish
    "Win: Black loses on time": 1
 Finished match
 [wizard@archbtw ~/Projects/oopsmate/.worktrees/oopsmate-nnue/archive/data/opponents] ->
+
+---
+
+# Against Stockfish-3000
+Score of OopsMate vs SF-3000: 74 - 12 - 13  [0.813] 99
+Finished game 100 (SF-3000 vs OopsMate): 1/2-1/2 {Draw by 3-fold repetition}
+Score of OopsMate vs SF-3000: 74 - 12 - 14  [0.810] 100
+...      OopsMate playing White: 39 - 6 - 5  [0.830] 50
+...      OopsMate playing Black: 35 - 6 - 9  [0.790] 50
+...      White vs Black: 45 - 41 - 14  [0.520] 100
+Elo difference: 251.9 +/- 79.0, LOS: 100.0 %, DrawRatio: 14.0 %
+SPRT: llr 0 (0.0%), lbound -inf, ubound inf
+
+Player: OopsMate
+   "Draw by 3-fold repetition": 6
+   "Draw by adjudication": 6
+   "Draw by fifty moves rule": 1
+   "Draw by insufficient mating material": 1
+   "Loss: Black loses on time": 1
+   "Loss: Black wins by adjudication": 4
+   "Loss: White loses on time": 2
+   "Loss: White wins by adjudication": 5
+   "Win: Black mates": 4
+   "Win: Black wins by adjudication": 31
+   "Win: White mates": 4
+   "Win: White wins by adjudication": 35
+Player: SF-3000
+   "Draw by 3-fold repetition": 6
+   "Draw by adjudication": 6
+   "Draw by fifty moves rule": 1
+   "Draw by insufficient mating material": 1
+   "Loss: Black mates": 4
+   "Loss: Black wins by adjudication": 31
+   "Loss: White mates": 4
+   "Loss: White wins by adjudication": 35
+   "Win: Black loses on time": 1
+   "Win: Black wins by adjudication": 4
+   "Win: White loses on time": 2
+   "Win: White wins by adjudication": 5
+Finished match
+[wizard@archbtw ~/Projects/oopsmate/archive/data/opponents] ->
