@@ -10,6 +10,19 @@ impl NNUEProbe {
     }
 
     #[inline(always)]
+    fn update_accumulator_stack(&mut self) {
+        let color_bb = self.by_color_bb;
+        let type_bb = self.by_type_bb;
+        self.accumulator_stack.update_incremental(
+            self.king_squares,
+            &self.networks.big_net.feature_transformer,
+            &self.networks.small_net.feature_transformer,
+            &mut self.finny_tables,
+            || (color_bb, type_bb),
+        );
+    }
+
+    #[inline(always)]
     fn apply_delta_internal(&mut self, delta: MoveDelta) {
         for change in delta.changes() {
             if change.piece_from != Piece::None {
@@ -26,17 +39,8 @@ impl NNUEProbe {
         }
 
         let dirty = delta.to_dirty_piece();
-        self.accumulator_stack.push(&dirty, delta.next_rule50());
-
-        let color_bb = self.by_color_bb;
-        let type_bb = self.by_type_bb;
-        self.accumulator_stack.update_incremental(
-            self.king_squares,
-            &self.networks.big_net.feature_transformer,
-            &self.networks.small_net.feature_transformer,
-            &mut self.finny_tables,
-            || (color_bb, type_bb),
-        );
+        self.accumulator_stack.push(dirty, delta.next_rule50());
+        self.update_accumulator_stack();
     }
 
     #[inline(always)]
@@ -103,17 +107,8 @@ impl NNUEProbe {
             self.rule50() + 1
         };
 
-        self.accumulator_stack.push(&dirty, new_rule50);
-
-        let color_bb = self.by_color_bb;
-        let type_bb = self.by_type_bb;
-        self.accumulator_stack.update_incremental(
-            self.king_squares,
-            &self.networks.big_net.feature_transformer,
-            &self.networks.small_net.feature_transformer,
-            &mut self.finny_tables,
-            || (color_bb, type_bb),
-        );
+        self.accumulator_stack.push(dirty, new_rule50);
+        self.update_accumulator_stack();
     }
 
     /// Reverts a move previously applied with `make_move`.

@@ -29,8 +29,7 @@ impl Network {
         let _hash = crate::loader::read_little_endian_u32(&mut reader)?;
 
         let desc_len = crate::loader::read_little_endian_u32(&mut reader)? as usize;
-        let mut desc = vec![0u8; desc_len];
-        reader.read_exact(&mut desc)?;
+        io::copy(&mut reader.by_ref().take(desc_len as u64), &mut io::sink())?;
 
         let _hash_ft = crate::loader::read_little_endian_u32(&mut reader)?;
 

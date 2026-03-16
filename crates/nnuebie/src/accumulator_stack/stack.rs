@@ -34,7 +34,7 @@ impl AccumulatorStack {
         &mut self.stack[self.current_idx - 1]
     }
 
-    pub fn push(&mut self, dirty_piece: &DirtyPiece, rule50: i32) {
+    pub fn push(&mut self, dirty_piece: DirtyPiece, rule50: i32) {
         if self.current_idx >= self.stack.len() {
             self.stack.push(AccumulatorState::new());
         }

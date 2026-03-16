@@ -16,7 +16,7 @@ fn permute_weights(data: &mut [i16]) {
         return;
     }
 
-    let mut buffer = vec![0i16; CHUNK_SIZE];
+    let mut buffer = [0i16; CHUNK_SIZE];
 
     let mut i = 0;
     while i + CHUNK_SIZE <= data.len() {

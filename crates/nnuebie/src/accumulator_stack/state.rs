@@ -1,7 +1,7 @@
 use crate::accumulator::Accumulator;
 use crate::architecture::{BIG_HALF_DIMS, SMALL_HALF_DIMS};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct DirtyPiece {
     pub dirty_num: usize,
     pub from: [usize; 3],
@@ -68,8 +68,8 @@ impl AccumulatorState {
         }
     }
 
-    pub fn reset(&mut self, dp: &DirtyPiece, rule50: i32) {
-        self.dirty_piece = dp.clone();
+    pub fn reset(&mut self, dp: DirtyPiece, rule50: i32) {
+        self.dirty_piece = dp;
         self.computed = [false, false];
         self.rule50 = rule50;
     }

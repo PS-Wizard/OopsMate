@@ -40,17 +40,16 @@ impl<const SIZE: usize> Accumulator<SIZE> {
             "FeatureTransformer dims mismatch Accumulator size"
         );
 
+        let count = pieces.len().min(32);
+        let mut indices_w = [0usize; 32];
+        let mut indices_b = [0usize; 32];
+
+        for (slot, &(sq, pc)) in pieces.iter().take(count).enumerate() {
+            indices_w[slot] = make_index(features::WHITE, sq, pc, ksq[features::WHITE]);
+            indices_b[slot] = make_index(features::BLACK, sq, pc, ksq[features::BLACK]);
+        }
+
         if let Some(refresh_kernel) = self.refresh_fn {
-            let mut indices_w = [0usize; 32];
-            let mut indices_b = [0usize; 32];
-            let mut count = 0;
-
-            for (slot, &(sq, pc)) in pieces.iter().take(32).enumerate() {
-                indices_w[slot] = make_index(features::WHITE, sq, pc, ksq[features::WHITE]);
-                indices_b[slot] = make_index(features::BLACK, sq, pc, ksq[features::BLACK]);
-                count += 1;
-            }
-
             unsafe {
                 refresh_kernel(
                     self.accumulation[features::WHITE].as_mut_slice(),
@@ -69,12 +68,9 @@ impl<const SIZE: usize> Accumulator<SIZE> {
             self.psqt_accumulation[features::WHITE].fill(0);
             self.psqt_accumulation[features::BLACK].fill(0);
 
-            for &(sq, pc) in pieces {
-                let white_idx = make_index(features::WHITE, sq, pc, ksq[features::WHITE]);
-                self.update_psqt(features::WHITE, white_idx, ft, true);
-
-                let black_idx = make_index(features::BLACK, sq, pc, ksq[features::BLACK]);
-                self.update_psqt(features::BLACK, black_idx, ft, true);
+            for idx in 0..count {
+                self.update_psqt(features::WHITE, indices_w[idx], ft, true);
+                self.update_psqt(features::BLACK, indices_b[idx], ft, true);
             }
 
             self.computed = [true, true];
@@ -87,12 +83,9 @@ impl<const SIZE: usize> Accumulator<SIZE> {
             self.computed[perspective] = true;
         }
 
-        for &(sq, pc) in pieces {
-            let white_idx = make_index(features::WHITE, sq, pc, ksq[features::WHITE]);
-            self.add_feature(features::WHITE, white_idx, ft);
-
-            let black_idx = make_index(features::BLACK, sq, pc, ksq[features::BLACK]);
-            self.add_feature(features::BLACK, black_idx, ft);
+        for idx in 0..count {
+            self.add_feature(features::WHITE, indices_w[idx], ft);
+            self.add_feature(features::BLACK, indices_b[idx], ft);
         }
     }
 
