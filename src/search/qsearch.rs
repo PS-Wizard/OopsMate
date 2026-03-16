@@ -15,6 +15,10 @@ pub(crate) fn qsearch(
 ) -> i32 {
     stats.nodes += 1;
 
+    if stats.should_stop() {
+        return alpha;
+    }
+
     if pos.is_fifty_move_draw() || pos.is_repetition() {
         return 0;
     }
@@ -76,6 +80,10 @@ pub(crate) fn qsearch(
     }
 
     for i in 0..capture_count {
+        if stats.should_stop() {
+            break;
+        }
+
         pick_next_move(
             &mut capture_list[..capture_count],
             &mut scores[..capture_count],

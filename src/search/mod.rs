@@ -20,27 +20,46 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
+const NODE_TIME_CHECK_MASK: u64 = 255;
+
 /// Mutable counters and stop state carried through a single search.
 pub(crate) struct SearchStats {
     pub(crate) nodes: u64,
     pub(crate) tt_hits: u64,
     stop_signal: Option<Arc<AtomicBool>>,
+    start_time: Instant,
+    max_time_ms: Option<u64>,
 }
 
 impl SearchStats {
-    pub(crate) fn new(stop_signal: Option<Arc<AtomicBool>>) -> Self {
+    pub(crate) fn new(
+        stop_signal: Option<Arc<AtomicBool>>,
+        start_time: Instant,
+        max_time_ms: Option<u64>,
+    ) -> Self {
         Self {
             nodes: 0,
             tt_hits: 0,
             stop_signal,
+            start_time,
+            max_time_ms,
         }
     }
 
     #[inline(always)]
     pub(crate) fn should_stop(&self) -> bool {
-        if self.nodes & 2047 == 0 {
+        if self.nodes & NODE_TIME_CHECK_MASK == 0 {
             if let Some(signal) = &self.stop_signal {
-                return signal.load(Ordering::Relaxed);
+                if signal.load(Ordering::Relaxed) {
+                    return true;
+                }
+
+                if let Some(max_time) = self.max_time_ms {
+                    if self.start_time.elapsed().as_millis() as u64 >= max_time {
+                        signal.store(true, Ordering::Relaxed);
+                        return true;
+                    }
+                }
             }
         }
         false

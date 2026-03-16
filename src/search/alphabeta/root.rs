@@ -44,6 +44,10 @@ pub fn search_root(
     let mut best_move = moves[0];
 
     for i in 0..move_count {
+        if stats.should_stop() {
+            break;
+        }
+
         pick_next_move(moves, &mut scores, i);
         let mv = moves[i];
 

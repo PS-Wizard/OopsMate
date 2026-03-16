@@ -183,6 +183,10 @@ pub fn negamax(
     let mut best_move = Move(0);
 
     for i in 0..move_count {
+        if stats.should_stop() {
+            break;
+        }
+
         pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
         let mv = move_list[i];
 

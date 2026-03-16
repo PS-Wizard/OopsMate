@@ -21,7 +21,7 @@ pub fn search_driver(
     let mut pos = pos.clone();
     let mut probe = Box::new(new_probe(&pos));
     let start_time = Instant::now();
-    let mut stats = SearchStats::new(Some(stop_signal.clone()));
+    let mut stats = SearchStats::new(Some(stop_signal.clone()), start_time, max_time_ms);
     let mut history = MoveHistory::new();
     let mut best_score = 0;
     let mut completed_depth = 0;
@@ -42,7 +42,7 @@ pub fn search_driver(
     for depth in start_depth..=max_depth {
         let depth_start = Instant::now();
 
-        if stop_signal.load(Ordering::Relaxed) {
+        if stats.should_stop() {
             break;
         }
 
@@ -57,7 +57,7 @@ pub fn search_driver(
             thread_id,
         );
 
-        if stop_signal.load(Ordering::Relaxed) {
+        if stats.should_stop() {
             break;
         }
 
