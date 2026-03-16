@@ -28,7 +28,10 @@ impl ClippedReLU {
             let packed16 = _mm_packus_epi16(packed32, packed32);
             let clamped = _mm_min_epu8(packed16, _mm_set1_epi8(127));
 
-            *(output.as_mut_ptr().add(index) as *mut i64) = _mm_cvtsi128_si64(clamped);
+            std::ptr::write_unaligned(
+                output.as_mut_ptr().add(index) as *mut i64,
+                _mm_cvtsi128_si64(clamped),
+            );
         }
 
         for index in simd_len..self.dims {
@@ -94,7 +97,10 @@ impl SqrClippedReLU {
             let packed16 = _mm_packus_epi16(packed32, packed32);
             let clamped = _mm_min_epu8(packed16, _mm_set1_epi8(127));
 
-            *(output.as_mut_ptr().add(index) as *mut i64) = _mm_cvtsi128_si64(clamped);
+            std::ptr::write_unaligned(
+                output.as_mut_ptr().add(index) as *mut i64,
+                _mm_cvtsi128_si64(clamped),
+            );
         }
 
         for index in simd_len..self.dims {

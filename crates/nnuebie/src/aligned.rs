@@ -83,26 +83,6 @@ impl<T> AlignedBuffer<T> {
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         unsafe { slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
     }
-
-    pub fn zero_out(&mut self)
-    where
-        T: Copy,
-    {
-        unsafe {
-            ptr::write_bytes(self.ptr.as_ptr(), 0, self.len);
-        }
-    }
-
-    pub fn fill(&mut self, value: T)
-    where
-        T: Copy,
-    {
-        for i in 0..self.len {
-            unsafe {
-                ptr::write(self.ptr.as_ptr().add(i), value);
-            }
-        }
-    }
 }
 
 impl<T> Drop for AlignedBuffer<T> {

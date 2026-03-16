@@ -4,6 +4,7 @@ mod accumulator;
 mod accumulator_refresh;
 mod accumulator_stack;
 mod aligned;
+mod architecture;
 mod feature_transformer;
 mod features;
 mod finny_tables;

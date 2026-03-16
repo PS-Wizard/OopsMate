@@ -1,8 +1,9 @@
 use crate::aligned::AlignedBuffer;
+use crate::architecture::PSQT_BUCKET_COUNT;
 use crate::loader::{read_leb128_i16, read_leb128_i16_checked, read_leb128_i32};
 use std::io::{self, Read};
 
-pub const PSQT_BUCKETS: usize = 8;
+pub const PSQT_BUCKETS: usize = PSQT_BUCKET_COUNT;
 
 const PACKUS_EPI16_ORDER: [usize; 8] = [0, 2, 1, 3, 4, 6, 5, 7];
 

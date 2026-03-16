@@ -20,6 +20,7 @@ unsafe fn hsum_256(x: __m256i) -> i32 {
 pub struct AffineTransform {
     pub biases: AlignedBuffer<i32>,
     pub weights: AlignedBuffer<i8>,
+    #[cfg_attr(all(target_arch = "x86_64", feature = "simd_avx2"), allow(dead_code))]
     pub input_dims: usize,
     pub output_dims: usize,
     pub padded_input_dims: usize,
