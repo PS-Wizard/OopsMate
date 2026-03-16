@@ -4,29 +4,26 @@ use std::ptr::{self, NonNull};
 use std::slice;
 
 /// A heap-allocated buffer with 64-byte alignment.
-pub struct AlignedBuffer<T> {
+pub struct AlignedBuffer<T: Copy> {
     ptr: NonNull<T>,
     len: usize,
     capacity: usize,
 }
 
-unsafe impl<T: Send> Send for AlignedBuffer<T> {}
-unsafe impl<T: Sync> Sync for AlignedBuffer<T> {}
+unsafe impl<T: Copy + Send> Send for AlignedBuffer<T> {}
+unsafe impl<T: Copy + Sync> Sync for AlignedBuffer<T> {}
 
-impl<T> AlignedBuffer<T> {
+impl<T: Copy> AlignedBuffer<T> {
     const ALIGNMENT: usize = 64;
 
     pub fn new(len: usize) -> Self
     where
-        T: Copy + Default,
+        T: Default,
     {
         Self::with_element(len, T::default())
     }
 
-    pub fn with_element(len: usize, elem: T) -> Self
-    where
-        T: Copy,
-    {
+    pub fn with_element(len: usize, elem: T) -> Self {
         let mut buf = Self::with_capacity(len);
         for i in 0..len {
             unsafe {
@@ -64,10 +61,7 @@ impl<T> AlignedBuffer<T> {
         }
     }
 
-    pub fn from_vec(vec: Vec<T>) -> Self
-    where
-        T: Copy,
-    {
+    pub fn from_vec(vec: Vec<T>) -> Self {
         let mut buf = Self::with_capacity(vec.len());
         unsafe {
             ptr::copy_nonoverlapping(vec.as_ptr(), buf.ptr.as_ptr(), vec.len());
@@ -85,7 +79,7 @@ impl<T> AlignedBuffer<T> {
     }
 }
 
-impl<T> Drop for AlignedBuffer<T> {
+impl<T: Copy> Drop for AlignedBuffer<T> {
     fn drop(&mut self) {
         if self.capacity > 0 {
             let layout = Layout::from_size_align(
@@ -103,14 +97,14 @@ impl<T> Drop for AlignedBuffer<T> {
     }
 }
 
-impl<T> Deref for AlignedBuffer<T> {
+impl<T: Copy> Deref for AlignedBuffer<T> {
     type Target = [T];
     fn deref(&self) -> &Self::Target {
         self.as_slice()
     }
 }
 
-impl<T> DerefMut for AlignedBuffer<T> {
+impl<T: Copy> DerefMut for AlignedBuffer<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut_slice()
     }
@@ -127,40 +121,40 @@ impl<T: Copy> Clone for AlignedBuffer<T> {
     }
 }
 
-impl<T> Index<usize> for AlignedBuffer<T> {
+impl<T: Copy> Index<usize> for AlignedBuffer<T> {
     type Output = T;
     fn index(&self, index: usize) -> &Self::Output {
         &self.as_slice()[index]
     }
 }
 
-impl<T> IndexMut<usize> for AlignedBuffer<T> {
+impl<T: Copy> IndexMut<usize> for AlignedBuffer<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.as_mut_slice()[index]
     }
 }
 
-impl<T> Index<std::ops::Range<usize>> for AlignedBuffer<T> {
+impl<T: Copy> Index<std::ops::Range<usize>> for AlignedBuffer<T> {
     type Output = [T];
     fn index(&self, range: std::ops::Range<usize>) -> &Self::Output {
         &self.as_slice()[range]
     }
 }
 
-impl<T> IndexMut<std::ops::Range<usize>> for AlignedBuffer<T> {
+impl<T: Copy> IndexMut<std::ops::Range<usize>> for AlignedBuffer<T> {
     fn index_mut(&mut self, range: std::ops::Range<usize>) -> &mut Self::Output {
         &mut self.as_mut_slice()[range]
     }
 }
 
-impl<T> Index<std::ops::RangeTo<usize>> for AlignedBuffer<T> {
+impl<T: Copy> Index<std::ops::RangeTo<usize>> for AlignedBuffer<T> {
     type Output = [T];
     fn index(&self, range: std::ops::RangeTo<usize>) -> &Self::Output {
         &self.as_slice()[range]
     }
 }
 
-impl<T> Index<std::ops::RangeFrom<usize>> for AlignedBuffer<T> {
+impl<T: Copy> Index<std::ops::RangeFrom<usize>> for AlignedBuffer<T> {
     type Output = [T];
     fn index(&self, range: std::ops::RangeFrom<usize>) -> &Self::Output {
         &self.as_slice()[range]

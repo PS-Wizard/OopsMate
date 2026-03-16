@@ -160,6 +160,23 @@ impl AffineTransform {
             }
         }
     }
+
+    #[cfg_attr(all(target_arch = "x86_64", feature = "simd_avx2"), allow(dead_code))]
+    fn propagate_scalar(&self, input: &[u8], output: &mut [i32]) {
+        output.copy_from_slice(&self.biases);
+
+        for (input_idx, &input_value) in input.iter().enumerate().take(self.input_dims) {
+            if input_value == 0 {
+                continue;
+            }
+
+            let input_value = input_value as i32;
+            for (row, out) in output.iter_mut().enumerate().take(self.output_dims) {
+                let weight_idx = row * self.padded_input_dims + input_idx;
+                *out += self.weights[weight_idx] as i32 * input_value;
+            }
+        }
+    }
 }
 
 impl Layer for AffineTransform {
@@ -175,19 +192,7 @@ impl Layer for AffineTransform {
 
     #[cfg(any(not(target_arch = "x86_64"), not(feature = "simd_avx2")))]
     fn propagate(&self, input: &[u8], output: &mut [i32]) {
-        output.copy_from_slice(&self.biases);
-
-        for (input_idx, &input_value) in input.iter().enumerate().take(self.input_dims) {
-            if input_value == 0 {
-                continue;
-            }
-
-            let input_value = input_value as i32;
-            for (row, out) in output.iter_mut().enumerate().take(self.output_dims) {
-                let weight_idx = row * self.padded_input_dims + input_idx;
-                *out += self.weights[weight_idx] as i32 * input_value;
-            }
-        }
+        self.propagate_scalar(input, output);
     }
 
     fn read_parameters<R: Read>(&mut self, reader: &mut R) -> io::Result<()> {

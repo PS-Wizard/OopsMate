@@ -103,21 +103,9 @@ impl AffineTransformSparseInput {
         _mm256_store_si256(out_ptr, acc0);
         _mm256_store_si256(out_ptr.add(1), acc1);
     }
-}
 
-impl Layer for AffineTransformSparseInput {
-    type Input = u8;
-    type Output = i32;
-
-    #[cfg(all(target_arch = "x86_64", feature = "simd_avx2"))]
-    fn propagate(&self, input: &[u8], output: &mut [i32]) {
-        unsafe {
-            self.propagate_avx2(input, output);
-        }
-    }
-
-    #[cfg(any(not(target_arch = "x86_64"), not(feature = "simd_avx2")))]
-    fn propagate(&self, input: &[u8], output: &mut [i32]) {
+    #[cfg_attr(all(target_arch = "x86_64", feature = "simd_avx2"), allow(dead_code))]
+    fn propagate_scalar(&self, input: &[u8], output: &mut [i32]) {
         output.copy_from_slice(&self.biases);
 
         for (input_idx, &input_value) in input.iter().enumerate().take(self.input_dims) {
@@ -135,6 +123,23 @@ impl Layer for AffineTransformSparseInput {
                 *out += self.weights[weight_idx] as i32 * input_value;
             }
         }
+    }
+}
+
+impl Layer for AffineTransformSparseInput {
+    type Input = u8;
+    type Output = i32;
+
+    #[cfg(all(target_arch = "x86_64", feature = "simd_avx2"))]
+    fn propagate(&self, input: &[u8], output: &mut [i32]) {
+        unsafe {
+            self.propagate_avx2(input, output);
+        }
+    }
+
+    #[cfg(any(not(target_arch = "x86_64"), not(feature = "simd_avx2")))]
+    fn propagate(&self, input: &[u8], output: &mut [i32]) {
+        self.propagate_scalar(input, output);
     }
 
     fn read_parameters<R: Read>(&mut self, reader: &mut R) -> io::Result<()> {

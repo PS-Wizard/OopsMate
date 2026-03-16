@@ -1,4 +1,5 @@
 use crate::accumulator::Accumulator;
+use crate::architecture::{BIG_HALF_DIMS, SMALL_HALF_DIMS};
 use crate::feature_transformer::{FeatureTransformer, PSQT_BUCKETS};
 use crate::features::make_index;
 use crate::types::Piece;
@@ -90,7 +91,7 @@ pub fn update_accumulator_refresh_cache<const SIZE: usize>(
 
     #[cfg(all(target_arch = "x86_64", feature = "simd_avx2"))]
     unsafe {
-        if SIZE == 3072 {
+        if SIZE == BIG_HALF_DIMS {
             crate::accumulator_refresh::update_and_copy_avx2_3072(
                 entry.accumulation.as_mut_slice(),
                 accumulator.accumulation[perspective].as_mut_slice(),
@@ -99,7 +100,7 @@ pub fn update_accumulator_refresh_cache<const SIZE: usize>(
                 removed_slice,
             );
             updated_accumulation = true;
-        } else if SIZE == 128 {
+        } else if SIZE == SMALL_HALF_DIMS {
             crate::accumulator_refresh::update_and_copy_avx2_128(
                 entry.accumulation.as_mut_slice(),
                 accumulator.accumulation[perspective].as_mut_slice(),
