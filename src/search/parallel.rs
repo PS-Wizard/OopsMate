@@ -19,8 +19,8 @@ pub fn search_driver(
     thread_id: usize,
 ) -> Option<SearchInfo> {
     let mut pos = pos.clone();
-    let mut probe = Box::new(new_probe(&pos));
     let start_time = Instant::now();
+    let mut probe = Box::new(new_probe(&pos));
     let mut stats = SearchStats::new(Some(stop_signal.clone()), start_time, max_time_ms);
     let mut history = MoveHistory::new();
     let mut best_score = 0;

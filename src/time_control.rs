@@ -2,6 +2,8 @@
 
 use std::time::{Duration, Instant};
 
+const MIN_SEARCH_BUDGET_MS: u64 = 1;
+
 /// Soft and hard limits for a single search allocation.
 pub struct TimeControl {
     start_time: Instant,
@@ -62,4 +64,18 @@ pub fn calculate_time_allocation(our_time: u64, our_inc: u64, moves_to_go: Optio
     let allocated = base_time + (our_inc * 3) / 4;
 
     allocated.min(our_time / 3)
+}
+
+/// Shrinks an external time limit into an internal search budget that leaves a
+/// safety buffer for overshoot, scheduling, and I/O latency.
+pub fn clamp_search_budget(limit_ms: u64) -> u64 {
+    let reserve = match limit_ms {
+        0..=50 => 5,
+        51..=100 => 15,
+        101..=250 => 50,
+        251..=1000 => 75,
+        _ => (limit_ms / 20).clamp(50, 250),
+    };
+
+    limit_ms.saturating_sub(reserve).max(MIN_SEARCH_BUDGET_MS)
 }

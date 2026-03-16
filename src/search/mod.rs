@@ -20,7 +20,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
-const NODE_TIME_CHECK_MASK: u64 = 255;
+const NODE_TIME_CHECK_MASK: u64 = 63;
 
 /// Mutable counters and stop state carried through a single search.
 pub(crate) struct SearchStats {
@@ -102,7 +102,11 @@ pub(crate) fn search_with_stop_signal(
     threads: usize,
     stop_signal: Arc<AtomicBool>,
 ) -> Option<SearchInfo> {
-    let threads = threads.max(1);
+    let threads = if max_time_ms.is_some_and(|time| time < 1_000) {
+        1
+    } else {
+        threads.max(1)
+    };
 
     tt.new_search();
 
@@ -114,7 +118,14 @@ pub(crate) fn search_with_stop_signal(
             let signal_clone = stop_signal.clone();
 
             handles.push(std::thread::spawn(move || {
-                parallel::search_driver(&pos_clone, max_depth, None, &tt_clone, signal_clone, id)
+                parallel::search_driver(
+                    &pos_clone,
+                    max_depth,
+                    max_time_ms,
+                    &tt_clone,
+                    signal_clone,
+                    id,
+                )
             }));
         }
     }

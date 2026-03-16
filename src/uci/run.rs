@@ -1,5 +1,9 @@
 use super::UciEngine;
-use crate::{search::search_with_stop_signal, time_control::calculate_time_allocation, Position};
+use crate::{
+    search::search_with_stop_signal,
+    time_control::{calculate_time_allocation, clamp_search_budget},
+    Position,
+};
 use std::io::{self, BufRead, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -221,7 +225,7 @@ impl UciEngine {
         let allocated_time = if infinite {
             None
         } else if let Some(mt) = movetime {
-            Some(mt)
+            Some(clamp_search_budget(mt))
         } else if wtime.is_some() || btime.is_some() {
             let our_time = match self.position.side_to_move {
                 crate::types::Color::White => wtime.unwrap_or(60000),
@@ -231,7 +235,9 @@ impl UciEngine {
                 crate::types::Color::White => winc,
                 crate::types::Color::Black => binc,
             };
-            Some(calculate_time_allocation(our_time, our_inc, movestogo))
+            Some(clamp_search_budget(calculate_time_allocation(
+                our_time, our_inc, movestogo,
+            )))
         } else {
             None
         };
