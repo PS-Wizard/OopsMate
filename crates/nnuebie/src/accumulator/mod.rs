@@ -1,3 +1,5 @@
+//! Accumulator storage and update primitives.
+
 use crate::aligned::AlignedBuffer;
 
 mod core;
@@ -10,8 +12,11 @@ type RefreshFn = unsafe fn(&mut [i16], &[i16], &AlignedBuffer<i16>, &[usize]);
 /// Holds the per-perspective accumulator data for one network size.
 #[derive(Clone)]
 pub struct Accumulator<const SIZE: usize> {
+    /// Per-perspective transformed feature sums.
     pub accumulation: [AlignedBuffer<i16>; 2],
+    /// Per-perspective PSQT accumulations used by the final blend.
     pub psqt_accumulation: [[i32; 8]; 2],
+    /// Flags indicating whether each perspective is computed at the current ply.
     pub computed: [bool; 2],
     add_feature_fn: FeatureUpdateFn,
     remove_feature_fn: FeatureUpdateFn,

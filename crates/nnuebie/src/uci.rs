@@ -1,14 +1,16 @@
+//! Helpers for converting raw NNUE scores into UCI-facing values.
+
 use crate::features::{BISHOP, KNIGHT, PAWN, QUEEN, ROOK};
 use crate::{Piece, Square};
 
+/// Parameters of the fitted Stockfish win-rate model.
 pub struct WinRateParams {
     pub a: f64,
     pub b: f64,
 }
 
-// See Stockfish uci.cpp
+/// Returns the fitted win-rate parameters for a given material count.
 pub fn win_rate_params(material: i32) -> WinRateParams {
-    // The fitted model only uses data for material counts in [17, 78], and is anchored at count 58.
     let m = (material.clamp(17, 78) as f64) / 58.0;
 
     let as_coeffs = [-13.50030198, 40.92780883, -36.82753545, 386.83004070];
@@ -20,11 +22,13 @@ pub fn win_rate_params(material: i32) -> WinRateParams {
     WinRateParams { a, b }
 }
 
+/// Converts an internal NNUE score into a centipawn value.
 pub fn to_centipawns(value: i32, material: i32) -> i32 {
     let params = win_rate_params(material);
     (100.0 * (value as f64) / params.a).round() as i32
 }
 
+/// Computes coarse material from `(square, piece_type, color)` tuples.
 pub fn calculate_material(pieces: &[(usize, usize, usize)]) -> i32 {
     let mut material = 0;
     for &(_, pt, _) in pieces {
@@ -40,6 +44,7 @@ pub fn calculate_material(pieces: &[(usize, usize, usize)]) -> i32 {
     material
 }
 
+/// Computes coarse material directly from `(piece, square)` tuples.
 pub fn calculate_material_from_pieces(pieces: &[(Piece, Square)]) -> i32 {
     let mut material = 0;
     for &(piece, _) in pieces {

@@ -1,3 +1,5 @@
+//! Shared chess-domain types used by the probe API.
+
 /// Chess side.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
@@ -6,6 +8,7 @@ pub enum Color {
 }
 
 impl Color {
+    /// Returns the opposite side.
     pub fn flip(&self) -> Self {
         match self {
             Color::White => Color::Black,
@@ -13,10 +16,12 @@ impl Color {
         }
     }
 
+    /// Returns the side as a zero-based array index.
     pub fn index(&self) -> usize {
         *self as usize
     }
 
+    /// Converts a side index into a color.
     pub fn from_index(idx: usize) -> Self {
         match idx {
             0 => Color::White,
@@ -34,16 +39,17 @@ pub enum Piece {
     WhiteRook = 4,
     WhiteQueen = 5,
     WhiteKing = 6,
-    BlackPawn = 9,    // 1 | 8
-    BlackKnight = 10, // 2 | 8
-    BlackBishop = 11, // 3 | 8
-    BlackRook = 12,   // 4 | 8
-    BlackQueen = 13,  // 5 | 8
-    BlackKing = 14,   // 6 | 8
+    BlackPawn = 9,
+    BlackKnight = 10,
+    BlackBishop = 11,
+    BlackRook = 12,
+    BlackQueen = 13,
+    BlackKing = 14,
     None = 0,
 }
 
 impl Piece {
+    /// Returns the color of the piece, or `None` for `Piece::None`.
     pub fn color(&self) -> Option<Color> {
         match self {
             Piece::WhitePawn
@@ -62,6 +68,7 @@ impl Piece {
         }
     }
 
+    /// Returns the piece type in the `1..=6` Stockfish layout.
     pub fn piece_type(&self) -> usize {
         match self {
             Piece::WhitePawn | Piece::BlackPawn => 1,
@@ -74,14 +81,17 @@ impl Piece {
         }
     }
 
+    /// Returns `true` if the piece is a king.
     pub fn is_king(&self) -> bool {
         matches!(self, Piece::WhiteKing | Piece::BlackKing)
     }
 
+    /// Returns the raw Stockfish piece index.
     pub fn index(&self) -> usize {
         *self as usize
     }
 
+    /// Converts a raw Stockfish piece index into a piece value.
     pub fn from_index(idx: usize) -> Self {
         match idx {
             1 => Piece::WhitePawn,

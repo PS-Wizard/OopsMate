@@ -1,3 +1,5 @@
+//! Fixed-alignment heap buffers used by SIMD-sensitive code.
+
 use std::alloc::{alloc, dealloc, handle_alloc_error, Layout};
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::ptr::{self, NonNull};
@@ -16,6 +18,7 @@ unsafe impl<T: Copy + Sync> Sync for AlignedBuffer<T> {}
 impl<T: Copy> AlignedBuffer<T> {
     const ALIGNMENT: usize = 64;
 
+    /// Allocates and initializes a buffer of length `len` with `T::default()`.
     pub fn new(len: usize) -> Self
     where
         T: Default,
@@ -23,6 +26,7 @@ impl<T: Copy> AlignedBuffer<T> {
         Self::with_element(len, T::default())
     }
 
+    /// Allocates and initializes a buffer of length `len` with `elem`.
     pub fn with_element(len: usize, elem: T) -> Self {
         let mut buf = Self::with_capacity(len);
         for i in 0..len {
@@ -34,6 +38,7 @@ impl<T: Copy> AlignedBuffer<T> {
         buf
     }
 
+    /// Allocates capacity for `capacity` elements without initializing logical length.
     pub fn with_capacity(capacity: usize) -> Self {
         if capacity == 0 {
             return Self {
@@ -61,6 +66,7 @@ impl<T: Copy> AlignedBuffer<T> {
         }
     }
 
+    /// Copies an existing vector into a 64-byte-aligned buffer.
     pub fn from_vec(vec: Vec<T>) -> Self {
         let mut buf = Self::with_capacity(vec.len());
         unsafe {
@@ -70,10 +76,12 @@ impl<T: Copy> AlignedBuffer<T> {
         buf
     }
 
+    /// Returns the initialized portion as an immutable slice.
     pub fn as_slice(&self) -> &[T] {
         unsafe { slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
     }
 
+    /// Returns the initialized portion as a mutable slice.
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         unsafe { slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
     }
@@ -88,9 +96,6 @@ impl<T: Copy> Drop for AlignedBuffer<T> {
             )
             .unwrap();
             unsafe {
-                // We don't drop elements because we assume T is Copy/POD for now as per usage in NNUE.
-                // If T needed Drop, we'd need to loop and drop.
-                // Given usage (i16, i32, u8), this is fine.
                 dealloc(self.ptr.as_ptr() as *mut u8, layout);
             }
         }

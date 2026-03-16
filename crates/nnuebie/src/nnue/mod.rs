@@ -1,3 +1,5 @@
+//! Public NNUE probe API.
+
 mod delta;
 mod probe;
 

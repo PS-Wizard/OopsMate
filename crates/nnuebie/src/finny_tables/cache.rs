@@ -1,3 +1,5 @@
+//! Finny-table cache storage.
+
 use super::refresh::{build_bitboards, update_accumulator_refresh_cache};
 use crate::accumulator::Accumulator;
 use crate::architecture::{BIG_HALF_DIMS, SMALL_HALF_DIMS};
@@ -129,6 +131,7 @@ impl Default for FinnyTables {
 }
 
 impl FinnyTables {
+    /// Creates empty caches for the big and small networks.
     pub fn new() -> Self {
         Self {
             cache_big: AccumulatorCache::new(),
@@ -136,11 +139,13 @@ impl FinnyTables {
         }
     }
 
+    /// Resets both caches to their feature-transformer biases.
     pub fn clear(&mut self, biases_big: &[i16], biases_small: &[i16]) {
         self.cache_big.clear(biases_big);
         self.cache_small.clear(biases_small);
     }
 
+    /// Warms cache entries for all king squares from the current piece list.
     pub fn prepopulate(
         &mut self,
         pieces: &[(usize, usize)],

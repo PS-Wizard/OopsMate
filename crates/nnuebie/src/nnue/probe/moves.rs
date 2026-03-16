@@ -5,6 +5,7 @@ use crate::types::{Piece, Square};
 
 impl NNUEProbe {
     #[inline(always)]
+    /// Returns the current rule-50 counter tracked by the probe stack.
     pub fn rule50(&self) -> i32 {
         self.accumulator_stack.latest().rule50
     }
@@ -65,26 +66,31 @@ impl NNUEProbe {
     }
 
     #[inline(always)]
+    /// Applies a precomputed delta to the current probe state.
     pub fn apply_delta(&mut self, delta: MoveDelta) {
         self.apply_delta_internal(delta);
     }
 
     #[inline(always)]
+    /// Undoes a delta previously applied with [`NNUEProbe::apply_delta`].
     pub fn undo_delta(&mut self, delta: MoveDelta) {
         self.undo_delta_internal(delta);
     }
 
     #[inline(always)]
+    /// Applies a null move and increments rule-50 accordingly.
     pub fn make_null_move(&mut self) {
         self.apply_delta_internal(MoveDelta::null(self.rule50() + 1));
     }
 
     #[inline(always)]
+    /// Applies a null move while forcing the next rule-50 value.
     pub fn make_null_move_with_rule50(&mut self, next_rule50: i32) {
         self.apply_delta_internal(MoveDelta::null(next_rule50));
     }
 
     #[inline(always)]
+    /// Reverts the most recently applied null move.
     pub fn unmake_null_move(&mut self) {
         self.accumulator_stack.pop();
     }

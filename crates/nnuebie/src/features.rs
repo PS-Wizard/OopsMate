@@ -1,12 +1,23 @@
+//! Feature indexing tables for the Stockfish NNUE layout.
+
+/// Number of board squares.
 pub const SQUARE_NB: usize = 64;
+/// White perspective index.
 pub const WHITE: usize = 0;
+/// Black perspective index.
 pub const BLACK: usize = 1;
 
+/// Pawn piece-type index.
 pub const PAWN: usize = 1;
+/// Knight piece-type index.
 pub const KNIGHT: usize = 2;
+/// Bishop piece-type index.
 pub const BISHOP: usize = 3;
+/// Rook piece-type index.
 pub const ROOK: usize = 4;
+/// Queen piece-type index.
 pub const QUEEN: usize = 5;
+/// King piece-type index.
 pub const KING: usize = 6;
 
 const PS_W_PAWN: usize = 0;
@@ -22,8 +33,8 @@ const PS_B_QUEEN: usize = 9 * SQUARE_NB;
 const PS_KING: usize = 10 * SQUARE_NB;
 const PS_NONE: usize = 0;
 
+/// Piece/square offset table indexed by perspective and Stockfish piece code.
 pub const PIECE_SQUARE_INDEX: [[usize; 16]; 2] = [
-    // White Perspective
     [
         PS_NONE,
         PS_W_PAWN,
@@ -42,7 +53,6 @@ pub const PIECE_SQUARE_INDEX: [[usize; 16]; 2] = [
         PS_KING,
         PS_NONE,
     ],
-    // Black Perspective
     [
         PS_NONE,
         PS_B_PAWN,
@@ -68,8 +78,8 @@ const fn b(v: usize) -> usize {
     v * PS_NB
 }
 
+/// King-bucket offsets indexed by perspective and king square.
 pub const KING_BUCKETS: [[usize; 64]; 2] = [
-    // White
     [
         b(28),
         b(29),
@@ -136,7 +146,6 @@ pub const KING_BUCKETS: [[usize; 64]; 2] = [
         b(1),
         b(0),
     ],
-    // Black
     [
         b(0),
         b(1),
@@ -210,8 +219,8 @@ const SQ_A1: usize = 0;
 const SQ_H8: usize = 63;
 const SQ_A8: usize = 56;
 
+/// Orientation table used to mirror squares for each king bucket.
 pub const ORIENT_TBL: [[usize; 64]; 2] = [
-    // White
     [
         SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1,
         SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1,
@@ -219,7 +228,6 @@ pub const ORIENT_TBL: [[usize; 64]; 2] = [
         SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
         SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
     ],
-    // Black
     [
         SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8, SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8,
         SQ_A8, SQ_A8, SQ_A8, SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8, SQ_H8, SQ_H8,
@@ -229,6 +237,7 @@ pub const ORIENT_TBL: [[usize; 64]; 2] = [
     ],
 ];
 
+/// Builds a sparse feature index from perspective, square, piece, and king square.
 pub fn make_index(perspective: usize, s: usize, pc: usize, ksq: usize) -> usize {
     let orient = ORIENT_TBL[perspective][ksq];
     let piece_offset = PIECE_SQUARE_INDEX[perspective][pc];

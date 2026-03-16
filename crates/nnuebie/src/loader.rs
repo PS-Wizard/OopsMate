@@ -39,7 +39,6 @@ pub fn read_leb128_signed_checked<R: Read>(
             shift += 7;
 
             if (byte & 0x80) == 0 {
-                // Sign extension
                 if shift < 32 && (byte & 0x40) != 0 {
                     value |= !((1 << shift) - 1);
                 }

@@ -1,3 +1,5 @@
+//! Stateful NNUE probe implementation.
+
 mod board;
 mod evaluate;
 mod moves;
@@ -28,12 +30,18 @@ pub struct NNUEProbe {
 
 impl NNUEProbe {
     /// Loads both networks from disk and creates a probe around them.
+    ///
+    /// This is the simplest entry point when the caller does not need to share
+    /// network weights across probes.
     pub fn new(big_path: &str, small_path: &str) -> io::Result<Self> {
         let networks = Arc::new(NnueNetworks::new(big_path, small_path)?);
         Ok(Self::from_networks(networks))
     }
 
     /// Builds a probe from already-loaded shared network weights.
+    ///
+    /// Prefer this constructor when many threads or engine instances reuse the
+    /// same immutable network pair.
     pub fn from_networks(networks: Arc<NnueNetworks>) -> Self {
         let scratch_big = ScratchBuffer::new(networks.big_net.feature_transformer.half_dims);
         let scratch_small = ScratchBuffer::new(networks.small_net.feature_transformer.half_dims);
@@ -60,6 +68,7 @@ impl NNUEProbe {
         }
     }
 
+    /// Convenience wrapper matching code paths that already return `Result` on construction.
     pub fn with_networks(networks: Arc<NnueNetworks>) -> io::Result<Self> {
         Ok(Self::from_networks(networks))
     }

@@ -1,8 +1,11 @@
+//! Feature-transformer parameters and preprocessing.
+
 use crate::aligned::AlignedBuffer;
 use crate::architecture::PSQT_BUCKET_COUNT;
 use crate::loader::{read_leb128_i16, read_leb128_i16_checked, read_leb128_i32};
 use std::io::{self, Read};
 
+/// Number of PSQT buckets stored alongside feature-transformer output.
 pub const PSQT_BUCKETS: usize = PSQT_BUCKET_COUNT;
 
 const PACKUS_EPI16_ORDER: [usize; 8] = [0, 2, 1, 3, 4, 6, 5, 7];
@@ -30,15 +33,22 @@ fn permute_weights(data: &mut [i16]) {
     }
 }
 
+/// Input feature-transformer weights and biases used to build accumulators.
 pub struct FeatureTransformer {
+    /// Number of sparse input features.
     pub input_dims: usize,
+    /// Number of hidden units per perspective.
     pub half_dims: usize,
+    /// Feature-transformer biases.
     pub biases: AlignedBuffer<i16>,
+    /// Feature-transformer weights in permuted layout.
     pub weights: AlignedBuffer<i16>,
+    /// PSQT side-channel weights.
     pub psqt_weights: AlignedBuffer<i32>,
 }
 
 impl FeatureTransformer {
+    /// Creates an empty feature transformer with the given dimensions.
     pub fn new(input_dims: usize, half_dims: usize) -> Self {
         Self {
             input_dims,
@@ -49,6 +59,7 @@ impl FeatureTransformer {
         }
     }
 
+    /// Reads feature-transformer parameters from an `.nnue` stream.
     pub fn read_parameters<R: Read>(
         &mut self,
         reader: &mut R,

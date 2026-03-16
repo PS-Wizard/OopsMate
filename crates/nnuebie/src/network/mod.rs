@@ -1,3 +1,5 @@
+//! Network loading and forward evaluation.
+
 use crate::accumulator::Accumulator;
 use crate::aligned::AlignedBuffer;
 use crate::architecture::{FC0_OUTPUT_DIMS, FC1_OUTPUT_DIMS, FC1_SCRATCH_DIMS};
@@ -48,6 +50,9 @@ impl ScratchBuffer {
 }
 impl NnueNetworks {
     /// Loads the standard big and small Stockfish-style NNUE networks.
+    ///
+    /// The returned value is intended to be shared across many [`crate::NNUEProbe`]
+    /// instances via `Arc`.
     pub fn new(big_path: &str, small_path: &str) -> std::io::Result<Self> {
         let big_net = Network::load(big_path, true)?;
         let small_net = Network::load(small_path, false)?;
