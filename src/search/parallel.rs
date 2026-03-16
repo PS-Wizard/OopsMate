@@ -23,7 +23,6 @@ pub fn search_driver(
     let start_time = Instant::now();
     let mut stats = SearchStats::new(Some(stop_signal.clone()));
     let mut history = MoveHistory::new();
-    let mut best_move = None;
     let mut best_score = 0;
     let mut completed_depth = 0;
     let is_master = thread_id == 0;
@@ -35,6 +34,8 @@ pub fn search_driver(
     if moves.is_empty() {
         return None;
     }
+
+    let mut best_move = Some(moves[0]);
 
     let start_depth = 1;
 

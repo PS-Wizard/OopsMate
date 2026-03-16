@@ -72,6 +72,17 @@ pub fn search(
     threads: usize,
 ) -> Option<SearchInfo> {
     let stop_signal = Arc::new(AtomicBool::new(false));
+    search_with_stop_signal(pos, max_depth, max_time_ms, tt, threads, stop_signal)
+}
+
+pub(crate) fn search_with_stop_signal(
+    pos: &Position,
+    max_depth: u8,
+    max_time_ms: Option<u64>,
+    tt: Arc<TranspositionTable>,
+    threads: usize,
+    stop_signal: Arc<AtomicBool>,
+) -> Option<SearchInfo> {
     let threads = threads.max(1);
 
     tt.new_search();

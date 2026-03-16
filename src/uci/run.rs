@@ -1,6 +1,9 @@
 use super::UciEngine;
-use crate::{search::search, time_control::calculate_time_allocation, Position};
+use crate::{search::search_with_stop_signal, time_control::calculate_time_allocation, Position};
 use std::io::{self, BufRead, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
 
 impl UciEngine {
     /// Starts the blocking UCI command loop on standard input and output.
@@ -19,6 +22,8 @@ impl UciEngine {
                 continue;
             }
 
+            self.reap_finished_search();
+
             match parts[0] {
                 "uci" => self.handle_uci(),
                 "isready" => {
@@ -29,14 +34,16 @@ impl UciEngine {
                 "ucinewgame" => self.handle_new_game(),
                 "position" => self.handle_position(&parts[1..]),
                 "go" => self.handle_go(&parts[1..]),
-                "quit" => break,
-                "stop" => {
-                    println!("bestmove 0000");
-                    let _ = std::io::stdout().flush();
+                "quit" => {
+                    self.stop_search_and_wait();
+                    break;
                 }
+                "stop" => self.signal_stop(),
                 _ => {}
             }
         }
+
+        self.stop_search_and_wait();
     }
 
     fn handle_uci(&self) {
@@ -82,11 +89,14 @@ impl UciEngine {
     }
 
     fn handle_new_game(&mut self) {
+        self.stop_search_and_wait();
         self.position = Position::new();
         self.tt.clear();
     }
 
     fn handle_position(&mut self, parts: &[&str]) {
+        self.stop_search_and_wait();
+
         if parts.is_empty() {
             return;
         }
@@ -130,6 +140,8 @@ impl UciEngine {
     }
 
     fn handle_go(&mut self, parts: &[&str]) {
+        self.stop_search_and_wait();
+
         let mut wtime = None;
         let mut btime = None;
         let mut winc = 0;
@@ -224,18 +236,54 @@ impl UciEngine {
             None
         };
 
-        if let Some(info) = search(
-            &self.position,
-            depth,
-            allocated_time,
-            self.tt.clone(),
-            self.threads,
-        ) {
-            println!("bestmove {}", info.best_move.to_uci());
-        } else {
-            println!("bestmove 0000");
-        }
+        let pos = self.position.clone();
+        let tt = self.tt.clone();
+        let threads = self.threads;
+        let stop_signal = Arc::new(AtomicBool::new(false));
+        let worker_signal = stop_signal.clone();
 
-        let _ = std::io::stdout().flush();
+        let handle = thread::spawn(move || {
+            let result =
+                search_with_stop_signal(&pos, depth, allocated_time, tt, threads, worker_signal);
+
+            if let Some(info) = result {
+                println!("bestmove {}", info.best_move.to_uci());
+            } else {
+                println!("bestmove 0000");
+            }
+
+            let _ = std::io::stdout().flush();
+        });
+
+        self.active_search = Some(super::engine::ActiveSearch {
+            stop_signal,
+            handle,
+        });
+    }
+
+    fn signal_stop(&self) {
+        if let Some(active) = &self.active_search {
+            active.stop_signal.store(true, Ordering::Relaxed);
+        }
+    }
+
+    fn stop_search_and_wait(&mut self) {
+        if let Some(active) = self.active_search.take() {
+            active.stop_signal.store(true, Ordering::Relaxed);
+            let _ = active.handle.join();
+        }
+    }
+
+    fn reap_finished_search(&mut self) {
+        let is_finished = self
+            .active_search
+            .as_ref()
+            .is_some_and(|active| active.handle.is_finished());
+
+        if is_finished {
+            if let Some(active) = self.active_search.take() {
+                let _ = active.handle.join();
+            }
+        }
     }
 }
