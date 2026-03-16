@@ -54,16 +54,30 @@ impl TimeControl {
 /// Derives a practical move allocation from remaining time, increment, and
 /// optional moves-to-go information.
 pub fn calculate_time_allocation(our_time: u64, our_inc: u64, moves_to_go: Option<u32>) -> u64 {
-    if let Some(mtg) = moves_to_go {
-        let base = our_time / (mtg as u64 + 1);
-        return base + our_inc;
+    if let Some(mtg) = moves_to_go.filter(|&mtg| mtg > 0) {
+        let base = our_time / mtg as u64;
+        let inc_share = (our_inc * 3) / 4;
+        let allocation = base.saturating_add(inc_share);
+        let max_share = (our_time / 2).max(MIN_SEARCH_BUDGET_MS);
+        return allocation.min(max_share).max(MIN_SEARCH_BUDGET_MS);
     }
 
-    let moves_left = 40;
+    let moves_left = match our_time {
+        0..=1_000 => 10,
+        1_001..=5_000 => 16,
+        5_001..=20_000 => 22,
+        _ => 28,
+    };
     let base_time = our_time / moves_left;
-    let allocated = base_time + (our_inc * 3) / 4;
+    let allocated = base_time + (our_inc * 7) / 8;
+    let max_share = match our_time {
+        0..=1_000 => our_time / 2,
+        1_001..=5_000 => our_time / 3,
+        _ => our_time / 4,
+    }
+    .max(MIN_SEARCH_BUDGET_MS);
 
-    allocated.min(our_time / 3)
+    allocated.min(max_share).max(MIN_SEARCH_BUDGET_MS)
 }
 
 /// Shrinks an external time limit into an internal search budget that leaves a
@@ -78,4 +92,28 @@ pub fn clamp_search_budget(limit_ms: u64) -> u64 {
     };
 
     limit_ms.saturating_sub(reserve).max(MIN_SEARCH_BUDGET_MS)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{calculate_time_allocation, clamp_search_budget};
+
+    #[test]
+    fn sudden_death_uses_more_than_old_fraction_at_five_seconds() {
+        let allocation = calculate_time_allocation(5_000, 0, None);
+        assert!(allocation >= 300);
+    }
+
+    #[test]
+    fn increment_increases_allocation() {
+        let without_inc = calculate_time_allocation(5_000, 0, None);
+        let with_inc = calculate_time_allocation(5_000, 100, None);
+        assert!(with_inc > without_inc);
+    }
+
+    #[test]
+    fn clamp_budget_keeps_a_small_reserve() {
+        assert_eq!(clamp_search_budget(200), 150);
+        assert_eq!(clamp_search_budget(20), 15);
+    }
 }
