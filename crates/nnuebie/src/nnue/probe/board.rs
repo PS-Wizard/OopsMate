@@ -27,6 +27,8 @@ impl NNUEProbe {
             self.by_type_bb,
             rule50,
         );
+
+        self.debug_assert_consistent();
     }
 
     /// Pre-fills the king-square cache for the current position.
@@ -163,6 +165,7 @@ impl NNUEProbe {
                     &self.networks.small_net.feature_transformer,
                 );
             }
+            self.debug_assert_consistent();
             return;
         }
 
@@ -199,5 +202,68 @@ impl NNUEProbe {
                 &self.networks.small_net.feature_transformer,
             );
         }
+
+        self.debug_assert_consistent();
     }
+
+    #[cfg(debug_assertions)]
+    pub(super) fn debug_assert_consistent(&self) {
+        let mut piece_count = 0usize;
+        let mut pawn_count = [0; 2];
+        let mut non_pawn_material = [0; 2];
+        let mut by_color_bb = [0u64; 2];
+        let mut by_type_bb = [0u64; 6];
+        let mut king_squares = [None; 2];
+
+        for (square, piece) in self.pieces.iter().copied().enumerate() {
+            if piece == Piece::None {
+                continue;
+            }
+
+            piece_count += 1;
+
+            if let Some(color) = piece.color() {
+                let side = color.index();
+                let piece_type = piece.piece_type();
+                let mask = 1u64 << square;
+
+                by_color_bb[side] |= mask;
+                if piece_type > 0 {
+                    by_type_bb[piece_type - 1] |= mask;
+                }
+
+                if piece_type == 1 {
+                    pawn_count[side] += 1;
+                } else if piece.is_king() {
+                    assert!(
+                        king_squares[side].replace(square).is_none(),
+                        "multiple kings for side {side}"
+                    );
+                } else {
+                    non_pawn_material[side] += self.piece_value(piece);
+                }
+            }
+        }
+
+        assert_eq!(self.piece_count, piece_count, "piece count drifted");
+        assert_eq!(self.pawn_count, pawn_count, "pawn counts drifted");
+        assert_eq!(
+            self.non_pawn_material, non_pawn_material,
+            "material counts drifted"
+        );
+        assert_eq!(self.by_color_bb, by_color_bb, "color bitboards drifted");
+        assert_eq!(self.by_type_bb, by_type_bb, "piece-type bitboards drifted");
+        assert_eq!(
+            self.king_squares[0],
+            king_squares[0].expect("missing white king")
+        );
+        assert_eq!(
+            self.king_squares[1],
+            king_squares[1].expect("missing black king")
+        );
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[inline(always)]
+    pub(super) fn debug_assert_consistent(&self) {}
 }

@@ -41,6 +41,7 @@ impl NNUEProbe {
         let dirty = delta.to_dirty_piece();
         self.accumulator_stack.push(dirty, delta.next_rule50());
         self.update_accumulator_stack();
+        self.debug_assert_consistent();
     }
 
     #[inline(always)]
@@ -60,6 +61,7 @@ impl NNUEProbe {
         }
 
         self.accumulator_stack.pop();
+        self.debug_assert_consistent();
     }
 
     #[inline(always)]
@@ -109,6 +111,7 @@ impl NNUEProbe {
 
         self.accumulator_stack.push(dirty, new_rule50);
         self.update_accumulator_stack();
+        self.debug_assert_consistent();
     }
 
     /// Reverts a move previously applied with `make_move`.
@@ -127,5 +130,6 @@ impl NNUEProbe {
 
         self.add_piece_internal(from_piece, from_sq);
         self.accumulator_stack.pop();
+        self.debug_assert_consistent();
     }
 }

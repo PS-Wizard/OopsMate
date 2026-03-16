@@ -1,5 +1,8 @@
 //! Lean NNUE evaluation crate for chess engines using Stockfish-style `.nnue` files.
 
+#[cfg(all(feature = "simd_avx2", feature = "simd_scalar"))]
+compile_error!("Enable either `simd_avx2` or `simd_scalar`, not both.");
+
 mod accumulator;
 mod accumulator_refresh;
 mod accumulator_stack;
