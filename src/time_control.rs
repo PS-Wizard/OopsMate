@@ -8,19 +8,16 @@ const MIN_SEARCH_BUDGET_MS: u64 = 1;
 pub struct TimeControl {
     start_time: Instant,
     allocated_time: Duration,
-    hard_limit: Duration,
 }
 
 impl TimeControl {
     /// Creates a finite time control from a millisecond allocation.
     pub fn new(allocated_ms: u64) -> Self {
         let allocated = Duration::from_millis(allocated_ms);
-        let hard_limit = Duration::from_millis((allocated_ms as f64 * 1.5) as u64);
 
         TimeControl {
             start_time: Instant::now(),
             allocated_time: allocated,
-            hard_limit,
         }
     }
 
@@ -29,7 +26,6 @@ impl TimeControl {
         TimeControl {
             start_time: Instant::now(),
             allocated_time: Duration::from_secs(u64::MAX),
-            hard_limit: Duration::from_secs(u64::MAX),
         }
     }
 
@@ -37,17 +33,6 @@ impl TimeControl {
     #[inline(always)]
     pub fn should_stop(&self) -> bool {
         self.start_time.elapsed() >= self.allocated_time
-    }
-
-    /// Returns `true` once the hard limit has been reached.
-    #[inline(always)]
-    pub fn must_stop(&self) -> bool {
-        self.start_time.elapsed() >= self.hard_limit
-    }
-
-    /// Returns elapsed time in milliseconds.
-    pub fn elapsed_ms(&self) -> u64 {
-        self.start_time.elapsed().as_millis() as u64
     }
 }
 
