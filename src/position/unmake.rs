@@ -12,6 +12,7 @@ impl Position {
         self.en_passant = state.en_passant;
         self.halfmove = state.halfmove;
         self.hash = state.hash;
+        self.castling_rights = state.castling_rights;
         self.side_to_move = self.side_to_move.flip();
     }
 
