@@ -158,15 +158,26 @@ pub(crate) fn search_with_stop_signal<E: EvalProvider>(
         }
     }
 
-    let info = parallel::search_driver(
-        pos,
-        max_depth,
-        max_time_ms,
-        &tt,
-        stop_signal.clone(),
-        0,
-        &eval,
-    );
+    let master_pos = pos.clone();
+    let master_tt = tt.clone();
+    let master_signal = stop_signal.clone();
+    let master_eval = eval.clone();
+    let info = std::thread::Builder::new()
+        .stack_size(SEARCH_THREAD_STACK_SIZE)
+        .spawn(move || {
+            parallel::search_driver(
+                &master_pos,
+                max_depth,
+                max_time_ms,
+                &master_tt,
+                master_signal,
+                0,
+                &master_eval,
+            )
+        })
+        .expect("failed to spawn master search thread")
+        .join()
+        .expect("master search thread panicked");
 
     stop_signal.store(true, Ordering::Relaxed);
 
