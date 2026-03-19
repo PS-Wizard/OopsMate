@@ -1,7 +1,7 @@
 use super::UciEngine;
 use crate::{Move, Position};
 
-impl UciEngine {
+impl<E: crate::eval::EvalProvider> UciEngine<E> {
     pub(crate) fn parse_move(move_str: &str, pos: &Position) -> Option<Move> {
         if move_str.len() < 4 {
             return None;

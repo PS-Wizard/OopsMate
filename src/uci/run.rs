@@ -9,7 +9,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 
-impl UciEngine {
+const UCI_SEARCH_STACK_SIZE: usize = 32 * 1024 * 1024;
+
+impl<E: crate::eval::EvalProvider> UciEngine<E> {
     /// Starts the blocking UCI command loop on standard input and output.
     pub fn run(&mut self) {
         let stdin = io::stdin();
@@ -245,21 +247,32 @@ impl UciEngine {
         let pos = self.position.clone();
         let tt = self.tt.clone();
         let threads = self.threads;
+        let eval = self.eval.clone();
         let stop_signal = Arc::new(AtomicBool::new(false));
         let worker_signal = stop_signal.clone();
 
-        let handle = thread::spawn(move || {
-            let result =
-                search_with_stop_signal(&pos, depth, allocated_time, tt, threads, worker_signal);
+        let handle = thread::Builder::new()
+            .stack_size(UCI_SEARCH_STACK_SIZE)
+            .spawn(move || {
+                let result = search_with_stop_signal(
+                    &pos,
+                    depth,
+                    allocated_time,
+                    tt,
+                    threads,
+                    worker_signal,
+                    eval,
+                );
 
-            if let Some(info) = result {
-                println!("bestmove {}", info.best_move.to_uci());
-            } else {
-                println!("bestmove 0000");
-            }
+                if let Some(info) = result {
+                    println!("bestmove {}", info.best_move.to_uci());
+                } else {
+                    println!("bestmove 0000");
+                }
 
-            let _ = std::io::stdout().flush();
-        });
+                let _ = std::io::stdout().flush();
+            })
+            .expect("failed to spawn UCI search thread");
 
         self.active_search = Some(super::engine::ActiveSearch {
             stop_signal,

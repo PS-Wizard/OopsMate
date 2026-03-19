@@ -1,4 +1,4 @@
-use crate::evaluate::{apply_null_move, undo_null_move, EvalProbe};
+use crate::eval::EvalProvider;
 use crate::search::alphabeta::negamax::negamax;
 use crate::search::ordering::MoveHistory;
 use crate::search::SearchStats;
@@ -7,9 +7,10 @@ use crate::{Piece, Position};
 
 #[allow(clippy::too_many_arguments)]
 #[inline(always)]
-pub fn try_null_move_pruning(
+pub fn try_null_move_pruning<E: EvalProvider>(
     pos: &mut Position,
-    probe: &mut EvalProbe,
+    eval: &E,
+    eval_state: &mut E::State,
     depth: u8,
     beta: i32,
     allow_null: bool,
@@ -39,7 +40,7 @@ pub fn try_null_move_pruning(
         return None;
     }
 
-    apply_null_move(probe, pos);
+    eval.update_on_null_move(eval_state, pos);
     pos.make_null_move();
 
     let eval_excess = (static_eval.saturating_sub(beta)).max(0);
@@ -50,7 +51,8 @@ pub fn try_null_move_pruning(
 
     let null_score = -negamax(
         pos,
-        probe,
+        eval,
+        eval_state,
         null_depth,
         -beta,
         -beta + 1,
@@ -66,7 +68,7 @@ pub fn try_null_move_pruning(
     );
 
     pos.unmake_null_move();
-    undo_null_move(probe);
+    eval.update_on_undo_null(eval_state);
 
     if null_score >= beta {
         Some(beta)

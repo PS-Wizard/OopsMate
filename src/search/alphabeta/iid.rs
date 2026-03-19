@@ -1,5 +1,5 @@
 use super::negamax::negamax;
-use crate::evaluate::EvalProbe;
+use crate::eval::EvalProvider;
 use crate::search::ordering::MoveHistory;
 use crate::search::params::IID_MIN_DEPTH;
 use crate::search::SearchStats;
@@ -17,9 +17,10 @@ fn iid_reduction(depth: u8, pv_node: bool) -> u8 {
 
 #[allow(clippy::too_many_arguments)]
 #[inline(always)]
-pub fn try_iid(
+pub fn try_iid<E: EvalProvider>(
     pos: &mut Position,
-    probe: &mut EvalProbe,
+    eval: &E,
+    eval_state: &mut E::State,
     depth: u8,
     alpha: i32,
     beta: i32,
@@ -44,8 +45,8 @@ pub fn try_iid(
     let iid_depth = depth.saturating_sub(reduction);
 
     negamax(
-        pos, probe, iid_depth, alpha, beta, tt, history, stats, true, pv_node, false, None, ply,
-        thread_id,
+        pos, eval, eval_state, iid_depth, alpha, beta, tt, history, stats, true, pv_node, false,
+        None, ply, thread_id,
     );
 
     tt.probe(pos.hash()).map(|entry| entry.best_move)

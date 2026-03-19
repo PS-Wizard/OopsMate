@@ -14,13 +14,14 @@ mod score;
 /// Initializes late-move-reduction tables used by the search.
 pub use pruning::init_lmr;
 
-use crate::{tpt::TranspositionTable, Move, Position};
+use crate::{eval::EvalProvider, tpt::TranspositionTable, Move, Position};
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
 const NODE_TIME_CHECK_MASK: u64 = 63;
+const SEARCH_THREAD_STACK_SIZE: usize = 32 * 1024 * 1024;
 
 /// Mutable counters and stop state carried through a single search.
 pub(crate) struct SearchStats {
@@ -90,17 +91,37 @@ pub fn search(
     tt: Arc<TranspositionTable>,
     threads: usize,
 ) -> Option<SearchInfo> {
-    let stop_signal = Arc::new(AtomicBool::new(false));
-    search_with_stop_signal(pos, max_depth, max_time_ms, tt, threads, stop_signal)
+    search_with_eval(
+        pos,
+        max_depth,
+        max_time_ms,
+        tt,
+        threads,
+        crate::eval::NnueProvider::new(),
+    )
 }
 
-pub(crate) fn search_with_stop_signal(
+/// Runs an iterative-deepening search using the supplied evaluation provider.
+pub fn search_with_eval<E: EvalProvider>(
+    pos: &Position,
+    max_depth: u8,
+    max_time_ms: Option<u64>,
+    tt: Arc<TranspositionTable>,
+    threads: usize,
+    eval: E,
+) -> Option<SearchInfo> {
+    let stop_signal = Arc::new(AtomicBool::new(false));
+    search_with_stop_signal(pos, max_depth, max_time_ms, tt, threads, stop_signal, eval)
+}
+
+pub(crate) fn search_with_stop_signal<E: EvalProvider>(
     pos: &Position,
     max_depth: u8,
     max_time_ms: Option<u64>,
     tt: Arc<TranspositionTable>,
     threads: usize,
     stop_signal: Arc<AtomicBool>,
+    eval: E,
 ) -> Option<SearchInfo> {
     let threads = if max_time_ms.is_some_and(|time| time < 1_000) {
         1
@@ -116,21 +137,36 @@ pub(crate) fn search_with_stop_signal(
             let pos_clone = pos.clone();
             let tt_clone = tt.clone();
             let signal_clone = stop_signal.clone();
+            let eval_clone = eval.clone();
 
-            handles.push(std::thread::spawn(move || {
-                parallel::search_driver(
-                    &pos_clone,
-                    max_depth,
-                    max_time_ms,
-                    &tt_clone,
-                    signal_clone,
-                    id,
-                )
-            }));
+            handles.push(
+                std::thread::Builder::new()
+                    .stack_size(SEARCH_THREAD_STACK_SIZE)
+                    .spawn(move || {
+                        parallel::search_driver(
+                            &pos_clone,
+                            max_depth,
+                            max_time_ms,
+                            &tt_clone,
+                            signal_clone,
+                            id,
+                            &eval_clone,
+                        )
+                    })
+                    .expect("failed to spawn search helper thread"),
+            );
         }
     }
 
-    let info = parallel::search_driver(pos, max_depth, max_time_ms, &tt, stop_signal.clone(), 0);
+    let info = parallel::search_driver(
+        pos,
+        max_depth,
+        max_time_ms,
+        &tt,
+        stop_signal.clone(),
+        0,
+        &eval,
+    );
 
     stop_signal.store(true, Ordering::Relaxed);
 

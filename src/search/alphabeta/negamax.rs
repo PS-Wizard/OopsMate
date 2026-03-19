@@ -1,5 +1,5 @@
 use super::iid::try_iid;
-use crate::evaluate::{apply_move, evaluate_with_probe, undo_move, EvalProbe};
+use crate::eval::EvalProvider;
 use crate::search::ordering::{pick_next_move, score_move, MoveHistory};
 use crate::search::params::{INFINITY, MAX_MOVES};
 use crate::search::pruning::*;
@@ -10,9 +10,10 @@ use crate::tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND};
 use crate::{Move, MoveCollector, Position};
 
 #[allow(clippy::too_many_arguments)]
-pub fn negamax(
+pub fn negamax<E: EvalProvider>(
     pos: &mut Position,
-    probe: &mut EvalProbe,
+    eval: &E,
+    eval_state: &mut E::State,
     mut depth: u8,
     mut alpha: i32,
     beta: i32,
@@ -58,20 +59,22 @@ pub fn negamax(
     };
 
     if depth == 0 {
-        return qsearch(pos, probe, alpha, beta, stats, 0);
+        return qsearch(pos, eval, eval_state, alpha, beta, stats, 0);
     }
     let in_check = pos.is_in_check();
-    let static_eval = evaluate_with_probe(pos, probe);
+    let static_eval = eval.eval(pos, eval_state);
 
     if let Some(score) = try_probcut(
-        pos, probe, depth, beta, pv_node, in_check, allow_null, tt, history, stats, ply, thread_id,
+        pos, eval, eval_state, depth, beta, pv_node, in_check, allow_null, tt, history, stats, ply,
+        thread_id,
     ) {
         return score;
     }
 
     if let Some(score) = try_razoring(
         pos,
-        probe,
+        eval,
+        eval_state,
         depth,
         alpha,
         in_check,
@@ -91,7 +94,8 @@ pub fn negamax(
 
     if let Some(score) = try_null_move_pruning(
         pos,
-        probe,
+        eval,
+        eval_state,
         depth,
         beta,
         allow_null,
@@ -113,7 +117,8 @@ pub fn negamax(
                 let singular_depth = depth / 2;
                 let score = negamax(
                     pos,
-                    probe,
+                    eval,
+                    eval_state,
                     singular_depth,
                     singular_beta - 1,
                     singular_beta,
@@ -139,7 +144,8 @@ pub fn negamax(
 
     let iid_move = try_iid(
         pos,
-        probe,
+        eval,
+        eval_state,
         depth,
         alpha,
         beta,
@@ -196,7 +202,7 @@ pub fn negamax(
             }
         }
 
-        let delta = apply_move(probe, pos, mv);
+        let delta = eval.update_on_move(eval_state, pos, mv);
         pos.make_move(mv);
         let gives_check = pos.is_in_check();
         let check_extension = if gives_check { 1 } else { 0 };
@@ -206,14 +212,15 @@ pub fn negamax(
             && should_prune_futility(mv, gives_check, static_eval, alpha, futility_margin)
         {
             pos.unmake_move(mv);
-            undo_move(probe, delta);
+            eval.update_on_undo(eval_state, delta);
             continue;
         }
 
         let score = if i == 0 {
             -negamax(
                 pos,
-                probe,
+                eval,
+                eval_state,
                 depth - 1,
                 -beta,
                 -alpha,
@@ -239,7 +246,8 @@ pub fn negamax(
 
                 -negamax(
                     pos,
-                    probe,
+                    eval,
+                    eval_state,
                     reduced_depth,
                     -alpha - 1,
                     -alpha,
@@ -256,7 +264,8 @@ pub fn negamax(
             } else {
                 -negamax(
                     pos,
-                    probe,
+                    eval,
+                    eval_state,
                     depth - 1 + check_extension,
                     -alpha - 1,
                     -alpha,
@@ -275,7 +284,8 @@ pub fn negamax(
             if s > alpha && s < beta {
                 s = -negamax(
                     pos,
-                    probe,
+                    eval,
+                    eval_state,
                     depth - 1 + check_extension,
                     -beta,
                     -alpha,
@@ -294,7 +304,7 @@ pub fn negamax(
             s
         };
         pos.unmake_move(mv);
-        undo_move(probe, delta);
+        eval.update_on_undo(eval_state, delta);
 
         if stats.should_stop() {
             return 0;

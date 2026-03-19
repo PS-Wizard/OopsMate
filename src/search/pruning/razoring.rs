@@ -1,4 +1,4 @@
-use crate::evaluate::{evaluate_with_probe, EvalProbe};
+use crate::eval::EvalProvider;
 use crate::search::qsearch::qsearch;
 use crate::search::SearchStats;
 use crate::Position;
@@ -12,9 +12,10 @@ const RAZOR_MARGINS: [i32; 4] = [
 ];
 
 #[inline(always)]
-pub fn try_razoring(
+pub fn try_razoring<E: EvalProvider>(
     pos: &mut Position,
-    probe: &mut EvalProbe,
+    eval: &E,
+    eval_state: &mut E::State,
     depth: u8,
     alpha: i32,
     in_check: bool,
@@ -22,8 +23,6 @@ pub fn try_razoring(
     static_eval: i32,
     stats: &mut SearchStats,
 ) -> Option<i32> {
-    let _ = evaluate_with_probe;
-
     if depth == 0 || depth > 3 {
         return None;
     }
@@ -40,7 +39,15 @@ pub fn try_razoring(
     let margin = RAZOR_MARGINS[depth as usize];
 
     if static_eval + margin < alpha {
-        let razor_score = qsearch(pos, probe, alpha - margin, alpha - margin + 1, stats, 0);
+        let razor_score = qsearch(
+            pos,
+            eval,
+            eval_state,
+            alpha - margin,
+            alpha - margin + 1,
+            stats,
+            0,
+        );
 
         if razor_score < alpha - margin {
             return Some(razor_score);

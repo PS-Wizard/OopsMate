@@ -4,8 +4,10 @@
 //! evaluation, search, and protocol handling can evolve independently without
 //! obscuring the hot paths that matter most.
 
-/// Incremental NNUE evaluation and probe maintenance.
-pub mod evaluate;
+/// Engine state wrapper parameterized by eval provider.
+pub mod engine;
+/// Evaluation providers and shared eval abstraction.
+pub mod eval;
 /// Legal move generation and attack detection.
 pub mod movegen;
 /// Board state, FEN parsing, hashing, and make/unmake logic.
@@ -25,6 +27,10 @@ pub mod uci;
 /// Zobrist hashing keys.
 pub mod zobrist;
 
+/// Generic engine wrapper.
+pub use engine::Engine;
+/// Evaluation providers and trait.
+pub use eval::{EvalProvider, NnueProvider, PestoProvider};
 /// The engine board representation.
 pub use position::Position;
 /// Common engine types re-exported at the crate root.

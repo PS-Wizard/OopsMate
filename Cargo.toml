@@ -13,6 +13,14 @@ nnuebie = { path = "./crates/nnuebie" }
 name = "oops_mate"
 path = "./src/main.rs"
 
+[[bin]]
+name = "oopsmate-nnue"
+path = "./src/bin/oopsmate-nnue.rs"
+
+[[bin]]
+name = "oopsmate-pesto"
+path = "./src/bin/oopsmate-pesto.rs"
+
 [lib]
 name = "oops_mate"
 path = "./src/lib.rs"

@@ -1,5 +1,5 @@
 use super::negamax::negamax;
-use crate::evaluate::EvalProbe;
+use crate::eval::EvalProvider;
 use crate::search::ordering::MoveHistory;
 use crate::search::pruning::{calculate_lmr_reduction, should_reduce_lmr};
 use crate::search::SearchStats;
@@ -8,9 +8,10 @@ use crate::{Move, Position};
 
 #[allow(clippy::too_many_arguments)]
 #[inline(always)]
-pub fn search_move(
+pub fn search_move<E: EvalProvider>(
     pos: &mut Position,
-    probe: &mut EvalProbe,
+    eval: &E,
+    eval_state: &mut E::State,
     mv: Move,
     depth: u8,
     alpha: i32,
@@ -28,7 +29,8 @@ pub fn search_move(
     if move_num == 0 {
         return -negamax(
             pos,
-            probe,
+            eval,
+            eval_state,
             depth - 1,
             -beta,
             -alpha,
@@ -52,7 +54,8 @@ pub fn search_move(
 
         -negamax(
             pos,
-            probe,
+            eval,
+            eval_state,
             reduced_depth,
             -alpha - 1,
             -alpha,
@@ -69,7 +72,8 @@ pub fn search_move(
     } else {
         -negamax(
             pos,
-            probe,
+            eval,
+            eval_state,
             depth - 1,
             -alpha - 1,
             -alpha,
@@ -88,7 +92,8 @@ pub fn search_move(
     if score > alpha && score < beta {
         score = -negamax(
             pos,
-            probe,
+            eval,
+            eval_state,
             depth - 1,
             -beta,
             -alpha,

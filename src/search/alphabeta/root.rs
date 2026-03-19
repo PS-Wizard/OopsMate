@@ -1,5 +1,5 @@
 use super::move_search::search_move;
-use crate::evaluate::{apply_move, undo_move, EvalProbe};
+use crate::eval::EvalProvider;
 use crate::search::ordering::{pick_next_move, score_move, MoveHistory, SCORE_TT_MOVE};
 use crate::search::params::{INFINITY, MAX_MOVES};
 use crate::search::score::score_to_tt;
@@ -9,9 +9,10 @@ use crate::{Move, Position};
 
 #[allow(clippy::too_many_arguments)]
 #[inline(always)]
-pub fn search_root(
+pub fn search_root<E: EvalProvider>(
     pos: &mut Position,
-    probe: &mut EvalProbe,
+    eval: &E,
+    eval_state: &mut E::State,
     moves: &mut [Move],
     depth: u8,
     mut alpha: i32,
@@ -51,14 +52,15 @@ pub fn search_root(
         pick_next_move(moves, &mut scores, i);
         let mv = moves[i];
 
-        let delta = apply_move(probe, pos, mv);
+        let delta = eval.update_on_move(eval_state, pos, mv);
         pos.make_move(mv);
         let gives_check = pos.is_in_check();
 
         let score = if i == 0 {
             search_move(
                 pos,
-                probe,
+                eval,
+                eval_state,
                 mv,
                 depth,
                 alpha,
@@ -76,7 +78,8 @@ pub fn search_root(
         } else {
             let s = search_move(
                 pos,
-                probe,
+                eval,
+                eval_state,
                 mv,
                 depth,
                 alpha,
@@ -94,7 +97,8 @@ pub fn search_root(
             if s > alpha && s < beta {
                 search_move(
                     pos,
-                    probe,
+                    eval,
+                    eval_state,
                     mv,
                     depth,
                     alpha,
@@ -114,7 +118,7 @@ pub fn search_root(
             }
         };
         pos.unmake_move(mv);
-        undo_move(probe, delta);
+        eval.update_on_undo(eval_state, delta);
 
         if stats.should_stop() {
             return (best_score, best_move);

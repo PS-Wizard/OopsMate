@@ -1,13 +1,14 @@
-use crate::evaluate::{apply_move, evaluate_with_probe, undo_move, EvalProbe};
+use crate::eval::EvalProvider;
 use crate::search::ordering::{pick_next_move, score_capture_from_see, SCORE_PROMOTION};
 use crate::search::SearchStats;
 use crate::{Move, MoveCollector, Position};
 
 const MAX_MOVES: usize = 256;
 
-pub(crate) fn qsearch(
+pub(crate) fn qsearch<E: EvalProvider>(
     pos: &mut Position,
-    probe: &mut EvalProbe,
+    eval: &E,
+    eval_state: &mut E::State,
     mut alpha: i32,
     beta: i32,
     stats: &mut SearchStats,
@@ -24,10 +25,10 @@ pub(crate) fn qsearch(
     }
 
     if ply >= 64 {
-        return evaluate_with_probe(pos, probe);
+        return eval.eval(pos, eval_state);
     }
 
-    let stand_pat = evaluate_with_probe(pos, probe);
+    let stand_pat = eval.eval(pos, eval_state);
 
     if stand_pat >= beta {
         return beta;
@@ -91,11 +92,11 @@ pub(crate) fn qsearch(
         );
         let mv = capture_list[i];
 
-        let delta = apply_move(probe, pos, mv);
+        let delta = eval.update_on_move(eval_state, pos, mv);
         pos.make_move(mv);
-        let score = -qsearch(pos, probe, -beta, -alpha, stats, ply + 1);
+        let score = -qsearch(pos, eval, eval_state, -beta, -alpha, stats, ply + 1);
         pos.unmake_move(mv);
-        undo_move(probe, delta);
+        eval.update_on_undo(eval_state, delta);
 
         if score >= beta {
             return beta;

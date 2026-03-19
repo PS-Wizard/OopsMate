@@ -1,4 +1,4 @@
-use crate::evaluate::{apply_move, undo_move, EvalProbe};
+use crate::eval::EvalProvider;
 use crate::search::alphabeta::negamax::negamax;
 use crate::search::ordering::MoveHistory;
 use crate::search::SearchStats;
@@ -9,9 +9,10 @@ const PROBCUT_MARGIN: i32 = 150;
 const PROBCUT_MIN_DEPTH: u8 = 5;
 
 #[allow(clippy::too_many_arguments)]
-pub fn try_probcut(
+pub fn try_probcut<E: EvalProvider>(
     pos: &mut Position,
-    probe: &mut EvalProbe,
+    eval: &E,
+    eval_state: &mut E::State,
     depth: u8,
     beta: i32,
     pv_node: bool,
@@ -40,12 +41,13 @@ pub fn try_probcut(
     let moves = collector.as_slice();
 
     for &mv in moves {
-        let delta = apply_move(probe, pos, mv);
+        let delta = eval.update_on_move(eval_state, pos, mv);
         pos.make_move(mv);
 
         let score = -negamax(
             pos,
-            probe,
+            eval,
+            eval_state,
             probcut_depth,
             -probcut_beta,
             -probcut_beta + 1,
@@ -61,7 +63,7 @@ pub fn try_probcut(
         );
 
         pos.unmake_move(mv);
-        undo_move(probe, delta);
+        eval.update_on_undo(eval_state, delta);
 
         if score >= probcut_beta {
             return Some(beta);
