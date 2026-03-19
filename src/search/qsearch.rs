@@ -1,5 +1,6 @@
 use crate::eval::EvalProvider;
-use crate::search::ordering::{pick_next_move, score_capture_from_see, SCORE_PROMOTION};
+use crate::search::features;
+use crate::search::ordering::{pick_next_move, score_capture, SCORE_PROMOTION};
 use crate::search::SearchStats;
 use crate::{Move, MoveCollector, Position};
 
@@ -57,11 +58,14 @@ pub(crate) fn qsearch<E: EvalProvider>(
     for &m in moves {
         if m.is_capture() || m.is_promotion() {
             let score = if m.is_capture() {
-                let see_score = pos.see(&m);
-                if see_score < 0 {
-                    continue;
+                if features::SEE {
+                    let see_score = pos.see(&m);
+                    if see_score < 0 {
+                        continue;
+                    }
                 }
-                score_capture_from_see(see_score)
+
+                score_capture(m, pos)
             } else {
                 SCORE_PROMOTION
             };

@@ -4,6 +4,7 @@
 //! the public `search` entry point used by the UCI driver.
 
 mod alphabeta;
+mod features;
 mod ordering;
 mod parallel;
 mod params;

@@ -1,5 +1,6 @@
 use super::negamax::negamax;
 use crate::eval::EvalProvider;
+use crate::search::features;
 use crate::search::ordering::MoveHistory;
 use crate::search::params::IID_MIN_DEPTH;
 use crate::search::SearchStats;
@@ -33,6 +34,10 @@ pub fn try_iid<E: EvalProvider>(
     ply: usize,
     thread_id: usize,
 ) -> Option<Move> {
+    if !features::IID {
+        return None;
+    }
+
     if has_tt_move || depth < IID_MIN_DEPTH || in_check {
         return None;
     }

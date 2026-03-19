@@ -1,4 +1,5 @@
 use super::alphabeta::root::search_root;
+use super::features;
 use super::ordering::MoveHistory;
 use super::params::{ASPIRATION_DEPTH, INFINITY, MAX_MOVES};
 use super::score::checkmate_score;
@@ -133,7 +134,7 @@ fn search_aspiration<E: EvalProvider>(
     moves[..count].copy_from_slice(&collector.as_slice()[..count]);
     let moves_slice = &mut moves[..count];
 
-    if depth < ASPIRATION_DEPTH {
+    if !features::ASPIRATION_WINDOWS || depth < ASPIRATION_DEPTH {
         return search_root(
             pos,
             eval,

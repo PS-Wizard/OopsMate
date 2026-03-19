@@ -1,5 +1,6 @@
 use super::move_search::search_move;
 use crate::eval::EvalProvider;
+use crate::search::features;
 use crate::search::ordering::{pick_next_move, score_move, MoveHistory, SCORE_TT_MOVE};
 use crate::search::params::{INFINITY, MAX_MOVES};
 use crate::search::score::score_to_tt;
@@ -24,7 +25,11 @@ pub fn search_root<E: EvalProvider>(
 ) -> (i32, Move) {
     let in_check = pos.is_in_check();
     let alpha_start = alpha;
-    let tt_move = tt.probe(pos.hash()).map(|e| e.best_move);
+    let tt_move = if features::TT_MOVE_ORDERING {
+        tt.probe(pos.hash()).map(|e| e.best_move)
+    } else {
+        None
+    };
     let move_count = moves.len();
     let mut scores = [0i32; MAX_MOVES];
 
@@ -56,7 +61,7 @@ pub fn search_root<E: EvalProvider>(
         pos.make_move(mv);
         let gives_check = pos.is_in_check();
 
-        let score = if i == 0 {
+        let score = if !features::PVS || i == 0 {
             search_move(
                 pos,
                 eval,
@@ -147,13 +152,15 @@ pub fn search_root<E: EvalProvider>(
     } else {
         EXACT
     };
-    tt.store(
-        pos.hash(),
-        best_move,
-        score_to_tt(best_score, 0),
-        depth,
-        flag,
-    );
+    if features::TT_CUTOFFS {
+        tt.store(
+            pos.hash(),
+            best_move,
+            score_to_tt(best_score, 0),
+            depth,
+            flag,
+        );
+    }
 
     (best_score, best_move)
 }

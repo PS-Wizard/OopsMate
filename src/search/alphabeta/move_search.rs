@@ -1,5 +1,6 @@
 use super::negamax::negamax;
 use crate::eval::EvalProvider;
+use crate::search::features;
 use crate::search::ordering::MoveHistory;
 use crate::search::pruning::{calculate_lmr_reduction, should_reduce_lmr};
 use crate::search::SearchStats;
@@ -26,7 +27,53 @@ pub fn search_move<E: EvalProvider>(
     ply: usize,
     thread_id: usize,
 ) -> i32 {
-    if move_num == 0 {
+    if move_num == 0 || !features::PVS {
+        let do_lmr = should_reduce_lmr(depth, move_num, in_check, gives_check, mv, thread_id);
+
+        if do_lmr {
+            let reduction = calculate_lmr_reduction(depth, move_num, pv_node, mv, thread_id);
+            let reduced_depth = depth.saturating_sub(1 + reduction);
+            let reduced_score = -negamax(
+                pos,
+                eval,
+                eval_state,
+                reduced_depth,
+                -beta,
+                -alpha,
+                tt,
+                history,
+                stats,
+                true,
+                pv_node,
+                false,
+                None,
+                ply + 1,
+                thread_id,
+            );
+
+            if reduced_score > alpha {
+                return -negamax(
+                    pos,
+                    eval,
+                    eval_state,
+                    depth - 1,
+                    -beta,
+                    -alpha,
+                    tt,
+                    history,
+                    stats,
+                    true,
+                    pv_node,
+                    false,
+                    None,
+                    ply + 1,
+                    thread_id,
+                );
+            }
+
+            return reduced_score;
+        }
+
         return -negamax(
             pos,
             eval,
@@ -37,7 +84,7 @@ pub fn search_move<E: EvalProvider>(
             tt,
             history,
             stats,
-            gives_check,
+            true,
             pv_node,
             false,
             None,
@@ -62,7 +109,7 @@ pub fn search_move<E: EvalProvider>(
             tt,
             history,
             stats,
-            gives_check,
+            true,
             false,
             true,
             None,
@@ -80,7 +127,7 @@ pub fn search_move<E: EvalProvider>(
             tt,
             history,
             stats,
-            gives_check,
+            true,
             false,
             true,
             None,
@@ -100,7 +147,7 @@ pub fn search_move<E: EvalProvider>(
             tt,
             history,
             stats,
-            gives_check,
+            true,
             pv_node,
             false,
             None,

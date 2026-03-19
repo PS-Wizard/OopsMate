@@ -1,4 +1,5 @@
 use crate::eval::EvalProvider;
+use crate::search::features;
 use crate::search::qsearch::qsearch;
 use crate::search::SearchStats;
 use crate::Position;
@@ -23,6 +24,10 @@ pub fn try_razoring<E: EvalProvider>(
     static_eval: i32,
     stats: &mut SearchStats,
 ) -> Option<i32> {
+    if !features::RAZORING {
+        return None;
+    }
+
     if depth == 0 || depth > 3 {
         return None;
     }

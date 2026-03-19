@@ -1,5 +1,6 @@
 use crate::eval::EvalProvider;
 use crate::search::alphabeta::negamax::negamax;
+use crate::search::features;
 use crate::search::ordering::MoveHistory;
 use crate::search::SearchStats;
 use crate::tpt::TranspositionTable;
@@ -22,6 +23,10 @@ pub fn try_null_move_pruning<E: EvalProvider>(
     ply: usize,
     thread_id: usize,
 ) -> Option<i32> {
+    if !features::NULL_MOVE {
+        return None;
+    }
+
     if !allow_null || in_check || depth < 3 {
         return None;
     }

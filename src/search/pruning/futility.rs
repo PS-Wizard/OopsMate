@@ -1,3 +1,4 @@
+use crate::search::features;
 use crate::Move;
 
 const MAX_RFP_DEPTH: u8 = 7;
@@ -16,6 +17,10 @@ const RFP_MARGINS: [i32; 8] = [
 
 #[inline(always)]
 pub fn can_use_reverse_futility(depth: u8, in_check: bool, pv_node: bool, beta: i32) -> bool {
+    if !features::REVERSE_FUTILITY {
+        return false;
+    }
+
     if in_check {
         return false;
     }
@@ -71,6 +76,10 @@ pub fn can_use_futility_pruning(
     alpha: i32,
     beta: i32,
 ) -> bool {
+    if !features::FUTILITY {
+        return false;
+    }
+
     if in_check {
         return false;
     }

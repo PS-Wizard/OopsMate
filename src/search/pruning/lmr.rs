@@ -1,3 +1,4 @@
+use crate::search::features;
 use crate::Move;
 use std::sync::OnceLock;
 
@@ -34,7 +35,9 @@ fn init_lmr_table() -> [[u8; MAX_MOVES]; MAX_DEPTH] {
 }
 
 pub fn init_lmr() {
-    LMR_TABLE.get_or_init(init_lmr_table);
+    if features::LMR {
+        LMR_TABLE.get_or_init(init_lmr_table);
+    }
 }
 
 #[inline(always)]
@@ -53,6 +56,10 @@ pub fn should_reduce_lmr(
     mv: Move,
     thread_id: usize,
 ) -> bool {
+    if !features::LMR {
+        return false;
+    }
+
     if depth < LMR_MIN_DEPTH {
         return false;
     }
@@ -80,6 +87,10 @@ pub fn calculate_lmr_reduction(
     mv: Move,
     thread_id: usize,
 ) -> u8 {
+    if !features::LMR {
+        return 0;
+    }
+
     if depth < LMR_MIN_DEPTH || move_num < LMR_FULL_DEPTH_MOVES {
         return 0;
     }

@@ -1,5 +1,6 @@
 use super::iid::try_iid;
 use crate::eval::EvalProvider;
+use crate::search::features;
 use crate::search::ordering::{pick_next_move, score_move, MoveHistory};
 use crate::search::params::{INFINITY, MAX_MOVES};
 use crate::search::pruning::*;
@@ -39,10 +40,14 @@ pub fn negamax<E: EvalProvider>(
     }
 
     let hash = pos.hash();
-    let tt_entry = tt.probe(hash).map(|mut entry| {
-        entry.score = score_from_tt(entry.score, ply);
-        entry
-    });
+    let tt_entry = if features::TT_CUTOFFS {
+        tt.probe(hash).map(|mut entry| {
+            entry.score = score_from_tt(entry.score, ply);
+            entry
+        })
+    } else {
+        None
+    };
     let tt_move = if let Some(entry) = tt_entry {
         if entry.depth >= depth && excluded_move.is_none() {
             stats.tt_hits += 1;
@@ -65,8 +70,7 @@ pub fn negamax<E: EvalProvider>(
     let static_eval = eval.eval(pos, eval_state);
 
     if let Some(score) = try_probcut(
-        pos, eval, eval_state, depth, beta, pv_node, in_check, allow_null, tt, history, stats, ply,
-        thread_id,
+        pos, eval, eval_state, depth, beta, pv_node, in_check, tt, history, stats, ply, thread_id,
     ) {
         return score;
     }
@@ -110,7 +114,13 @@ pub fn negamax<E: EvalProvider>(
         return score;
     }
 
-    if !pv_node && excluded_move.is_none() && depth >= 8 && tt_move.is_some() && !in_check {
+    if features::SINGULAR_EXTENSIONS
+        && !pv_node
+        && excluded_move.is_none()
+        && depth >= 8
+        && tt_move.is_some()
+        && !in_check
+    {
         if let Some(entry) = tt_entry {
             if entry.depth >= depth.saturating_sub(3) && entry.flag == LOWER_BOUND {
                 let singular_beta = entry.score.saturating_sub(depth as i32 * 2);
@@ -159,6 +169,11 @@ pub fn negamax<E: EvalProvider>(
         thread_id,
     );
     let tt_move = tt_move.or(iid_move);
+    let tt_order_move = if features::TT_MOVE_ORDERING {
+        tt_move
+    } else {
+        None
+    };
 
     let use_futility = can_use_futility_pruning(depth, in_check, pv_node, alpha, beta);
     let (static_eval, futility_margin) = if use_futility {
@@ -182,7 +197,7 @@ pub fn negamax<E: EvalProvider>(
 
     for i in 0..move_count {
         move_list[i] = moves[i];
-        scores[i] = score_move(moves[i], pos, tt_move, Some(history), ply);
+        scores[i] = score_move(moves[i], pos, tt_order_move, Some(history), ply);
     }
 
     let mut best_score = -INFINITY;
@@ -205,7 +220,11 @@ pub fn negamax<E: EvalProvider>(
         let delta = eval.update_on_move(eval_state, pos, mv);
         pos.make_move(mv);
         let gives_check = pos.is_in_check();
-        let check_extension = if gives_check { 1 } else { 0 };
+        let check_extension = if features::CHECK_EXTENSIONS && gives_check {
+            1
+        } else {
+            0
+        };
 
         if use_futility
             && i > 0
@@ -216,7 +235,72 @@ pub fn negamax<E: EvalProvider>(
             continue;
         }
 
-        let score = if i == 0 {
+        let score = if !features::PVS {
+            let do_lmr = should_reduce_lmr(depth, i, in_check, gives_check, mv, thread_id);
+            if do_lmr {
+                let reduction = calculate_lmr_reduction(depth, i, pv_node, mv, thread_id);
+                let reduced_depth = depth
+                    .saturating_sub(1 + reduction)
+                    .saturating_add(check_extension);
+                let reduced_score = -negamax(
+                    pos,
+                    eval,
+                    eval_state,
+                    reduced_depth,
+                    -beta,
+                    -alpha,
+                    tt,
+                    history,
+                    stats,
+                    true,
+                    pv_node,
+                    false,
+                    None,
+                    ply + 1,
+                    thread_id,
+                );
+
+                if reduced_score > alpha {
+                    -negamax(
+                        pos,
+                        eval,
+                        eval_state,
+                        depth - 1 + check_extension,
+                        -beta,
+                        -alpha,
+                        tt,
+                        history,
+                        stats,
+                        true,
+                        pv_node,
+                        false,
+                        None,
+                        ply + 1,
+                        thread_id,
+                    )
+                } else {
+                    reduced_score
+                }
+            } else {
+                -negamax(
+                    pos,
+                    eval,
+                    eval_state,
+                    depth - 1 + check_extension,
+                    -beta,
+                    -alpha,
+                    tt,
+                    history,
+                    stats,
+                    true,
+                    pv_node,
+                    false,
+                    None,
+                    ply + 1,
+                    thread_id,
+                )
+            }
+        } else if i == 0 {
             -negamax(
                 pos,
                 eval,
@@ -235,7 +319,7 @@ pub fn negamax<E: EvalProvider>(
                 thread_id,
             )
         } else {
-            let is_hash_move = tt_move.is_some_and(|tt_mv| mv.0 == tt_mv.0);
+            let is_hash_move = tt_order_move.is_some_and(|tt_mv| mv.0 == tt_mv.0);
             let mut s = if should_reduce_lmr(depth, i, in_check, gives_check, mv, thread_id)
                 && !is_hash_move
             {
@@ -312,14 +396,20 @@ pub fn negamax<E: EvalProvider>(
 
         if score >= beta {
             if !mv.is_capture() && !mv.is_promotion() {
-                history.killers.store(ply, mv);
-                let bonus = (depth as i16 * depth as i16).min(400);
-                history
-                    .history
-                    .update(pos.side_to_move, mv.from(), mv.to(), bonus);
+                if features::KILLER_MOVES {
+                    history.killers.store(ply, mv);
+                }
+                if features::HISTORY_HEURISTIC {
+                    let bonus = (depth as i16 * depth as i16).min(400);
+                    history
+                        .history
+                        .update(pos.side_to_move, mv.from(), mv.to(), bonus);
+                }
             }
 
-            tt.store(hash, mv, score_to_tt(beta, ply), depth, LOWER_BOUND);
+            if features::TT_CUTOFFS {
+                tt.store(hash, mv, score_to_tt(beta, ply), depth, LOWER_BOUND);
+            }
             return beta;
         }
 
@@ -338,7 +428,9 @@ pub fn negamax<E: EvalProvider>(
     } else {
         EXACT
     };
-    tt.store(hash, best_move, score_to_tt(best_score, ply), depth, flag);
+    if features::TT_CUTOFFS {
+        tt.store(hash, best_move, score_to_tt(best_score, ply), depth, flag);
+    }
 
     best_score
 }

@@ -1,5 +1,5 @@
 use super::params::MAX_DEPTH;
-use crate::{types::Color, Move, Position};
+use crate::{search::features, types::Color, Move, Piece, Position};
 
 const KILLERS_PER_PLY: usize = 2;
 const MAX_HISTORY: i32 = 50_000;
@@ -119,6 +119,7 @@ pub(crate) const SCORE_PROMOTION: i32 = 90_000;
 const SCORE_KILLER_PRIMARY: i32 = 20_000;
 const SCORE_KILLER_SECONDARY: i32 = 15_000;
 const SCORE_BAD_CAPTURE: i32 = 5_000;
+const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, 20_000];
 
 #[inline(always)]
 pub(crate) const fn score_capture_from_see(see_score: i32) -> i32 {
@@ -130,6 +131,31 @@ pub(crate) const fn score_capture_from_see(see_score: i32) -> i32 {
 }
 
 #[inline(always)]
+fn piece_value(piece: Piece) -> i32 {
+    PIECE_VALUES[piece as usize]
+}
+
+#[inline(always)]
+fn score_capture_from_mvv_lva(m: Move, pos: &Position) -> i32 {
+    let victim = pos.piece_at(m.to()).map(|(piece, _)| piece_value(piece));
+    let attacker = pos.piece_at(m.from()).map(|(piece, _)| piece_value(piece));
+
+    match (victim, attacker) {
+        (Some(victim), Some(attacker)) => victim * 10 - attacker,
+        _ => 0,
+    }
+}
+
+#[inline(always)]
+pub(crate) fn score_capture(m: Move, pos: &Position) -> i32 {
+    if features::SEE {
+        score_capture_from_see(pos.see(&m))
+    } else {
+        score_capture_from_mvv_lva(m, pos)
+    }
+}
+
+#[inline(always)]
 pub(crate) fn score_move(
     m: Move,
     pos: &Position,
@@ -137,15 +163,16 @@ pub(crate) fn score_move(
     history: Option<&MoveHistory>,
     ply: usize,
 ) -> i32 {
-    if let Some(tt_mv) = tt_move {
-        if m.0 == tt_mv.0 {
-            return SCORE_TT_MOVE;
+    if features::TT_MOVE_ORDERING {
+        if let Some(tt_mv) = tt_move {
+            if m.0 == tt_mv.0 {
+                return SCORE_TT_MOVE;
+            }
         }
     }
 
     if m.is_capture() {
-        let see_score = pos.see(&m);
-        return score_capture_from_see(see_score);
+        return score_capture(m, pos);
     }
 
     if m.is_promotion() {
@@ -153,7 +180,7 @@ pub(crate) fn score_move(
     }
 
     if let Some(h) = history {
-        if h.killers.is_killer(ply, m) {
+        if features::KILLER_MOVES && h.killers.is_killer(ply, m) {
             return if Some(m) == h.killers.get_primary(ply) {
                 SCORE_KILLER_PRIMARY
             } else {
@@ -161,7 +188,9 @@ pub(crate) fn score_move(
             };
         }
 
-        return h.history.get(pos.side_to_move, m.from(), m.to());
+        if features::HISTORY_HEURISTIC {
+            return h.history.get(pos.side_to_move, m.from(), m.to());
+        }
     }
 
     0

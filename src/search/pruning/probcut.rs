@@ -1,5 +1,6 @@
 use crate::eval::EvalProvider;
 use crate::search::alphabeta::negamax::negamax;
+use crate::search::features;
 use crate::search::ordering::MoveHistory;
 use crate::search::SearchStats;
 use crate::tpt::TranspositionTable;
@@ -17,14 +18,17 @@ pub fn try_probcut<E: EvalProvider>(
     beta: i32,
     pv_node: bool,
     in_check: bool,
-    allow_null: bool,
     tt: &TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
     thread_id: usize,
 ) -> Option<i32> {
-    if depth < PROBCUT_MIN_DEPTH || in_check || pv_node || !allow_null {
+    if !features::PROBCUT {
+        return None;
+    }
+
+    if depth < PROBCUT_MIN_DEPTH || in_check || pv_node {
         return None;
     }
 

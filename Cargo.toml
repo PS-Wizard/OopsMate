@@ -9,6 +9,56 @@ strikes = { path = "./crates/strikes/" }
 utilities = { path = "./crates/utilities/" } 
 nnuebie = { path = "./crates/nnuebie" }
 
+[features]
+default = ["full"]
+
+# --- Search control ---
+pvs = []
+aspiration-windows = []
+iid = ["tt-cutoffs"]
+singular-extensions = ["tt-cutoffs"]
+check-extensions = []
+
+# --- Pruning / reductions ---
+null-move = []
+lmr = []
+futility = []
+reverse-futility = []
+razoring = []
+probcut = []
+
+# --- Ordering / heuristics ---
+tt-cutoffs = []
+tt-move-ordering = ["tt-cutoffs"]
+killer-moves = []
+history-heuristic = []
+see = []
+
+# --- Presets ---
+search-full = [
+    "pvs",
+    "aspiration-windows",
+    "iid",
+    "singular-extensions",
+    "check-extensions",
+]
+pruning-full = [
+    "null-move",
+    "lmr",
+    "futility",
+    "reverse-futility",
+    "razoring",
+    "probcut",
+]
+ordering-full = [
+    "tt-cutoffs",
+    "tt-move-ordering",
+    "killer-moves",
+    "history-heuristic",
+    "see",
+]
+full = ["search-full", "pruning-full", "ordering-full"]
+
 [[bin]]
 name = "oops_mate"
 path = "./src/main.rs"
