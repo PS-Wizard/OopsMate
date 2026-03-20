@@ -525,13 +525,16 @@ func (m *model) prepareBuild() (tea.Cmd, error) {
 		return nil, fmt.Errorf("output binary name cannot be empty")
 	}
 
-	features := m.selectedFeatures()
 	args := []string{"build", "--bin", bin.Value}
 	if m.modeRelease {
 		args = append(args, "--release")
 	}
+	features := m.selectedFeatures()
 	if len(features) > 0 {
+		args = append(args, "--no-default-features")  // ← add this
 		args = append(args, "--features", strings.Join(features, ","))
+	} else {
+		args = append(args, "--no-default-features")  // bare alpha-beta
 	}
 
 	commandDisplay := "cargo " + strings.Join(args, " ")
@@ -634,6 +637,7 @@ func (m model) commandPreview() string {
 	if m.modeRelease {
 		args = append(args, "--release")
 	}
+	args = append(args, "--no-default-features")
 	features := m.selectedFeatures()
 	if len(features) > 0 {
 		args = append(args, "--features", strings.Join(features, ","))
