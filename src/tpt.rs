@@ -149,9 +149,7 @@ impl TranspositionTable {
         let mut replace = false;
         let gen = self.generation.load(Ordering::Relaxed);
 
-        if old_hash == 0 {
-            replace = true;
-        } else if old_hash == hash {
+        if old_hash == 0 || old_hash == hash {
             replace = true;
         } else {
             let old_age = ((old_data >> AGE_SHIFT) & 0x3F) as u8;

@@ -10,8 +10,219 @@ use crate::search::SearchStats;
 use crate::tpt::{TranspositionTable, EXACT, LOWER_BOUND, UPPER_BOUND};
 use crate::{Move, MoveCollector, Position};
 
+/// Helper to search a move with Late Move Reduction (LMR)
 #[allow(clippy::too_many_arguments)]
-pub fn negamax<E: EvalProvider>(
+#[inline(always)]
+fn search_with_lmr<E: EvalProvider>(
+    pos: &mut Position,
+    eval: &E,
+    eval_state: &mut E::State,
+    mv: Move,
+    depth: u8,
+    alpha: i32,
+    beta: i32,
+    move_index: usize,
+    in_check: bool,
+    gives_check: bool,
+    check_extension: u8,
+    pv_node: bool,
+    tt: &TranspositionTable,
+    history: &mut MoveHistory,
+    stats: &mut SearchStats,
+    ply: usize,
+    thread_id: usize,
+) -> i32 {
+    let do_lmr = should_reduce_lmr(depth, move_index, in_check, gives_check, mv, thread_id);
+
+    if do_lmr {
+        let reduction = calculate_lmr_reduction(depth, move_index, pv_node, mv, thread_id);
+        let reduced_depth = depth
+            .saturating_sub(1 + reduction)
+            .saturating_add(check_extension);
+
+        let reduced_score = -negamax(
+            pos,
+            eval,
+            eval_state,
+            reduced_depth,
+            -beta,
+            -alpha,
+            tt,
+            history,
+            stats,
+            true,
+            pv_node,
+            false,
+            None,
+            ply + 1,
+            thread_id,
+        );
+
+        if reduced_score > alpha {
+            // Re-search at full depth
+            -negamax(
+                pos,
+                eval,
+                eval_state,
+                depth - 1 + check_extension,
+                -beta,
+                -alpha,
+                tt,
+                history,
+                stats,
+                true,
+                pv_node,
+                false,
+                None,
+                ply + 1,
+                thread_id,
+            )
+        } else {
+            reduced_score
+        }
+    } else {
+        // No reduction, search at full depth
+        -negamax(
+            pos,
+            eval,
+            eval_state,
+            depth - 1 + check_extension,
+            -beta,
+            -alpha,
+            tt,
+            history,
+            stats,
+            true,
+            pv_node,
+            false,
+            None,
+            ply + 1,
+            thread_id,
+        )
+    }
+}
+
+/// Helper to search a move with Principal Variation Search (PVS)
+#[allow(clippy::too_many_arguments)]
+#[inline(always)]
+fn search_with_pvs<E: EvalProvider>(
+    pos: &mut Position,
+    eval: &E,
+    eval_state: &mut E::State,
+    mv: Move,
+    depth: u8,
+    alpha: i32,
+    beta: i32,
+    move_index: usize,
+    in_check: bool,
+    gives_check: bool,
+    check_extension: u8,
+    pv_node: bool,
+    is_hash_move: bool,
+    tt: &TranspositionTable,
+    history: &mut MoveHistory,
+    stats: &mut SearchStats,
+    ply: usize,
+    thread_id: usize,
+) -> i32 {
+    if move_index == 0 {
+        // First move: full window search
+        return -negamax(
+            pos,
+            eval,
+            eval_state,
+            depth - 1 + check_extension,
+            -beta,
+            -alpha,
+            tt,
+            history,
+            stats,
+            true,
+            pv_node,
+            false,
+            None,
+            ply + 1,
+            thread_id,
+        );
+    }
+
+    // Non-first moves: try null window search first
+    let do_lmr =
+        should_reduce_lmr(depth, move_index, in_check, gives_check, mv, thread_id) && !is_hash_move;
+
+    let mut score = if do_lmr {
+        let reduction = calculate_lmr_reduction(depth, move_index, pv_node, mv, thread_id);
+        let reduced_depth = depth
+            .saturating_sub(1 + reduction)
+            .saturating_add(check_extension);
+
+        -negamax(
+            pos,
+            eval,
+            eval_state,
+            reduced_depth,
+            -alpha - 1,
+            -alpha,
+            tt,
+            history,
+            stats,
+            true,
+            false,
+            true,
+            None,
+            ply + 1,
+            thread_id,
+        )
+    } else {
+        -negamax(
+            pos,
+            eval,
+            eval_state,
+            depth - 1 + check_extension,
+            -alpha - 1,
+            -alpha,
+            tt,
+            history,
+            stats,
+            true,
+            false,
+            true,
+            None,
+            ply + 1,
+            thread_id,
+        )
+    };
+
+    // If null window search fails high, re-search with full window
+    if score > alpha && score < beta {
+        score = -negamax(
+            pos,
+            eval,
+            eval_state,
+            depth - 1 + check_extension,
+            -beta,
+            -alpha,
+            tt,
+            history,
+            stats,
+            true,
+            pv_node,
+            false,
+            None,
+            ply + 1,
+            thread_id,
+        );
+    }
+
+    score
+}
+
+/// Core negamax search implementation with alpha-beta pruning
+///
+/// Always returns the score from the current player's perspective.
+/// Uses Principal Variation Search (PVS) and Late Move Reductions (LMR) for efficiency.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn negamax<E: EvalProvider>(
     pos: &mut Position,
     eval: &E,
     eval_state: &mut E::State,
@@ -39,6 +250,7 @@ pub fn negamax<E: EvalProvider>(
         return 0;
     }
 
+    // Transposition table probe
     let hash = pos.hash();
     let tt_entry = if features::TT_CUTOFFS {
         tt.probe(hash).map(|mut entry| {
@@ -48,6 +260,7 @@ pub fn negamax<E: EvalProvider>(
     } else {
         None
     };
+
     let tt_move = if let Some(entry) = tt_entry {
         if entry.depth >= depth && excluded_move.is_none() {
             stats.tt_hits += 1;
@@ -63,12 +276,15 @@ pub fn negamax<E: EvalProvider>(
         None
     };
 
+    // Drop into quiescence search at depth 0
     if depth == 0 {
         return qsearch(pos, eval, eval_state, alpha, beta, stats, 0);
     }
+
     let in_check = pos.is_in_check();
     let static_eval = eval.eval(pos, eval_state);
 
+    // Forward pruning techniques (ProbCut, Razoring, Reverse Futility, Null Move)
     if let Some(score) = try_probcut(
         pos, eval, eval_state, depth, beta, pv_node, in_check, tt, history, stats, ply, thread_id,
     ) {
@@ -114,6 +330,7 @@ pub fn negamax<E: EvalProvider>(
         return score;
     }
 
+    // Singular extensions
     if features::SINGULAR_EXTENSIONS
         && !pv_node
         && excluded_move.is_none()
@@ -125,6 +342,7 @@ pub fn negamax<E: EvalProvider>(
             if entry.depth >= depth.saturating_sub(3) && entry.flag == LOWER_BOUND {
                 let singular_beta = entry.score.saturating_sub(depth as i32 * 2);
                 let singular_depth = depth / 2;
+
                 let score = negamax(
                     pos,
                     eval,
@@ -152,6 +370,7 @@ pub fn negamax<E: EvalProvider>(
         }
     }
 
+    // Internal Iterative Deepening
     let iid_move = try_iid(
         pos,
         eval,
@@ -175,6 +394,7 @@ pub fn negamax<E: EvalProvider>(
         None
     };
 
+    // Setup futility pruning
     let use_futility = can_use_futility_pruning(depth, in_check, pv_node, alpha, beta);
     let (static_eval, futility_margin) = if use_futility {
         let margin = get_futility_margin(depth);
@@ -183,6 +403,7 @@ pub fn negamax<E: EvalProvider>(
         (0, 0)
     };
 
+    // Generate and score moves
     let mut collector = MoveCollector::new();
     pos.generate_moves(&mut collector);
     let moves = collector.as_slice();
@@ -200,6 +421,7 @@ pub fn negamax<E: EvalProvider>(
         scores[i] = score_move(moves[i], pos, tt_order_move, Some(history), ply);
     }
 
+    // Main search loop
     let mut best_score = -INFINITY;
     let mut best_move = Move(0);
 
@@ -211,6 +433,7 @@ pub fn negamax<E: EvalProvider>(
         pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
         let mv = move_list[i];
 
+        // Skip excluded move (for singular extensions)
         if let Some(excluded) = excluded_move {
             if mv.0 == excluded.0 {
                 continue;
@@ -226,6 +449,7 @@ pub fn negamax<E: EvalProvider>(
             0
         };
 
+        // Futility pruning
         if use_futility
             && i > 0
             && should_prune_futility(mv, gives_check, static_eval, alpha, futility_margin)
@@ -235,158 +459,51 @@ pub fn negamax<E: EvalProvider>(
             continue;
         }
 
+        // Search the move
         let score = if !features::PVS {
-            let do_lmr = should_reduce_lmr(depth, i, in_check, gives_check, mv, thread_id);
-            if do_lmr {
-                let reduction = calculate_lmr_reduction(depth, i, pv_node, mv, thread_id);
-                let reduced_depth = depth
-                    .saturating_sub(1 + reduction)
-                    .saturating_add(check_extension);
-                let reduced_score = -negamax(
-                    pos,
-                    eval,
-                    eval_state,
-                    reduced_depth,
-                    -beta,
-                    -alpha,
-                    tt,
-                    history,
-                    stats,
-                    true,
-                    pv_node,
-                    false,
-                    None,
-                    ply + 1,
-                    thread_id,
-                );
-
-                if reduced_score > alpha {
-                    -negamax(
-                        pos,
-                        eval,
-                        eval_state,
-                        depth - 1 + check_extension,
-                        -beta,
-                        -alpha,
-                        tt,
-                        history,
-                        stats,
-                        true,
-                        pv_node,
-                        false,
-                        None,
-                        ply + 1,
-                        thread_id,
-                    )
-                } else {
-                    reduced_score
-                }
-            } else {
-                -negamax(
-                    pos,
-                    eval,
-                    eval_state,
-                    depth - 1 + check_extension,
-                    -beta,
-                    -alpha,
-                    tt,
-                    history,
-                    stats,
-                    true,
-                    pv_node,
-                    false,
-                    None,
-                    ply + 1,
-                    thread_id,
-                )
-            }
-        } else if i == 0 {
-            -negamax(
+            search_with_lmr(
                 pos,
                 eval,
                 eval_state,
-                depth - 1,
-                -beta,
-                -alpha,
+                mv,
+                depth,
+                alpha,
+                beta,
+                i,
+                in_check,
+                gives_check,
+                check_extension,
+                pv_node,
                 tt,
                 history,
                 stats,
-                true,
-                pv_node,
-                false,
-                None,
-                ply + 1,
+                ply,
                 thread_id,
             )
         } else {
             let is_hash_move = tt_order_move.is_some_and(|tt_mv| mv.0 == tt_mv.0);
-            let mut s = if should_reduce_lmr(depth, i, in_check, gives_check, mv, thread_id)
-                && !is_hash_move
-            {
-                let reduction = calculate_lmr_reduction(depth, i, pv_node, mv, thread_id);
-                let reduced_depth = depth
-                    .saturating_sub(1 + reduction)
-                    .saturating_add(check_extension);
-
-                -negamax(
-                    pos,
-                    eval,
-                    eval_state,
-                    reduced_depth,
-                    -alpha - 1,
-                    -alpha,
-                    tt,
-                    history,
-                    stats,
-                    true,
-                    false,
-                    true,
-                    None,
-                    ply + 1,
-                    thread_id,
-                )
-            } else {
-                -negamax(
-                    pos,
-                    eval,
-                    eval_state,
-                    depth - 1 + check_extension,
-                    -alpha - 1,
-                    -alpha,
-                    tt,
-                    history,
-                    stats,
-                    true,
-                    false,
-                    true,
-                    None,
-                    ply + 1,
-                    thread_id,
-                )
-            };
-
-            if s > alpha && s < beta {
-                s = -negamax(
-                    pos,
-                    eval,
-                    eval_state,
-                    depth - 1 + check_extension,
-                    -beta,
-                    -alpha,
-                    tt,
-                    history,
-                    stats,
-                    true,
-                    pv_node,
-                    false,
-                    None,
-                    ply + 1,
-                    thread_id,
-                );
-            }
-
-            s
+            search_with_pvs(
+                pos,
+                eval,
+                eval_state,
+                mv,
+                depth,
+                alpha,
+                beta,
+                i,
+                in_check,
+                gives_check,
+                check_extension,
+                pv_node,
+                is_hash_move,
+                tt,
+                history,
+                stats,
+                ply,
+                thread_id,
+            )
         };
+
         pos.unmake_move(mv);
         eval.update_on_undo(eval_state, delta);
 
@@ -394,6 +511,7 @@ pub fn negamax<E: EvalProvider>(
             return 0;
         }
 
+        // Beta cutoff
         if score >= beta {
             if !mv.is_capture() && !mv.is_promotion() {
                 if features::KILLER_MOVES {
@@ -413,6 +531,7 @@ pub fn negamax<E: EvalProvider>(
             return beta;
         }
 
+        // Update best move
         if score > best_score {
             best_score = score;
             best_move = mv;
@@ -423,6 +542,7 @@ pub fn negamax<E: EvalProvider>(
         }
     }
 
+    // Store in transposition table
     let flag = if best_score <= alpha_start {
         UPPER_BOUND
     } else {
