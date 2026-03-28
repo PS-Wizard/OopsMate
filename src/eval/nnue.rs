@@ -29,6 +29,11 @@ impl NnueProvider {
     }
 }
 
+impl Default for NnueProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl EvalProvider for NnueProvider {
     type State = NNUEProbe;
     type Undo = MoveDelta;
