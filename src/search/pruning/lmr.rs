@@ -3,7 +3,7 @@ use crate::Move;
 use std::sync::OnceLock;
 
 const LMR_MIN_DEPTH: u8 = 2;
-const LMR_FULL_DEPTH_MOVES: usize = 2;
+const LMR_FULL_DEPTH_MOVES: usize = 3;
 
 const MAX_DEPTH: usize = 64;
 const MAX_MOVES: usize = 256;
@@ -51,11 +51,17 @@ fn get_lmr_table() -> &'static [[u8; MAX_MOVES]; MAX_DEPTH] {
 pub fn should_reduce_lmr(
     depth: u8,
     move_num: usize,
-    _in_check: bool,
-    _gives_check: bool,
+    in_check: bool,
+    gives_check: bool,
     mv: Move,
     thread_id: usize,
 ) -> bool {
+    if in_check {
+        return false;
+    }
+    if gives_check {
+        return false;
+    }
     if !features::LMR {
         return false;
     }
