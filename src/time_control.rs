@@ -79,9 +79,23 @@ pub fn clamp_search_budget(limit_ms: u64) -> u64 {
     limit_ms.saturating_sub(reserve).max(MIN_SEARCH_BUDGET_MS)
 }
 
+/// Keeps `movetime` close to the requested limit while preserving a tiny
+/// scheduling reserve so the engine does not routinely flag on time.
+pub fn clamp_movetime_budget(limit_ms: u64) -> u64 {
+    let reserve = match limit_ms {
+        0..=50 => 1,
+        51..=100 => 2,
+        101..=250 => 5,
+        251..=1_000 => 10,
+        _ => (limit_ms / 100).clamp(10, 50),
+    };
+
+    limit_ms.saturating_sub(reserve).max(MIN_SEARCH_BUDGET_MS)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{calculate_time_allocation, clamp_search_budget};
+    use super::{calculate_time_allocation, clamp_movetime_budget, clamp_search_budget};
 
     #[test]
     fn sudden_death_uses_more_than_old_fraction_at_five_seconds() {
@@ -100,5 +114,11 @@ mod tests {
     fn clamp_budget_keeps_a_small_reserve() {
         assert_eq!(clamp_search_budget(200), 150);
         assert_eq!(clamp_search_budget(20), 15);
+    }
+
+    #[test]
+    fn movetime_budget_uses_most_of_requested_time() {
+        assert_eq!(clamp_movetime_budget(500), 490);
+        assert_eq!(clamp_movetime_budget(20), 19);
     }
 }

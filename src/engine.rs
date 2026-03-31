@@ -1,5 +1,5 @@
 use crate::eval::EvalProvider;
-use crate::search::{search_with_eval, SearchInfo};
+use crate::search::{search_with_eval, SearchInfo, SearchLimits};
 use crate::tpt::TranspositionTable;
 use crate::Position;
 use std::sync::Arc;
@@ -28,7 +28,7 @@ impl<E: EvalProvider> Engine<E> {
         search_with_eval(
             &self.position,
             max_depth,
-            max_time_ms,
+            SearchLimits::from_max_time(max_time_ms),
             self.tt.clone(),
             self.threads,
             self.eval.clone(),

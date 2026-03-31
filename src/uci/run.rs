@@ -1,7 +1,7 @@
 use super::UciEngine;
 use crate::{
-    search::search_with_stop_signal,
-    time_control::{calculate_time_allocation, clamp_search_budget},
+    search::{search_with_stop_signal, SearchLimits},
+    time_control::{calculate_time_allocation, clamp_movetime_budget, clamp_search_budget},
     Position,
 };
 use std::io::{self, BufRead, Write};
@@ -224,10 +224,10 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
             }
         }
 
-        let allocated_time = if infinite {
-            None
+        let limits = if infinite {
+            SearchLimits::infinite()
         } else if let Some(mt) = movetime {
-            Some(clamp_search_budget(mt))
+            SearchLimits::movetime(clamp_movetime_budget(mt))
         } else if wtime.is_some() || btime.is_some() {
             let our_time = match self.position.side_to_move {
                 crate::types::Color::White => wtime.unwrap_or(60000),
@@ -237,11 +237,11 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
                 crate::types::Color::White => winc,
                 crate::types::Color::Black => binc,
             };
-            Some(clamp_search_budget(calculate_time_allocation(
-                our_time, our_inc, movestogo,
-            )))
+            let hard_time_ms = calculate_time_allocation(our_time, our_inc, movestogo);
+            let soft_time_ms = clamp_search_budget(hard_time_ms);
+            SearchLimits::clock(soft_time_ms, hard_time_ms)
         } else {
-            None
+            SearchLimits::infinite()
         };
 
         let pos = self.position.clone();
@@ -254,15 +254,8 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
         let handle = thread::Builder::new()
             .stack_size(UCI_SEARCH_STACK_SIZE)
             .spawn(move || {
-                let result = search_with_stop_signal(
-                    &pos,
-                    depth,
-                    allocated_time,
-                    tt,
-                    threads,
-                    worker_signal,
-                    eval,
-                );
+                let result =
+                    search_with_stop_signal(&pos, depth, limits, tt, threads, worker_signal, eval);
 
                 if let Some(info) = result {
                     println!("bestmove {}", info.best_move.to_uci());

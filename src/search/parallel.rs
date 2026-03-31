@@ -3,7 +3,7 @@ use super::features;
 use super::ordering::MoveHistory;
 use super::params::{ASPIRATION_DEPTH, INFINITY, MAX_MOVES};
 use super::score::checkmate_score;
-use super::{print_uci_info, should_stop_search, SearchInfo, SearchStats};
+use super::{print_uci_info, should_stop_search, SearchInfo, SearchLimits, SearchStats};
 use crate::eval::EvalProvider;
 use crate::tpt::TranspositionTable;
 use crate::{Move, MoveCollector, Position};
@@ -14,7 +14,7 @@ use std::time::Instant;
 pub fn search_driver<E: EvalProvider>(
     pos: &Position,
     max_depth: u8,
-    max_time_ms: Option<u64>,
+    limits: SearchLimits,
     tt: &TranspositionTable,
     stop_signal: Arc<AtomicBool>,
     thread_id: usize,
@@ -23,7 +23,7 @@ pub fn search_driver<E: EvalProvider>(
     let mut pos = pos.clone();
     let start_time = Instant::now();
     let mut eval_state = Box::new(eval.new_state(&pos));
-    let mut stats = SearchStats::new(Some(stop_signal.clone()), start_time, max_time_ms);
+    let mut stats = SearchStats::new(Some(stop_signal.clone()), start_time, limits.hard_time_ms());
     let mut history = MoveHistory::new();
     let mut best_score = 0;
     let mut completed_depth = 0;
@@ -82,12 +82,12 @@ pub fn search_driver<E: EvalProvider>(
         let current_depth_time = depth_start.elapsed().as_millis() as u64;
 
         if is_master {
-            if should_stop_search(max_time_ms, start_time, current_depth_time) {
+            if should_stop_search(limits, start_time, current_depth_time) {
                 stop_signal.store(true, Ordering::Relaxed);
                 break;
             }
 
-            if let Some(max_time) = max_time_ms {
+            if let Some(max_time) = limits.hard_time_ms() {
                 if start_time.elapsed().as_millis() as u64 >= max_time {
                     stop_signal.store(true, Ordering::Relaxed);
                     break;

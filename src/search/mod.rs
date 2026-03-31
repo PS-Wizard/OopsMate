@@ -24,43 +24,93 @@ use std::time::Instant;
 const NODE_TIME_CHECK_MASK: u64 = 63;
 const SEARCH_THREAD_STACK_SIZE: usize = 32 * 1024 * 1024;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SearchLimits {
+    Infinite,
+    MoveTime {
+        hard_time_ms: u64,
+    },
+    Clock {
+        soft_time_ms: u64,
+        hard_time_ms: u64,
+    },
+}
+
+impl SearchLimits {
+    pub const fn infinite() -> Self {
+        Self::Infinite
+    }
+
+    pub const fn movetime(hard_time_ms: u64) -> Self {
+        Self::MoveTime { hard_time_ms }
+    }
+
+    pub const fn clock(soft_time_ms: u64, hard_time_ms: u64) -> Self {
+        Self::Clock {
+            soft_time_ms,
+            hard_time_ms,
+        }
+    }
+
+    pub const fn from_max_time(max_time_ms: Option<u64>) -> Self {
+        match max_time_ms {
+            Some(hard_time_ms) => Self::MoveTime { hard_time_ms },
+            None => Self::Infinite,
+        }
+    }
+
+    pub const fn hard_time_ms(self) -> Option<u64> {
+        match self {
+            Self::Infinite => None,
+            Self::MoveTime { hard_time_ms } => Some(hard_time_ms),
+            Self::Clock { hard_time_ms, .. } => Some(hard_time_ms),
+        }
+    }
+
+    pub const fn prefers_single_thread(self) -> bool {
+        matches!(self.hard_time_ms(), Some(time) if time < 1_000)
+    }
+}
+
 /// Mutable counters and stop state carried through a single search.
 pub(crate) struct SearchStats {
     pub(crate) nodes: u64,
     pub(crate) tt_hits: u64,
     stop_signal: Option<Arc<AtomicBool>>,
     start_time: Instant,
-    max_time_ms: Option<u64>,
+    hard_time_ms: Option<u64>,
 }
 
 impl SearchStats {
     pub(crate) fn new(
         stop_signal: Option<Arc<AtomicBool>>,
         start_time: Instant,
-        max_time_ms: Option<u64>,
+        hard_time_ms: Option<u64>,
     ) -> Self {
         Self {
             nodes: 0,
             tt_hits: 0,
             stop_signal,
             start_time,
-            max_time_ms,
+            hard_time_ms,
         }
     }
 
     #[inline(always)]
     pub(crate) fn should_stop(&self) -> bool {
         if self.nodes & NODE_TIME_CHECK_MASK == 0 {
+            if let Some(max_time) = self.hard_time_ms {
+                if self.start_time.elapsed().as_millis() as u64 >= max_time {
+                    if let Some(signal) = &self.stop_signal {
+                        signal.store(true, Ordering::Relaxed);
+                    }
+                    return true;
+                }
+            }
+
             if let Some(signal) = &self.stop_signal {
                 if signal.load(Ordering::Relaxed) {
                     return true;
-                }
-
-                if let Some(max_time) = self.max_time_ms {
-                    if self.start_time.elapsed().as_millis() as u64 >= max_time {
-                        signal.store(true, Ordering::Relaxed);
-                        return true;
-                    }
                 }
             }
         }
@@ -95,7 +145,7 @@ pub fn search(
     search_with_eval(
         pos,
         max_depth,
-        max_time_ms,
+        SearchLimits::from_max_time(max_time_ms),
         tt,
         threads,
         crate::eval::NnueProvider::new(),
@@ -106,25 +156,25 @@ pub fn search(
 pub fn search_with_eval<E: EvalProvider>(
     pos: &Position,
     max_depth: u8,
-    max_time_ms: Option<u64>,
+    limits: SearchLimits,
     tt: Arc<TranspositionTable>,
     threads: usize,
     eval: E,
 ) -> Option<SearchInfo> {
     let stop_signal = Arc::new(AtomicBool::new(false));
-    search_with_stop_signal(pos, max_depth, max_time_ms, tt, threads, stop_signal, eval)
+    search_with_stop_signal(pos, max_depth, limits, tt, threads, stop_signal, eval)
 }
 
 pub(crate) fn search_with_stop_signal<E: EvalProvider>(
     pos: &Position,
     max_depth: u8,
-    max_time_ms: Option<u64>,
+    limits: SearchLimits,
     tt: Arc<TranspositionTable>,
     threads: usize,
     stop_signal: Arc<AtomicBool>,
     eval: E,
 ) -> Option<SearchInfo> {
-    let threads = if max_time_ms.is_some_and(|time| time < 1_000) {
+    let threads = if limits.prefers_single_thread() {
         1
     } else {
         threads.max(1)
@@ -147,7 +197,7 @@ pub(crate) fn search_with_stop_signal<E: EvalProvider>(
                         parallel::search_driver(
                             &pos_clone,
                             max_depth,
-                            max_time_ms,
+                            limits,
                             &tt_clone,
                             signal_clone,
                             id,
@@ -169,7 +219,7 @@ pub(crate) fn search_with_stop_signal<E: EvalProvider>(
             parallel::search_driver(
                 &master_pos,
                 max_depth,
-                max_time_ms,
+                limits,
                 &master_tt,
                 master_signal,
                 0,
@@ -218,19 +268,28 @@ fn print_uci_info(
     let _ = std::io::stdout().flush();
 }
 
-fn should_stop_search(
-    max_time_ms: Option<u64>,
-    start_time: Instant,
-    current_depth_time: u64,
-) -> bool {
-    if let Some(max_time) = max_time_ms {
-        let elapsed_total = start_time.elapsed().as_millis() as u64;
-        let time_remaining = max_time.saturating_sub(elapsed_total);
-        let predicted_next_depth = current_depth_time.saturating_mul(4);
+fn should_stop_search(limits: SearchLimits, start_time: Instant, current_depth_time: u64) -> bool {
+    let elapsed_total = start_time.elapsed().as_millis() as u64;
 
-        predicted_next_depth > time_remaining || elapsed_total * 10 > max_time * 7
-    } else {
-        false
+    match limits {
+        SearchLimits::Infinite => false,
+        SearchLimits::MoveTime { hard_time_ms } => {
+            let time_remaining = hard_time_ms.saturating_sub(elapsed_total);
+            time_remaining == 0 || current_depth_time >= time_remaining
+        }
+        SearchLimits::Clock {
+            soft_time_ms,
+            hard_time_ms,
+        } => {
+            if elapsed_total >= hard_time_ms || elapsed_total >= soft_time_ms {
+                return true;
+            }
+
+            let time_remaining = soft_time_ms.saturating_sub(elapsed_total);
+            let predicted_next_depth = current_depth_time.saturating_mul(2);
+
+            predicted_next_depth > time_remaining
+        }
     }
 }
 
@@ -310,5 +369,23 @@ mod tests {
     fn checkmate_scores_prefer_shorter_lines() {
         assert!(checkmate_score(1) < checkmate_score(5));
         assert_eq!(-checkmate_score(1), 48_999);
+    }
+
+    #[test]
+    fn movetime_waits_until_near_hard_limit() {
+        let start = Instant::now() - std::time::Duration::from_millis(350);
+        assert!(!should_stop_search(SearchLimits::movetime(490), start, 100));
+        assert!(should_stop_search(SearchLimits::movetime(490), start, 150));
+    }
+
+    #[test]
+    fn clock_limits_remain_predictive() {
+        let start = Instant::now() - std::time::Duration::from_millis(220);
+        assert!(should_stop_search(SearchLimits::clock(300, 360), start, 50));
+        assert!(!should_stop_search(
+            SearchLimits::clock(400, 500),
+            start,
+            50
+        ));
     }
 }
