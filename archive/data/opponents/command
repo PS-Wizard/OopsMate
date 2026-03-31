@@ -1,5 +1,16 @@
 cutechess-cli \
   -engine cmd=./oops_mate name="OopsMate" \
+  -engine cmd=./bitbit name="Bitbit" \
+  -each proto=uci tc=40/15 \
+  -rounds 100 \
+  -openings file=Modern.pgn format=pgn order=random plies=16 \
+  -pgnout match_40_4.pgn \
+  -concurrency 1 \
+  -draw movenumber=40 movecount=8 score=10 \
+  -resign movecount=5 score=600
+
+cutechess-cli \
+  -engine cmd=./oops_mate name="OopsMate" \
   -engine cmd=stockfish name="SF-3190" option."UCI_LimitStrength"=true option."UCI_Elo"=3190 option."Hash"=64 \
   -each proto=uci tc=5+0.05 \
   -rounds 100 \
