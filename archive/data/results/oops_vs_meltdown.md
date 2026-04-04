@@ -1,4 +1,4 @@
-# Meltdown 
+# Meltdown  (3064 CCRL)
 Score of OopsMate vs Meltdown: 70 - 5 - 18  [0.849] 93
 Started game 94 of 100 (Meltdown vs OopsMate)
 Finished game 94 (Meltdown vs OopsMate): 0-1 {Black wins by adjudication}
