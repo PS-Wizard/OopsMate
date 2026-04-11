@@ -3,7 +3,7 @@ use crate::architecture::{BISHOP_VALUE, KNIGHT_VALUE, QUEEN_VALUE, ROOK_VALUE};
 use crate::piece_list::{collect_pieces_from, PieceList, PIECE_LIST_CAPACITY};
 use crate::types::{Piece, Square};
 
-impl NNUEProbe {
+impl NNUEProbe<'_> {
     /// Replaces the current board state and refreshes both accumulators from scratch.
     pub fn set_position(&mut self, pieces: &[(Piece, Square)], rule50: i32) {
         self.pieces = [Piece::None; 64];
@@ -18,10 +18,11 @@ impl NNUEProbe {
             self.add_piece_internal(piece, square);
         }
 
+        let networks = self.networks.as_ref();
         self.accumulator_stack.reset_with_refresh(
             self.king_squares,
-            &self.networks.big_net.feature_transformer,
-            &self.networks.small_net.feature_transformer,
+            &networks.big_net.feature_transformer,
+            &networks.small_net.feature_transformer,
             &mut self.finny_tables,
             self.by_color_bb,
             self.by_type_bb,
@@ -36,10 +37,11 @@ impl NNUEProbe {
         let mut pieces_idx = PieceList::new();
         collect_pieces_from(&self.pieces, &mut pieces_idx);
 
+        let networks = self.networks.as_ref();
         self.finny_tables.prepopulate(
             pieces_idx.as_slice(),
-            &self.networks.big_net.feature_transformer,
-            &self.networks.small_net.feature_transformer,
+            &networks.big_net.feature_transformer,
+            &networks.small_net.feature_transformer,
             self.king_squares,
         );
     }
@@ -121,11 +123,12 @@ impl NNUEProbe {
         let mut pieces_idx = PieceList::new();
         collect_pieces_from(&self.pieces, &mut pieces_idx);
 
+        let networks = self.networks.as_ref();
         self.accumulator_stack.refresh(
             pieces_idx.as_slice(),
             self.king_squares,
-            &self.networks.big_net.feature_transformer,
-            &self.networks.small_net.feature_transformer,
+            &networks.big_net.feature_transformer,
+            &networks.small_net.feature_transformer,
         );
     }
 
@@ -151,18 +154,19 @@ impl NNUEProbe {
             if king_moved {
                 self.refresh_accumulators();
             } else {
+                let networks = self.networks.as_ref();
                 let state = self.accumulator_stack.mut_latest();
                 state.acc_big.update_with_ksq(
                     &added_mapped,
                     &removed_mapped,
                     self.king_squares,
-                    &self.networks.big_net.feature_transformer,
+                    &networks.big_net.feature_transformer,
                 );
                 state.acc_small.update_with_ksq(
                     &added_mapped,
                     &removed_mapped,
                     self.king_squares,
-                    &self.networks.small_net.feature_transformer,
+                    &networks.small_net.feature_transformer,
                 );
             }
             self.debug_assert_consistent();
@@ -188,18 +192,19 @@ impl NNUEProbe {
         if king_moved {
             self.refresh_accumulators();
         } else {
+            let networks = self.networks.as_ref();
             let state = self.accumulator_stack.mut_latest();
             state.acc_big.update_with_ksq(
                 added_mapped.as_slice(),
                 removed_mapped.as_slice(),
                 self.king_squares,
-                &self.networks.big_net.feature_transformer,
+                &networks.big_net.feature_transformer,
             );
             state.acc_small.update_with_ksq(
                 added_mapped.as_slice(),
                 removed_mapped.as_slice(),
                 self.king_squares,
-                &self.networks.small_net.feature_transformer,
+                &networks.small_net.feature_transformer,
             );
         }
 

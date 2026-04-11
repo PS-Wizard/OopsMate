@@ -56,7 +56,6 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
         println!("id name OopsMate");
         println!("id author Swoyam P.");
         println!("option name Hash type spin default 64 min 1 max 1024");
-        println!("option name Threads type spin default 4 min 1 max 256");
         println!("uciok");
         let _ = std::io::stdout().flush();
     }
@@ -79,25 +78,19 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
 
         let value = parts[name_end + 1];
 
-        match name.as_str() {
-            "hash" => {
-                if let Ok(mb) = value.parse::<usize>() {
-                    self.tt = std::sync::Arc::new(crate::tpt::TranspositionTable::new_mb(mb));
-                }
+        if name.as_str() == "hash" {
+            if let Ok(mb) = value.parse::<usize>() {
+                self.tt = Some(crate::tpt::TranspositionTable::new_mb(mb));
             }
-            "threads" => {
-                if let Ok(t) = value.parse::<usize>() {
-                    self.threads = t.clamp(1, 256);
-                }
-            }
-            _ => {}
         }
     }
 
     fn handle_new_game(&mut self) {
         self.stop_search_and_wait();
         self.position = Position::new();
-        self.tt.clear();
+        if let Some(tt) = &mut self.tt {
+            tt.clear();
+        }
     }
 
     fn handle_position(&mut self, parts: &[&str]) {
@@ -245,8 +238,7 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
         };
 
         let pos = self.position.clone();
-        let tt = self.tt.clone();
-        let threads = self.threads;
+        let mut tt = self.tt.take().expect("transposition table missing");
         let eval = self.eval.clone();
         let stop_signal = Arc::new(AtomicBool::new(false));
         let worker_signal = stop_signal.clone();
@@ -255,7 +247,7 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
             .stack_size(UCI_SEARCH_STACK_SIZE)
             .spawn(move || {
                 let result =
-                    search_with_stop_signal(&pos, depth, limits, tt, threads, worker_signal, eval);
+                    search_with_stop_signal(&pos, depth, limits, &mut tt, worker_signal, eval);
 
                 if let Some(info) = result {
                     println!("bestmove {}", info.best_move.to_uci());
@@ -264,6 +256,8 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
                 }
 
                 let _ = std::io::stdout().flush();
+
+                tt
             })
             .expect("failed to spawn UCI search thread");
 
@@ -282,7 +276,7 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
     fn stop_search_and_wait(&mut self) {
         if let Some(active) = self.active_search.take() {
             active.stop_signal.store(true, Ordering::Relaxed);
-            let _ = active.handle.join();
+            self.tt = Some(active.handle.join().expect("search thread panicked"));
         }
     }
 
@@ -294,7 +288,7 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
 
         if is_finished {
             if let Some(active) = self.active_search.take() {
-                let _ = active.handle.join();
+                self.tt = Some(active.handle.join().expect("search thread panicked"));
             }
         }
     }

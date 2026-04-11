@@ -26,16 +26,15 @@ fn search_with_lmr<E: EvalProvider>(
     gives_check: bool,
     check_extension: u8,
     pv_node: bool,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
-    thread_id: usize,
 ) -> i32 {
-    let do_lmr = should_reduce_lmr(depth, move_index, in_check, gives_check, mv, thread_id);
+    let do_lmr = should_reduce_lmr(depth, move_index, in_check, gives_check, mv);
 
     if do_lmr {
-        let reduction = calculate_lmr_reduction(depth, move_index, pv_node, mv, thread_id);
+        let reduction = calculate_lmr_reduction(depth, move_index, pv_node, mv);
         let reduced_depth = depth
             .saturating_sub(1 + reduction)
             .saturating_add(check_extension);
@@ -55,7 +54,6 @@ fn search_with_lmr<E: EvalProvider>(
             false,
             None,
             ply + 1,
-            thread_id,
         );
 
         if reduced_score > alpha {
@@ -75,7 +73,6 @@ fn search_with_lmr<E: EvalProvider>(
                 false,
                 None,
                 ply + 1,
-                thread_id,
             )
         } else {
             reduced_score
@@ -97,7 +94,6 @@ fn search_with_lmr<E: EvalProvider>(
             false,
             None,
             ply + 1,
-            thread_id,
         )
     }
 }
@@ -119,11 +115,10 @@ fn search_with_pvs<E: EvalProvider>(
     check_extension: u8,
     pv_node: bool,
     is_hash_move: bool,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
-    thread_id: usize,
 ) -> i32 {
     if move_index == 0 {
         // First move: full window search
@@ -142,16 +137,14 @@ fn search_with_pvs<E: EvalProvider>(
             false,
             None,
             ply + 1,
-            thread_id,
         );
     }
 
     // Non-first moves: try null window search first
-    let do_lmr =
-        should_reduce_lmr(depth, move_index, in_check, gives_check, mv, thread_id) && !is_hash_move;
+    let do_lmr = should_reduce_lmr(depth, move_index, in_check, gives_check, mv) && !is_hash_move;
 
     let mut score = if do_lmr {
-        let reduction = calculate_lmr_reduction(depth, move_index, pv_node, mv, thread_id);
+        let reduction = calculate_lmr_reduction(depth, move_index, pv_node, mv);
         let reduced_depth = depth
             .saturating_sub(1 + reduction)
             .saturating_add(check_extension);
@@ -171,7 +164,6 @@ fn search_with_pvs<E: EvalProvider>(
             true,
             None,
             ply + 1,
-            thread_id,
         )
     } else {
         -negamax(
@@ -189,7 +181,6 @@ fn search_with_pvs<E: EvalProvider>(
             true,
             None,
             ply + 1,
-            thread_id,
         )
     };
 
@@ -210,7 +201,6 @@ fn search_with_pvs<E: EvalProvider>(
             false,
             None,
             ply + 1,
-            thread_id,
         );
     }
 
@@ -229,7 +219,7 @@ pub(crate) fn negamax<E: EvalProvider>(
     mut depth: u8,
     mut alpha: i32,
     beta: i32,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     allow_null: bool,
@@ -237,7 +227,6 @@ pub(crate) fn negamax<E: EvalProvider>(
     _cut_node: bool,
     excluded_move: Option<Move>,
     ply: usize,
-    thread_id: usize,
 ) -> i32 {
     stats.nodes += 1;
     let alpha_start = alpha;
@@ -286,7 +275,7 @@ pub(crate) fn negamax<E: EvalProvider>(
 
     // Forward pruning techniques (ProbCut, Razoring, Reverse Futility, Null Move)
     if let Some(score) = try_probcut(
-        pos, eval, eval_state, depth, beta, pv_node, in_check, tt, history, stats, ply, thread_id,
+        pos, eval, eval_state, depth, beta, pv_node, in_check, tt, history, stats, ply,
     ) {
         return score;
     }
@@ -325,7 +314,6 @@ pub(crate) fn negamax<E: EvalProvider>(
         history,
         stats,
         ply,
-        thread_id,
     ) {
         return score;
     }
@@ -358,7 +346,6 @@ pub(crate) fn negamax<E: EvalProvider>(
                     true,
                     tt_move,
                     ply,
-                    thread_id,
                 );
 
                 if score < singular_beta {
@@ -385,7 +372,6 @@ pub(crate) fn negamax<E: EvalProvider>(
         history,
         stats,
         ply,
-        thread_id,
     );
     let tt_move = tt_move.or(iid_move);
     let tt_order_move = if features::TT_MOVE_ORDERING {
@@ -478,7 +464,6 @@ pub(crate) fn negamax<E: EvalProvider>(
                 history,
                 stats,
                 ply,
-                thread_id,
             )
         } else {
             let is_hash_move = tt_order_move.is_some_and(|tt_mv| mv.0 == tt_mv.0);
@@ -500,7 +485,6 @@ pub(crate) fn negamax<E: EvalProvider>(
                 history,
                 stats,
                 ply,
-                thread_id,
             )
         };
 

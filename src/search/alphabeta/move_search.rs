@@ -21,17 +21,16 @@ pub fn search_move<E: EvalProvider>(
     in_check: bool,
     gives_check: bool,
     pv_node: bool,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
-    thread_id: usize,
 ) -> i32 {
     if move_num == 0 || !features::PVS {
-        let do_lmr = should_reduce_lmr(depth, move_num, in_check, gives_check, mv, thread_id);
+        let do_lmr = should_reduce_lmr(depth, move_num, in_check, gives_check, mv);
 
         if do_lmr {
-            let reduction = calculate_lmr_reduction(depth, move_num, pv_node, mv, thread_id);
+            let reduction = calculate_lmr_reduction(depth, move_num, pv_node, mv);
             let reduced_depth = depth.saturating_sub(1 + reduction);
             let reduced_score = -negamax(
                 pos,
@@ -48,7 +47,6 @@ pub fn search_move<E: EvalProvider>(
                 false,
                 None,
                 ply + 1,
-                thread_id,
             );
 
             if reduced_score > alpha {
@@ -67,7 +65,6 @@ pub fn search_move<E: EvalProvider>(
                     false,
                     None,
                     ply + 1,
-                    thread_id,
                 );
             }
 
@@ -89,14 +86,13 @@ pub fn search_move<E: EvalProvider>(
             false,
             None,
             ply + 1,
-            thread_id,
         );
     }
 
-    let do_lmr = should_reduce_lmr(depth, move_num, in_check, gives_check, mv, thread_id);
+    let do_lmr = should_reduce_lmr(depth, move_num, in_check, gives_check, mv);
 
     let mut score = if do_lmr {
-        let reduction = calculate_lmr_reduction(depth, move_num, pv_node, mv, thread_id);
+        let reduction = calculate_lmr_reduction(depth, move_num, pv_node, mv);
         let reduced_depth = depth.saturating_sub(1 + reduction);
 
         -negamax(
@@ -114,7 +110,6 @@ pub fn search_move<E: EvalProvider>(
             true,
             None,
             ply + 1,
-            thread_id,
         )
     } else {
         -negamax(
@@ -132,7 +127,6 @@ pub fn search_move<E: EvalProvider>(
             true,
             None,
             ply + 1,
-            thread_id,
         )
     };
 
@@ -152,7 +146,6 @@ pub fn search_move<E: EvalProvider>(
             false,
             None,
             ply + 1,
-            thread_id,
         );
     }
 

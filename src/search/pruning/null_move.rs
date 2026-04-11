@@ -17,11 +17,10 @@ pub fn try_null_move_pruning<E: EvalProvider>(
     allow_null: bool,
     in_check: bool,
     static_eval: i32,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
-    thread_id: usize,
 ) -> Option<i32> {
     if !features::NULL_MOVE {
         return None;
@@ -69,7 +68,6 @@ pub fn try_null_move_pruning<E: EvalProvider>(
         true,
         None,
         ply + 1,
-        thread_id,
     );
 
     pos.unmake_null_move();

@@ -52,23 +52,21 @@ mod tests {
     fn pesto_start_position_eval_is_zero() {
         let provider = PestoProvider::new();
         let pos = Position::new();
-        let mut state = provider.new_state(&pos);
-        assert_eq!(provider.eval(&pos, &mut state), 0);
+        assert_eq!(provider.eval(&pos, &mut ()), 0);
     }
 
     #[test]
     fn pesto_restores_score_after_make_unmake() {
         let provider = PestoProvider::new();
         let mut pos = Position::new();
-        let mut state = provider.new_state(&pos);
-        let original = provider.eval(&pos, &mut state);
+        let original = provider.eval(&pos, &mut ());
 
         let mv = crate::Move::new(12, 28, crate::MoveType::DoublePush);
-        let undo = provider.update_on_move(&mut state, &pos, mv);
+        provider.update_on_move(&mut (), &pos, mv);
         pos.make_move(mv);
         pos.unmake_move(mv);
-        provider.update_on_undo(&mut state, undo);
+        provider.update_on_undo(&mut (), ());
 
-        assert_eq!(provider.eval(&pos, &mut state), original);
+        assert_eq!(provider.eval(&pos, &mut ()), original);
     }
 }

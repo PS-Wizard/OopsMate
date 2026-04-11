@@ -18,11 +18,10 @@ pub fn try_probcut<E: EvalProvider>(
     beta: i32,
     pv_node: bool,
     in_check: bool,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
-    thread_id: usize,
 ) -> Option<i32> {
     if !features::PROBCUT {
         return None;
@@ -63,7 +62,6 @@ pub fn try_probcut<E: EvalProvider>(
             true,
             None,
             ply + 1,
-            thread_id,
         );
 
         pos.unmake_move(mv);

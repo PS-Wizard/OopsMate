@@ -2,7 +2,7 @@ use super::NNUEProbe;
 use crate::architecture::{PAWN_VALUE, PSQT_BUCKET_COUNT};
 use crate::types::Color;
 
-impl NNUEProbe {
+impl NNUEProbe<'_> {
     /// Evaluates the current position from the side-to-move perspective.
     pub fn evaluate(&mut self, side_to_move: Color) -> i32 {
         let stm = side_to_move.index();
@@ -18,9 +18,10 @@ impl NNUEProbe {
         .min(PSQT_BUCKET_COUNT - 1);
 
         let latest = self.accumulator_stack.latest();
+        let networks = self.networks.as_ref();
 
         let (mut nnue_val, psqt_val, positional_val) = if use_small {
-            let (psqt, pos) = self.networks.small_net.evaluate(
+            let (psqt, pos) = networks.small_net.evaluate(
                 &latest.acc_small,
                 bucket,
                 stm,
@@ -29,12 +30,10 @@ impl NNUEProbe {
             let mut score = (125 * psqt + 131 * pos) / 128;
 
             if score.abs() < 236 {
-                let (big_psqt, big_pos) = self.networks.big_net.evaluate(
-                    &latest.acc_big,
-                    bucket,
-                    stm,
-                    &mut self.scratch_big,
-                );
+                let (big_psqt, big_pos) =
+                    networks
+                        .big_net
+                        .evaluate(&latest.acc_big, bucket, stm, &mut self.scratch_big);
                 score = (125 * big_psqt + 131 * big_pos) / 128;
                 (score, big_psqt, big_pos)
             } else {
@@ -42,7 +41,7 @@ impl NNUEProbe {
             }
         } else {
             let (psqt, pos) =
-                self.networks
+                networks
                     .big_net
                     .evaluate(&latest.acc_big, bucket, stm, &mut self.scratch_big);
             ((125 * psqt + 131 * pos) / 128, psqt, pos)

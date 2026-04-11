@@ -1,8 +1,6 @@
 use crate::nnue::NNUEProbe;
 use crate::types::{Color, Piece};
 use crate::uci::{calculate_material, to_centipawns};
-use crate::NnueNetworks;
-use std::sync::Arc;
 use std::thread;
 
 pub const BIG_NETWORK: &str = "archive/nnue/networks/nn-1c0000000000.nnue";
@@ -34,12 +32,8 @@ where
         .expect("test thread panicked")
 }
 
-pub fn new_probe() -> NNUEProbe {
+pub fn new_probe() -> NNUEProbe<'static> {
     NNUEProbe::new(BIG_NETWORK, SMALL_NETWORK).expect("load")
-}
-
-pub fn load_networks() -> Arc<NnueNetworks> {
-    Arc::new(NnueNetworks::new(BIG_NETWORK, SMALL_NETWORK).expect("Failed to load networks"))
 }
 
 pub fn parse_probe_fen(fen: &str) -> (Vec<(Piece, usize)>, Color) {
@@ -106,41 +100,4 @@ pub fn to_cp(pieces: &[(Piece, usize)], side: Color, internal: i32) -> i32 {
     } else {
         cp
     }
-}
-
-pub fn get_startpos_pieces() -> Vec<(Piece, usize)> {
-    vec![
-        (Piece::WhiteRook, 0),
-        (Piece::WhiteKnight, 1),
-        (Piece::WhiteBishop, 2),
-        (Piece::WhiteQueen, 3),
-        (Piece::WhiteKing, 4),
-        (Piece::WhiteBishop, 5),
-        (Piece::WhiteKnight, 6),
-        (Piece::WhiteRook, 7),
-        (Piece::WhitePawn, 8),
-        (Piece::WhitePawn, 9),
-        (Piece::WhitePawn, 10),
-        (Piece::WhitePawn, 11),
-        (Piece::WhitePawn, 12),
-        (Piece::WhitePawn, 13),
-        (Piece::WhitePawn, 14),
-        (Piece::WhitePawn, 15),
-        (Piece::BlackPawn, 48),
-        (Piece::BlackPawn, 49),
-        (Piece::BlackPawn, 50),
-        (Piece::BlackPawn, 51),
-        (Piece::BlackPawn, 52),
-        (Piece::BlackPawn, 53),
-        (Piece::BlackPawn, 54),
-        (Piece::BlackPawn, 55),
-        (Piece::BlackRook, 56),
-        (Piece::BlackKnight, 57),
-        (Piece::BlackBishop, 58),
-        (Piece::BlackQueen, 59),
-        (Piece::BlackKing, 60),
-        (Piece::BlackBishop, 61),
-        (Piece::BlackKnight, 62),
-        (Piece::BlackRook, 63),
-    ]
 }

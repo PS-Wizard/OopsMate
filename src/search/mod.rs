@@ -4,9 +4,9 @@
 //! the public `search` entry point used by the UCI driver.
 
 mod alphabeta;
+mod driver;
 mod features;
 mod ordering;
-mod parallel;
 mod params;
 mod pruning;
 pub(crate) mod qsearch;
@@ -22,7 +22,6 @@ use std::sync::Arc;
 use std::time::Instant;
 
 const NODE_TIME_CHECK_MASK: u64 = 63;
-const SEARCH_THREAD_STACK_SIZE: usize = 32 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SearchLimits {
@@ -65,10 +64,6 @@ impl SearchLimits {
             Self::MoveTime { hard_time_ms } => Some(hard_time_ms),
             Self::Clock { hard_time_ms, .. } => Some(hard_time_ms),
         }
-    }
-
-    pub const fn prefers_single_thread(self) -> bool {
-        matches!(self.hard_time_ms(), Some(time) if time < 1_000)
     }
 }
 
@@ -139,15 +134,13 @@ pub fn search(
     pos: &Position,
     max_depth: u8,
     max_time_ms: Option<u64>,
-    tt: Arc<TranspositionTable>,
-    threads: usize,
+    tt: &mut TranspositionTable,
 ) -> Option<SearchInfo> {
     search_with_eval(
         pos,
         max_depth,
         SearchLimits::from_max_time(max_time_ms),
         tt,
-        threads,
         crate::eval::NnueProvider::new(),
     )
 }
@@ -157,86 +150,24 @@ pub fn search_with_eval<E: EvalProvider>(
     pos: &Position,
     max_depth: u8,
     limits: SearchLimits,
-    tt: Arc<TranspositionTable>,
-    threads: usize,
+    tt: &mut TranspositionTable,
     eval: E,
 ) -> Option<SearchInfo> {
     let stop_signal = Arc::new(AtomicBool::new(false));
-    search_with_stop_signal(pos, max_depth, limits, tt, threads, stop_signal, eval)
+    search_with_stop_signal(pos, max_depth, limits, tt, stop_signal, eval)
 }
 
 pub(crate) fn search_with_stop_signal<E: EvalProvider>(
     pos: &Position,
     max_depth: u8,
     limits: SearchLimits,
-    tt: Arc<TranspositionTable>,
-    threads: usize,
+    tt: &mut TranspositionTable,
     stop_signal: Arc<AtomicBool>,
     eval: E,
 ) -> Option<SearchInfo> {
-    let threads = if limits.prefers_single_thread() {
-        1
-    } else {
-        threads.max(1)
-    };
-
     tt.new_search();
 
-    let mut handles = Vec::new();
-    if threads > 1 {
-        for id in 1..threads {
-            let pos_clone = pos.clone();
-            let tt_clone = tt.clone();
-            let signal_clone = stop_signal.clone();
-            let eval_clone = eval.clone();
-
-            handles.push(
-                std::thread::Builder::new()
-                    .stack_size(SEARCH_THREAD_STACK_SIZE)
-                    .spawn(move || {
-                        parallel::search_driver(
-                            &pos_clone,
-                            max_depth,
-                            limits,
-                            &tt_clone,
-                            signal_clone,
-                            id,
-                            &eval_clone,
-                        )
-                    })
-                    .expect("failed to spawn search helper thread"),
-            );
-        }
-    }
-
-    let master_pos = pos.clone();
-    let master_tt = tt.clone();
-    let master_signal = stop_signal.clone();
-    let master_eval = eval.clone();
-    let info = std::thread::Builder::new()
-        .stack_size(SEARCH_THREAD_STACK_SIZE)
-        .spawn(move || {
-            parallel::search_driver(
-                &master_pos,
-                max_depth,
-                limits,
-                &master_tt,
-                master_signal,
-                0,
-                &master_eval,
-            )
-        })
-        .expect("failed to spawn master search thread")
-        .join()
-        .expect("master search thread panicked");
-
-    stop_signal.store(true, Ordering::Relaxed);
-
-    for handle in handles {
-        let _ = handle.join();
-    }
-
-    info
+    driver::search_driver(pos, max_depth, limits, tt, stop_signal, &eval)
 }
 
 fn print_uci_info(
@@ -316,7 +247,6 @@ mod tests {
     fn test_iterative_deepening() {
         run_with_large_stack(|| {
             use crate::search::init_lmr;
-            use std::sync::Arc;
 
             let depth = 18;
             let pos = Position::from_fen(
@@ -324,13 +254,13 @@ mod tests {
             )
             .unwrap_or_default();
 
-            let tt = Arc::new(TranspositionTable::new_mb(512));
+            let mut tt = TranspositionTable::new_mb(512);
             init_lmr();
 
             println!("Starting iterative deepening search to depth {}...", depth);
             let start = std::time::Instant::now();
 
-            let result = search(&pos, depth, None, tt.clone(), 1);
+            let result = search(&pos, depth, None, &mut tt);
 
             let duration = start.elapsed();
 

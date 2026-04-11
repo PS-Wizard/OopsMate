@@ -79,7 +79,6 @@ const fn b(v: usize) -> usize {
 }
 
 /// King-bucket offsets indexed by perspective and king square.
-
 #[rustfmt::skip]
 pub const KING_BUCKETS: [[usize; 64]; 2] = [
     [
@@ -104,33 +103,37 @@ pub const KING_BUCKETS: [[usize; 64]; 2] = [
     ],
 ];
 
-const SQ_H1: usize = 7;
-const SQ_A1: usize = 0;
-const SQ_H8: usize = 63;
-const SQ_A8: usize = 56;
+// XOR masks for square transformations
+const FLIP_HORIZONTAL: usize = 7; // Mirror files: a -> h, b -> g, c -> f, d -> e
+const FLIP_VERTICAL: usize = 56; // Flip ranks: 1 -> 8, 2 -> 7, etc.
+const FLIP_BOTH: usize = 63; // Both transforms (56 | 7)
+const NO_FLIP: usize = 0; // No transformation
 
 #[rustfmt::skip]
-/// Orientation table used to mirror squares for each king bucket.
+/// XOR transformation masks indexed by [perspective][king_square].
+/// Applies vertical flip for Black + horizontal mirror when king is on files a-d.
 pub const ORIENT_TBL: [[usize; 64]; 2] = [
+    // White: mirror horizontally if king on left half (files a-d)
     [
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, 
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, 
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, 
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, 
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, 
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, 
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, 
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1, 
+        FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, NO_FLIP, NO_FLIP, NO_FLIP, NO_FLIP, 
+        FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, NO_FLIP, NO_FLIP, NO_FLIP, NO_FLIP, 
+        FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, NO_FLIP, NO_FLIP, NO_FLIP, NO_FLIP, 
+        FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, NO_FLIP, NO_FLIP, NO_FLIP, NO_FLIP, 
+        FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, NO_FLIP, NO_FLIP, NO_FLIP, NO_FLIP, 
+        FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, NO_FLIP, NO_FLIP, NO_FLIP, NO_FLIP, 
+        FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, NO_FLIP, NO_FLIP, NO_FLIP, NO_FLIP, 
+        FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, FLIP_HORIZONTAL, NO_FLIP, NO_FLIP, NO_FLIP, NO_FLIP, 
     ],
+    // Black: vertical flip always + horizontal mirror if king on left half
     [
-        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8, 
-        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
-        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
-        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
-        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
-        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
-        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
-        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
+        FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL, 
+        FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL,
+        FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL,
+        FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL,
+        FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL,
+        FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL,
+        FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL,
+        FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_BOTH, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL, FLIP_VERTICAL,
     ],
 ];
 

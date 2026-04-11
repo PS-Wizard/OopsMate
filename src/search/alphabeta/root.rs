@@ -1,7 +1,7 @@
 use super::move_search::search_move;
 use crate::eval::EvalProvider;
 use crate::search::features;
-use crate::search::ordering::{pick_next_move, score_move, MoveHistory, SCORE_TT_MOVE};
+use crate::search::ordering::{pick_next_move, score_move, MoveHistory};
 use crate::search::params::{INFINITY, MAX_MOVES};
 use crate::search::score::score_to_tt;
 use crate::search::SearchStats;
@@ -18,10 +18,9 @@ pub fn search_root<E: EvalProvider>(
     depth: u8,
     mut alpha: i32,
     beta: i32,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
-    thread_id: usize,
 ) -> (i32, Move) {
     let in_check = pos.is_in_check();
     let alpha_start = alpha;
@@ -35,15 +34,6 @@ pub fn search_root<E: EvalProvider>(
 
     for i in 0..move_count {
         scores[i] = score_move(moves[i], pos, tt_move, Some(history), 0);
-    }
-
-    if thread_id > 0 && move_count > 1 {
-        for (i, score) in scores.iter_mut().enumerate().take(move_count) {
-            if *score != SCORE_TT_MOVE {
-                let noise = ((i + thread_id) * 987654321) % 4000;
-                *score = (*score).saturating_add(noise as i32);
-            }
-        }
     }
 
     let mut best_score = -INFINITY;
@@ -78,7 +68,6 @@ pub fn search_root<E: EvalProvider>(
                 history,
                 stats,
                 0,
-                thread_id,
             )
         } else {
             let s = search_move(
@@ -97,7 +86,6 @@ pub fn search_root<E: EvalProvider>(
                 history,
                 stats,
                 0,
-                thread_id,
             );
             if s > alpha && s < beta {
                 search_move(
@@ -116,7 +104,6 @@ pub fn search_root<E: EvalProvider>(
                     history,
                     stats,
                     0,
-                    thread_id,
                 )
             } else {
                 s

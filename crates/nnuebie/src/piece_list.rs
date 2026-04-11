@@ -35,8 +35,7 @@ impl PieceList {
 
 pub(crate) fn collect_pieces_from(pieces: &[Piece; 64], list: &mut PieceList) {
     list.clear();
-    for sq in 0..64 {
-        let p = pieces[sq];
+    for (sq, p) in pieces.iter().copied().enumerate() {
         if p != Piece::None {
             list.push(sq, p.index());
         }

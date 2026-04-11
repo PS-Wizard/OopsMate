@@ -1,0 +1,9 @@
+[package]
+name = "nnue-core"
+version = "0.1.0"
+edition = "2021"
+description = ""
+
+[[bin]]
+name = "nnue-core"
+path = "src/main.rs"

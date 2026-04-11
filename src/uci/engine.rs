@@ -5,14 +5,13 @@ use std::thread::JoinHandle;
 
 pub(crate) struct ActiveSearch {
     pub(crate) stop_signal: Arc<AtomicBool>,
-    pub(crate) handle: JoinHandle<()>,
+    pub(crate) handle: JoinHandle<TranspositionTable>,
 }
 
 /// UCI-facing engine state.
 pub struct UciEngine<E: EvalProvider> {
     pub(crate) position: Position,
-    pub(crate) tt: Arc<TranspositionTable>,
-    pub(crate) threads: usize,
+    pub(crate) tt: Option<TranspositionTable>,
     pub(crate) eval: E,
     pub(crate) active_search: Option<ActiveSearch>,
 }
@@ -22,8 +21,7 @@ impl<E: EvalProvider> UciEngine<E> {
     pub fn new(eval: E) -> Self {
         UciEngine {
             position: Position::new(),
-            tt: Arc::new(TranspositionTable::new_mb(256)),
-            threads: 1,
+            tt: Some(TranspositionTable::new_mb(256)),
             eval,
             active_search: None,
         }

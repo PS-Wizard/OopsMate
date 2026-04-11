@@ -54,7 +54,6 @@ pub fn should_reduce_lmr(
     in_check: bool,
     gives_check: bool,
     mv: Move,
-    thread_id: usize,
 ) -> bool {
     if in_check {
         return false;
@@ -78,21 +77,11 @@ pub fn should_reduce_lmr(
         return false;
     }
 
-    if thread_id > 0 && move_num > 4 {
-        return true;
-    }
-
     true
 }
 
 #[inline(always)]
-pub fn calculate_lmr_reduction(
-    depth: u8,
-    move_num: usize,
-    pv_node: bool,
-    mv: Move,
-    thread_id: usize,
-) -> u8 {
+pub fn calculate_lmr_reduction(depth: u8, move_num: usize, pv_node: bool, mv: Move) -> u8 {
     if !features::LMR {
         return 0;
     }
@@ -116,15 +105,6 @@ pub fn calculate_lmr_reduction(
 
     if pv_node && reduction > PV_REDUCTION {
         reduction = reduction.saturating_sub(PV_REDUCTION);
-    }
-
-    if thread_id > 0 {
-        let thread_mod = (thread_id % 3) as u8;
-        reduction = reduction.saturating_add(thread_mod);
-
-        if move_num > 6 {
-            reduction = reduction.saturating_add(1);
-        }
     }
 
     reduction.min(depth.saturating_sub(1))

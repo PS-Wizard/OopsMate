@@ -28,11 +28,10 @@ pub fn try_iid<E: EvalProvider>(
     pv_node: bool,
     has_tt_move: bool,
     in_check: bool,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
     ply: usize,
-    thread_id: usize,
 ) -> Option<Move> {
     if !features::IID {
         return None;
@@ -51,7 +50,7 @@ pub fn try_iid<E: EvalProvider>(
 
     negamax(
         pos, eval, eval_state, iid_depth, alpha, beta, tt, history, stats, true, pv_node, false,
-        None, ply, thread_id,
+        None, ply,
     );
 
     tt.probe(pos.hash()).map(|entry| entry.best_move)

@@ -12,6 +12,10 @@ const RAZOR_MARGINS: [i32; 4] = [
     500,
 ];
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "razoring needs the local search state without heap indirection"
+)]
 #[inline(always)]
 pub fn try_razoring<E: EvalProvider>(
     pos: &mut Position,

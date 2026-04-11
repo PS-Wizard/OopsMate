@@ -48,6 +48,10 @@ impl AccumulatorStack {
         }
     }
 
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "refresh setup mirrors the accumulator inputs directly"
+    )]
     pub fn reset_with_refresh(
         &mut self,
         king_squares: [usize; 2],

@@ -1,10 +1,9 @@
 //! Transposition table storage.
 //!
 //! The table stores one packed entry per bucket and uses a simple depth-and-age
-//! replacement policy tuned for search throughput.
+//! replacement policy tuned for single-search throughput.
 
 use crate::Move;
-use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
 
 /// Decoded transposition-table entry returned by probes.
 #[derive(Copy, Clone)]
@@ -36,25 +35,17 @@ impl Default for TTEntry {
     }
 }
 
+#[derive(Clone, Copy, Default)]
 struct PackedTTEntry {
-    data: AtomicU64,
-    signature: AtomicU64,
+    data: u64,
+    signature: u64,
 }
 
-impl PackedTTEntry {
-    fn default() -> Self {
-        PackedTTEntry {
-            data: AtomicU64::new(0),
-            signature: AtomicU64::new(0),
-        }
-    }
-}
-
-/// Lock-free transposition table with one packed entry per bucket.
+/// Packed transposition table with one entry per bucket.
 pub struct TranspositionTable {
     table: Vec<PackedTTEntry>,
     mask: u64,
-    generation: AtomicU8,
+    generation: u8,
 }
 
 const ENTRY_SIZE_BYTES: usize = 24;
@@ -107,14 +98,14 @@ impl TranspositionTable {
         TranspositionTable {
             table,
             mask: (size - 1) as u64,
-            generation: AtomicU8::new(0),
+            generation: 0,
         }
     }
 
     /// Starts a new search generation for aging decisions.
     #[inline(always)]
-    pub fn new_search(&self) {
-        self.generation.fetch_add(1, Ordering::Relaxed);
+    pub fn new_search(&mut self) {
+        self.generation = self.generation.wrapping_add(1);
     }
 
     /// Looks up a position by hash.
@@ -130,30 +121,30 @@ impl TranspositionTable {
         }
 
         let entry = unsafe { self.table.get_unchecked(idx) };
-        let data = entry.data.load(Ordering::Relaxed);
-        let signature = entry.signature.load(Ordering::Relaxed);
+        let data = entry.data;
+        let signature = entry.signature;
 
         unpack_entry(hash, data, signature)
     }
 
     /// Stores a search result for `hash` if the replacement policy allows it.
     #[inline(always)]
-    pub fn store(&self, hash: u64, best_move: Move, score: i32, depth: u8, flag: u8) {
+    pub fn store(&mut self, hash: u64, best_move: Move, score: i32, depth: u8, flag: u8) {
         let idx = (hash & self.mask) as usize;
         let entry = unsafe { self.table.get_unchecked(idx) };
 
-        let old_data = entry.data.load(Ordering::Relaxed);
-        let old_signature = entry.signature.load(Ordering::Relaxed);
+        let old_data = entry.data;
+        let old_signature = entry.signature;
         let old_hash = old_data ^ old_signature;
 
         let mut replace = false;
-        let gen = self.generation.load(Ordering::Relaxed);
+        let generation = self.generation;
 
         if old_hash == 0 || old_hash == hash {
             replace = true;
         } else {
             let old_age = ((old_data >> AGE_SHIFT) & 0x3F) as u8;
-            let current_age_bits = gen & 0x3F;
+            let current_age_bits = generation & 0x3F;
 
             if old_age != current_age_bits && depth >= ((old_data >> DEPTH_SHIFT) & 0xFF) as u8 {
                 replace = true;
@@ -161,21 +152,24 @@ impl TranspositionTable {
         }
 
         if replace {
-            let new_data = pack_entry(best_move, score, depth, flag, gen & 0x3F);
+            let new_data = pack_entry(best_move, score, depth, flag, generation & 0x3F);
             let new_signature = hash ^ new_data;
 
-            entry.data.store(new_data, Ordering::Relaxed);
-            entry.signature.store(new_signature, Ordering::Relaxed);
+            unsafe {
+                let slot = self.table.get_unchecked_mut(idx);
+                slot.data = new_data;
+                slot.signature = new_signature;
+            }
         }
     }
 
     /// Clears all entries and resets the generation counter.
-    pub fn clear(&self) {
-        for entry in &self.table {
-            entry.data.store(0, Ordering::Relaxed);
-            entry.signature.store(0, Ordering::Relaxed);
+    pub fn clear(&mut self) {
+        for entry in &mut self.table {
+            entry.data = 0;
+            entry.signature = 0;
         }
-        self.generation.store(0, Ordering::Relaxed);
+        self.generation = 0;
     }
 
     /// Returns hash table occupancy in permille, matching the UCI `hashfull` convention.
@@ -185,8 +179,8 @@ impl TranspositionTable {
 
         for i in 0..sample_size {
             let entry = unsafe { self.table.get_unchecked(i) };
-            let data = entry.data.load(Ordering::Relaxed);
-            let signature = entry.signature.load(Ordering::Relaxed);
+            let data = entry.data;
+            let signature = entry.signature;
 
             if (data ^ signature) != 0 {
                 filled += 1;

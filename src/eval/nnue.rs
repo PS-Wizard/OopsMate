@@ -2,7 +2,7 @@ use super::EvalProvider;
 use crate::{Color, Move, MoveType, Piece, Position};
 use nnuebie::uci::to_centipawns;
 use nnuebie::{Color as NnueColor, MoveDelta, NNUEProbe, NnueNetworks, Piece as NnuePiece};
-use std::sync::{Arc, OnceLock};
+use std::sync::OnceLock;
 
 const BIG_NETWORK_PATH: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -13,11 +13,11 @@ const SMALL_NETWORK_PATH: &str = concat!(
     "/crates/nnuebie/archive/nnue/networks/nn-37f18f62d772.nnue"
 );
 
-static NNUE_NETWORKS: OnceLock<Arc<NnueNetworks>> = OnceLock::new();
+static NNUE_NETWORKS: OnceLock<NnueNetworks> = OnceLock::new();
 
 #[derive(Clone)]
 pub struct NnueProvider {
-    networks: Arc<NnueNetworks>,
+    networks: &'static NnueNetworks,
 }
 
 impl NnueProvider {
@@ -35,12 +35,12 @@ impl Default for NnueProvider {
     }
 }
 impl EvalProvider for NnueProvider {
-    type State = NNUEProbe;
+    type State = NNUEProbe<'static>;
     type Undo = MoveDelta;
 
     #[inline(always)]
     fn new_state(&self, pos: &Position) -> Self::State {
-        let mut probe = NNUEProbe::from_networks(self.networks.clone());
+        let mut probe = NNUEProbe::from_networks(self.networks);
         self.sync(&mut probe, pos);
         probe
     }
@@ -80,15 +80,11 @@ impl EvalProvider for NnueProvider {
     }
 }
 
-fn networks() -> Arc<NnueNetworks> {
-    NNUE_NETWORKS
-        .get_or_init(|| {
-            Arc::new(
-                NnueNetworks::new(BIG_NETWORK_PATH, SMALL_NETWORK_PATH)
-                    .expect("failed to load embedded nnue networks"),
-            )
-        })
-        .clone()
+fn networks() -> &'static NnueNetworks {
+    NNUE_NETWORKS.get_or_init(|| {
+        NnueNetworks::new(BIG_NETWORK_PATH, SMALL_NETWORK_PATH)
+            .expect("failed to load embedded nnue networks")
+    })
 }
 
 #[inline(always)]

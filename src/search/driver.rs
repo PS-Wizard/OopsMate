@@ -11,13 +11,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
+const INITIAL_ASPIRATION_DELTA: i32 = 25;
+const MAX_ASPIRATION_DELTA: i32 = 1_000;
+
 pub fn search_driver<E: EvalProvider>(
     pos: &Position,
     max_depth: u8,
     limits: SearchLimits,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     stop_signal: Arc<AtomicBool>,
-    thread_id: usize,
     eval: &E,
 ) -> Option<SearchInfo> {
     let mut pos = pos.clone();
@@ -27,7 +29,6 @@ pub fn search_driver<E: EvalProvider>(
     let mut history = MoveHistory::new();
     let mut best_score = 0;
     let mut completed_depth = 0;
-    let is_master = thread_id == 0;
 
     let mut collector = MoveCollector::new();
     pos.generate_moves(&mut collector);
@@ -39,9 +40,7 @@ pub fn search_driver<E: EvalProvider>(
 
     let mut best_move = Some(moves[0]);
 
-    let start_depth = 1;
-
-    for depth in start_depth..=max_depth {
+    for depth in 1..=max_depth {
         let depth_start = Instant::now();
 
         if stats.should_stop() {
@@ -57,7 +56,6 @@ pub fn search_driver<E: EvalProvider>(
             tt,
             &mut history,
             &mut stats,
-            thread_id,
         );
 
         if stats.should_stop() {
@@ -68,30 +66,25 @@ pub fn search_driver<E: EvalProvider>(
         best_score = iteration_best_score;
         completed_depth = depth;
 
-        if is_master {
-            print_uci_info(
-                depth,
-                best_score,
-                &stats,
-                start_time,
-                tt,
-                &iteration_best_move,
-            );
-        }
+        print_uci_info(
+            depth,
+            best_score,
+            &stats,
+            start_time,
+            tt,
+            &iteration_best_move,
+        );
 
         let current_depth_time = depth_start.elapsed().as_millis() as u64;
+        if should_stop_search(limits, start_time, current_depth_time) {
+            stop_signal.store(true, Ordering::Relaxed);
+            break;
+        }
 
-        if is_master {
-            if should_stop_search(limits, start_time, current_depth_time) {
+        if let Some(max_time) = limits.hard_time_ms() {
+            if start_time.elapsed().as_millis() as u64 >= max_time {
                 stop_signal.store(true, Ordering::Relaxed);
                 break;
-            }
-
-            if let Some(max_time) = limits.hard_time_ms() {
-                if start_time.elapsed().as_millis() as u64 >= max_time {
-                    stop_signal.store(true, Ordering::Relaxed);
-                    break;
-                }
             }
         }
     }
@@ -106,6 +99,10 @@ pub fn search_driver<E: EvalProvider>(
     })
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "root search keeps hot-path state explicit"
+)]
 #[inline(always)]
 fn search_aspiration<E: EvalProvider>(
     pos: &mut Position,
@@ -113,10 +110,9 @@ fn search_aspiration<E: EvalProvider>(
     eval_state: &mut E::State,
     depth: u8,
     prev_score: i32,
-    tt: &TranspositionTable,
+    tt: &mut TranspositionTable,
     history: &mut MoveHistory,
     stats: &mut SearchStats,
-    thread_id: usize,
 ) -> (i32, Move) {
     let mut collector = MoveCollector::new();
     pos.generate_moves(&mut collector);
@@ -146,17 +142,10 @@ fn search_aspiration<E: EvalProvider>(
             tt,
             history,
             stats,
-            thread_id,
         );
     }
 
-    let mut delta = match thread_id % 4 {
-        0 => 25,
-        1 => 50,
-        2 => 100,
-        _ => 200,
-    };
-
+    let mut delta = INITIAL_ASPIRATION_DELTA;
     let mut alpha = prev_score - delta;
     let mut beta = prev_score + delta;
 
@@ -172,7 +161,6 @@ fn search_aspiration<E: EvalProvider>(
             tt,
             history,
             stats,
-            thread_id,
         );
 
         if stats.should_stop() {
@@ -193,7 +181,7 @@ fn search_aspiration<E: EvalProvider>(
             delta += delta / 2;
         }
 
-        if delta > 1000 {
+        if delta > MAX_ASPIRATION_DELTA {
             alpha = -INFINITY;
             beta = INFINITY;
         }

@@ -3,7 +3,7 @@ use crate::accumulator_stack::DirtyPiece;
 use crate::nnue::MoveDelta;
 use crate::types::{Piece, Square};
 
-impl NNUEProbe {
+impl NNUEProbe<'_> {
     #[inline(always)]
     /// Returns the current rule-50 counter tracked by the probe stack.
     pub fn rule50(&self) -> i32 {
@@ -14,10 +14,11 @@ impl NNUEProbe {
     fn update_accumulator_stack(&mut self) {
         let color_bb = self.by_color_bb;
         let type_bb = self.by_type_bb;
+        let networks = self.networks.as_ref();
         self.accumulator_stack.update_incremental(
             self.king_squares,
-            &self.networks.big_net.feature_transformer,
-            &self.networks.small_net.feature_transformer,
+            &networks.big_net.feature_transformer,
+            &networks.small_net.feature_transformer,
             &mut self.finny_tables,
             || (color_bb, type_bb),
         );

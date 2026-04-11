@@ -10,11 +10,25 @@ use crate::network::NnueNetworks;
 use crate::network::ScratchBuffer;
 use crate::types::{Piece, Square};
 use std::io;
-use std::sync::Arc;
 
-/// Stateful NNUE evaluator backed by shared immutable network weights.
-pub struct NNUEProbe {
-    pub(super) networks: Arc<NnueNetworks>,
+enum NetworkHandle<'a> {
+    Borrowed(&'a NnueNetworks),
+    Owned(Box<NnueNetworks>),
+}
+
+impl NetworkHandle<'_> {
+    #[inline(always)]
+    fn as_ref(&self) -> &NnueNetworks {
+        match self {
+            Self::Borrowed(networks) => networks,
+            Self::Owned(networks) => networks,
+        }
+    }
+}
+
+/// Stateful NNUE evaluator backed by immutable network weights.
+pub struct NNUEProbe<'a> {
+    networks: NetworkHandle<'a>,
     pub(super) scratch_big: ScratchBuffer,
     pub(super) scratch_small: ScratchBuffer,
     pub(super) pieces: [Piece; 64],
@@ -28,28 +42,30 @@ pub struct NNUEProbe {
     pub(super) finny_tables: FinnyTables,
 }
 
-impl NNUEProbe {
+impl NNUEProbe<'static> {
     /// Loads both networks from disk and creates a probe around them.
-    ///
-    /// This is the simplest entry point when the caller does not need to share
-    /// network weights across probes.
     pub fn new(big_path: &str, small_path: &str) -> io::Result<Self> {
-        let networks = Arc::new(NnueNetworks::new(big_path, small_path)?);
-        Ok(Self::from_networks(networks))
+        let networks = Box::new(NnueNetworks::new(big_path, small_path)?);
+        Ok(Self::from_handle(NetworkHandle::Owned(networks)))
+    }
+}
+
+impl<'a> NNUEProbe<'a> {
+    /// Builds a probe from already-loaded immutable network weights.
+    pub fn from_networks(networks: &'a NnueNetworks) -> Self {
+        Self::from_handle(NetworkHandle::Borrowed(networks))
     }
 
-    /// Builds a probe from already-loaded shared network weights.
-    ///
-    /// Prefer this constructor when many threads or engine instances reuse the
-    /// same immutable network pair.
-    pub fn from_networks(networks: Arc<NnueNetworks>) -> Self {
-        let scratch_big = ScratchBuffer::new(networks.big_net.feature_transformer.half_dims);
-        let scratch_small = ScratchBuffer::new(networks.small_net.feature_transformer.half_dims);
+    fn from_handle(networks: NetworkHandle<'a>) -> Self {
+        let networks_ref = networks.as_ref();
+        let scratch_big = ScratchBuffer::new(networks_ref.big_net.feature_transformer.half_dims);
+        let scratch_small =
+            ScratchBuffer::new(networks_ref.small_net.feature_transformer.half_dims);
 
         let mut finny_tables = FinnyTables::new();
         finny_tables.clear(
-            &networks.big_net.feature_transformer.biases,
-            &networks.small_net.feature_transformer.biases,
+            &networks_ref.big_net.feature_transformer.biases,
+            &networks_ref.small_net.feature_transformer.biases,
         );
 
         Self {
@@ -66,10 +82,5 @@ impl NNUEProbe {
             accumulator_stack: AccumulatorStack::new(),
             finny_tables,
         }
-    }
-
-    /// Convenience wrapper matching code paths that already return `Result` on construction.
-    pub fn with_networks(networks: Arc<NnueNetworks>) -> io::Result<Self> {
-        Ok(Self::from_networks(networks))
     }
 }
