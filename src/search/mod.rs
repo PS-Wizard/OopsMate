@@ -1,234 +1,33 @@
-//! Search orchestration.
-//!
-//! This module owns iterative deepening, aspiration windows, pruning setup, and
-//! the public `search` entry point used by the UCI driver.
+//! Search entrypoints and internal search modules.
 
-mod alphabeta;
-mod driver;
+mod api;
+mod context;
 mod features;
+mod heuristics;
+mod limits;
+mod node;
 mod ordering;
+mod output;
 mod params;
-mod pruning;
 pub(crate) mod qsearch;
+mod root;
 mod score;
 
-/// Initializes late-move-reduction tables used by the search.
-pub use pruning::init_lmr;
+pub use api::{search, search_with_eval, SearchInfo};
+pub use heuristics::init_lmr;
+pub use limits::SearchLimits;
 
-use crate::{eval::EvalProvider, tpt::TranspositionTable, Move, Position};
-use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Instant;
-
-const NODE_TIME_CHECK_MASK: u64 = 63;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SearchLimits {
-    Infinite,
-    MoveTime {
-        hard_time_ms: u64,
-    },
-    Clock {
-        soft_time_ms: u64,
-        hard_time_ms: u64,
-    },
-}
-
-impl SearchLimits {
-    pub const fn infinite() -> Self {
-        Self::Infinite
-    }
-
-    pub const fn movetime(hard_time_ms: u64) -> Self {
-        Self::MoveTime { hard_time_ms }
-    }
-
-    pub const fn clock(soft_time_ms: u64, hard_time_ms: u64) -> Self {
-        Self::Clock {
-            soft_time_ms,
-            hard_time_ms,
-        }
-    }
-
-    pub const fn from_max_time(max_time_ms: Option<u64>) -> Self {
-        match max_time_ms {
-            Some(hard_time_ms) => Self::MoveTime { hard_time_ms },
-            None => Self::Infinite,
-        }
-    }
-
-    pub const fn hard_time_ms(self) -> Option<u64> {
-        match self {
-            Self::Infinite => None,
-            Self::MoveTime { hard_time_ms } => Some(hard_time_ms),
-            Self::Clock { hard_time_ms, .. } => Some(hard_time_ms),
-        }
-    }
-}
-
-/// Mutable counters and stop state carried through a single search.
-pub(crate) struct SearchStats {
-    pub(crate) nodes: u64,
-    pub(crate) tt_hits: u64,
-    stop_signal: Option<Arc<AtomicBool>>,
-    start_time: Instant,
-    hard_time_ms: Option<u64>,
-}
-
-impl SearchStats {
-    pub(crate) fn new(
-        stop_signal: Option<Arc<AtomicBool>>,
-        start_time: Instant,
-        hard_time_ms: Option<u64>,
-    ) -> Self {
-        Self {
-            nodes: 0,
-            tt_hits: 0,
-            stop_signal,
-            start_time,
-            hard_time_ms,
-        }
-    }
-
-    #[inline(always)]
-    pub(crate) fn should_stop(&self) -> bool {
-        if self.nodes & NODE_TIME_CHECK_MASK == 0 {
-            if let Some(max_time) = self.hard_time_ms {
-                if self.start_time.elapsed().as_millis() as u64 >= max_time {
-                    if let Some(signal) = &self.stop_signal {
-                        signal.store(true, Ordering::Relaxed);
-                    }
-                    return true;
-                }
-            }
-
-            if let Some(signal) = &self.stop_signal {
-                if signal.load(Ordering::Relaxed) {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-}
-
-/// Result returned by a completed search.
-pub struct SearchInfo {
-    /// Best move found at the completed search depth.
-    pub best_move: Move,
-    /// Score in centipawns or mate-score space.
-    pub score: i32,
-    /// Deepest fully completed root depth.
-    pub depth: u8,
-    /// Total nodes visited.
-    pub nodes: u64,
-    /// Elapsed time in milliseconds.
-    pub time_ms: u64,
-    /// Number of transposition table hits.
-    pub tt_hits: u64,
-}
-
-/// Runs an iterative-deepening search from `pos` and returns the best completed result.
-pub fn search(
-    pos: &Position,
-    max_depth: u8,
-    max_time_ms: Option<u64>,
-    tt: &mut TranspositionTable,
-) -> Option<SearchInfo> {
-    search_with_eval(
-        pos,
-        max_depth,
-        SearchLimits::from_max_time(max_time_ms),
-        tt,
-        crate::eval::NnueProvider::new(),
-    )
-}
-
-/// Runs an iterative-deepening search using the supplied evaluation provider.
-pub fn search_with_eval<E: EvalProvider>(
-    pos: &Position,
-    max_depth: u8,
-    limits: SearchLimits,
-    tt: &mut TranspositionTable,
-    eval: E,
-) -> Option<SearchInfo> {
-    let stop_signal = Arc::new(AtomicBool::new(false));
-    search_with_stop_signal(pos, max_depth, limits, tt, stop_signal, eval)
-}
-
-pub(crate) fn search_with_stop_signal<E: EvalProvider>(
-    pos: &Position,
-    max_depth: u8,
-    limits: SearchLimits,
-    tt: &mut TranspositionTable,
-    stop_signal: Arc<AtomicBool>,
-    eval: E,
-) -> Option<SearchInfo> {
-    tt.new_search();
-
-    driver::search_driver(pos, max_depth, limits, tt, stop_signal, &eval)
-}
-
-fn print_uci_info(
-    depth: u8,
-    score: i32,
-    stats: &SearchStats,
-    start_time: Instant,
-    tt: &TranspositionTable,
-    mv: &Move,
-) {
-    let elapsed = start_time.elapsed().as_millis() as u64;
-    let nps = if elapsed > 0 {
-        (stats.nodes * 1000) / elapsed
-    } else {
-        0
-    };
-
-    println!(
-        "info depth {} score cp {} nodes {} time {} nps {} hashfull {} pv {}",
-        depth,
-        score,
-        stats.nodes,
-        elapsed,
-        nps,
-        tt.hashfull(),
-        mv.to_uci()
-    );
-
-    let _ = std::io::stdout().flush();
-}
-
-fn should_stop_search(limits: SearchLimits, start_time: Instant, current_depth_time: u64) -> bool {
-    let elapsed_total = start_time.elapsed().as_millis() as u64;
-
-    match limits {
-        SearchLimits::Infinite => false,
-        SearchLimits::MoveTime { hard_time_ms } => {
-            let time_remaining = hard_time_ms.saturating_sub(elapsed_total);
-            time_remaining == 0 || current_depth_time >= time_remaining
-        }
-        SearchLimits::Clock {
-            soft_time_ms,
-            hard_time_ms,
-        } => {
-            if elapsed_total >= hard_time_ms || elapsed_total >= soft_time_ms {
-                return true;
-            }
-
-            let time_remaining = soft_time_ms.saturating_sub(elapsed_total);
-            let predicted_next_depth = current_depth_time.saturating_mul(2);
-
-            predicted_next_depth > time_remaining
-        }
-    }
-}
+pub(crate) use api::search_with_stop_signal;
 
 #[cfg(test)]
 mod tests {
+    use super::limits::should_stop_next_iteration;
     use super::score::{checkmate_score, score_from_tt, score_to_tt};
     use super::*;
+    use crate::tpt::TranspositionTable;
+    use crate::Position;
     use std::thread;
+    use std::time::Instant;
 
     fn run_with_large_stack<F>(f: F)
     where
@@ -304,15 +103,27 @@ mod tests {
     #[test]
     fn movetime_waits_until_near_hard_limit() {
         let start = Instant::now() - std::time::Duration::from_millis(350);
-        assert!(!should_stop_search(SearchLimits::movetime(490), start, 100));
-        assert!(should_stop_search(SearchLimits::movetime(490), start, 150));
+        assert!(!should_stop_next_iteration(
+            SearchLimits::movetime(490),
+            start,
+            100
+        ));
+        assert!(should_stop_next_iteration(
+            SearchLimits::movetime(490),
+            start,
+            150
+        ));
     }
 
     #[test]
     fn clock_limits_remain_predictive() {
         let start = Instant::now() - std::time::Duration::from_millis(220);
-        assert!(should_stop_search(SearchLimits::clock(300, 360), start, 50));
-        assert!(!should_stop_search(
+        assert!(should_stop_next_iteration(
+            SearchLimits::clock(300, 360),
+            start,
+            50
+        ));
+        assert!(!should_stop_next_iteration(
             SearchLimits::clock(400, 500),
             start,
             50

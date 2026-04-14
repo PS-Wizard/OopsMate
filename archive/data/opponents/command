@@ -1,4 +1,21 @@
 cutechess-cli \
+  -engine cmd=./oopsmate name="OopsMate" \
+  -engine cmd=./bitbit name="BitBit" \
+  -engine cmd=./seredina name="Seredina" \
+  -engine cmd=./meltdown name="Meltdown" \
+  -engine cmd=./combusken name="Combusken" \
+  -each proto=uci tc=5+0.05 \
+  -tournament gauntlet \
+  -rounds 50 \
+  -recover \
+  -wait 1 \
+  -openings file=Modern.pgn format=pgn order=random plies=16 \
+  -pgnout gauntlet_results.pgn \
+  -concurrency 4 \
+  -draw movenumber=40 movecount=8 score=10 \
+  -resign movecount=5 score=600
+
+cutechess-cli \
   -engine cmd=./oops_mate name="OopsMate" \
   -engine cmd=./bitbit name="Bitbit" \
   -each proto=uci tc=40/15 \

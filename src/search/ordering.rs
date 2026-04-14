@@ -148,6 +148,7 @@ fn score_capture_from_mvv_lva(m: Move, pos: &Position) -> i32 {
 
 #[inline(always)]
 pub(crate) fn score_capture(m: Move, pos: &Position) -> i32 {
+    // see capture ordering: prefer captures that win material after the full exchange sequence.
     if features::SEE {
         score_capture_from_see(pos.see(&m))
     } else {
@@ -163,6 +164,7 @@ pub(crate) fn score_move(
     history: Option<&MoveHistory>,
     ply: usize,
 ) -> i32 {
+    // move ordering: tt move first, then captures/promotions, then killer and history quiets.
     if features::TT_MOVE_ORDERING {
         if let Some(tt_mv) = tt_move {
             if m.0 == tt_mv.0 {

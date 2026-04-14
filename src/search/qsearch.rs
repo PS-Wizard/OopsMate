@@ -1,23 +1,21 @@
 use crate::eval::EvalProvider;
+use crate::search::context::SearchContext;
 use crate::search::features;
 use crate::search::ordering::{pick_next_move, score_capture, SCORE_PROMOTION};
-use crate::search::SearchStats;
 use crate::{Move, MoveCollector, Position};
 
 const MAX_MOVES: usize = 256;
 
 pub(crate) fn qsearch<E: EvalProvider>(
     pos: &mut Position,
-    eval: &E,
-    eval_state: &mut E::State,
+    ctx: &mut SearchContext<'_, E>,
     mut alpha: i32,
     beta: i32,
-    stats: &mut SearchStats,
     ply: i32,
 ) -> i32 {
-    stats.nodes += 1;
+    ctx.stats.nodes += 1;
 
-    if stats.should_stop() {
+    if ctx.stats.should_stop() {
         return alpha;
     }
 
@@ -26,10 +24,11 @@ pub(crate) fn qsearch<E: EvalProvider>(
     }
 
     if ply >= 64 {
-        return eval.eval(pos, eval_state);
+        return ctx.eval.eval(pos, &mut ctx.eval_state);
     }
 
-    let stand_pat = eval.eval(pos, eval_state);
+    // stand pat: test the static evaluation before exploring any forcing captures.
+    let stand_pat = ctx.eval.eval(pos, &mut ctx.eval_state);
 
     if stand_pat >= beta {
         return beta;
@@ -40,6 +39,7 @@ pub(crate) fn qsearch<E: EvalProvider>(
         alpha = stand_pat;
     }
 
+    // qsearch delta pruning: bail out when even a big tactical swing cannot reach alpha.
     if !pos.is_in_check() {
         const QUEEN_VALUE: i32 = 900;
         if stand_pat + QUEEN_VALUE + 300 < original_alpha {
@@ -55,6 +55,7 @@ pub(crate) fn qsearch<E: EvalProvider>(
     let mut scores = [0i32; MAX_MOVES];
     let mut capture_count = 0;
 
+    // qsearch move filtering: keep only tactical moves worth searching in the capture phase.
     for &m in moves {
         if m.is_capture() || m.is_promotion() {
             let score = if m.is_capture() {
@@ -84,8 +85,9 @@ pub(crate) fn qsearch<E: EvalProvider>(
         return stand_pat;
     }
 
+    // qsearch move loop: search captures in order until a tactical cutoff appears.
     for i in 0..capture_count {
-        if stats.should_stop() {
+        if ctx.stats.should_stop() {
             break;
         }
 
@@ -96,11 +98,11 @@ pub(crate) fn qsearch<E: EvalProvider>(
         );
         let mv = capture_list[i];
 
-        let delta = eval.update_on_move(eval_state, pos, mv);
+        let delta = ctx.eval.update_on_move(&mut ctx.eval_state, pos, mv);
         pos.make_move(mv);
-        let score = -qsearch(pos, eval, eval_state, -beta, -alpha, stats, ply + 1);
+        let score = -qsearch(pos, ctx, -beta, -alpha, ply + 1);
         pos.unmake_move(mv);
-        eval.update_on_undo(eval_state, delta);
+        ctx.eval.update_on_undo(&mut ctx.eval_state, delta);
 
         if score >= beta {
             return beta;
