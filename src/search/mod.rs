@@ -22,9 +22,10 @@ pub(crate) use api::search_with_stop_signal;
 #[cfg(test)]
 mod tests {
     use super::limits::should_stop_next_iteration;
-    use super::score::{checkmate_score, score_from_tt, score_to_tt};
+    use super::score::checkmate_score;
     use super::*;
     use crate::tpt::TranspositionTable;
+    use crate::tpt::{denormalize_score, normalize_score};
     use crate::Position;
     use std::thread;
     use std::time::Instant;
@@ -85,19 +86,19 @@ mod tests {
 
     #[test]
     fn tt_mate_scores_roundtrip_across_ply() {
-        let mate_in_three = 48_997;
-        let stored = score_to_tt(mate_in_three, 5);
-        assert_eq!(score_from_tt(stored, 5), mate_in_three);
+        let mate_in_three = 29_997;
+        let stored = normalize_score(mate_in_three, 5);
+        assert_eq!(denormalize_score(stored, 5), mate_in_three);
 
-        let getting_mated = -48_994;
-        let stored = score_to_tt(getting_mated, 6);
-        assert_eq!(score_from_tt(stored, 6), getting_mated);
+        let getting_mated = -29_994;
+        let stored = normalize_score(getting_mated, 6);
+        assert_eq!(denormalize_score(stored, 6), getting_mated);
     }
 
     #[test]
     fn checkmate_scores_prefer_shorter_lines() {
         assert!(checkmate_score(1) < checkmate_score(5));
-        assert_eq!(-checkmate_score(1), 48_999);
+        assert_eq!(-checkmate_score(1), 29_999);
     }
 
     #[test]

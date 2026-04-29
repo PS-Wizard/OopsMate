@@ -1,7 +1,7 @@
 // Represents an "infinity" , just something big that represents an infinitely good / bad in the
 // search algorithm
-pub const INFINITY: i32 = 50_000;
-pub const MATE_VALUE: i32 = 49_000;
+pub const INFINITY: i32 = 31_000;
+pub const MATE_VALUE: i32 = 30_000;
 
 // Max number of legal moves expected in any position
 pub const MAX_MOVES: usize = 256;

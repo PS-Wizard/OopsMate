@@ -33,7 +33,11 @@ fn generate<const STAGE: u8>(pos: &Position, collector: &mut MoveCollector) {
 }
 
 #[inline(always)]
-pub fn generate_all_with_analysis(pos: &Position, analysis: &Analysis, collector: &mut MoveCollector) {
+pub fn generate_all_with_analysis(
+    pos: &Position,
+    analysis: &Analysis,
+    collector: &mut MoveCollector,
+) {
     generate_with_analysis::<{ GenerationStage::All as u8 }>(pos, analysis, collector);
 }
 
@@ -47,7 +51,11 @@ pub fn generate_captures_with_analysis(
 }
 
 #[inline(always)]
-pub fn generate_quiets_with_analysis(pos: &Position, analysis: &Analysis, collector: &mut MoveCollector) {
+pub fn generate_quiets_with_analysis(
+    pos: &Position,
+    analysis: &Analysis,
+    collector: &mut MoveCollector,
+) {
     generate_with_analysis::<{ GenerationStage::Quiets as u8 }>(pos, analysis, collector);
 }
 

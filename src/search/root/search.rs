@@ -5,8 +5,7 @@ use crate::search::node::{search_node, NodeState};
 use crate::search::ordering::{pick_next_move, score_move};
 use crate::search::params::{INFINITY, MAX_MOVES};
 use crate::search::pruning::{calculate_lmr_reduction, should_reduce_lmr};
-use crate::search::score::score_to_tt;
-use crate::tpt::{EXACT, LOWER_BOUND, UPPER_BOUND};
+use crate::tpt::{Bound, NO_STATIC_EVAL};
 use crate::{Move, Position};
 
 #[derive(Clone, Copy)]
@@ -30,7 +29,7 @@ pub(crate) fn search_root<E: EvalProvider>(
     let in_check = pos.is_in_check();
     let alpha_start = alpha;
     let tt_move = if features::TT_MOVE_ORDERING {
-        ctx.tt.probe(pos.hash()).map(|entry| entry.best_move)
+        ctx.tt.probe(pos.hash(), 0).map(|entry| entry.best_move)
     } else {
         None
     };
@@ -91,21 +90,23 @@ pub(crate) fn search_root<E: EvalProvider>(
         }
     }
 
-    let flag = if best_score >= beta {
-        LOWER_BOUND
+    let bound = if best_score >= beta {
+        Bound::Lower
     } else if best_score <= alpha_start {
-        UPPER_BOUND
+        Bound::Upper
     } else {
-        EXACT
+        Bound::Exact
     };
 
     if features::TT_CUTOFFS {
         ctx.tt.store(
             pos.hash(),
+            0,
             best_move,
-            score_to_tt(best_score, 0),
+            best_score,
+            NO_STATIC_EVAL,
             depth,
-            flag,
+            bound,
         );
     }
 
@@ -123,13 +124,8 @@ fn search_root_child<E: EvalProvider>(
     state: RootMoveState,
 ) -> i32 {
     if state.move_num == 0 || !features::PVS {
-        let do_lmr = should_reduce_lmr(
-            depth,
-            state.move_num,
-            state.in_check,
-            state.gives_check,
-            mv,
-        );
+        let do_lmr =
+            should_reduce_lmr(depth, state.move_num, state.in_check, state.gives_check, mv);
 
         if do_lmr {
             let reduction = calculate_lmr_reduction(depth, state.move_num, state.pv_node, mv);
@@ -167,13 +163,7 @@ fn search_root_child<E: EvalProvider>(
         );
     }
 
-    let do_lmr = should_reduce_lmr(
-        depth,
-        state.move_num,
-        state.in_check,
-        state.gives_check,
-        mv,
-    );
+    let do_lmr = should_reduce_lmr(depth, state.move_num, state.in_check, state.gives_check, mv);
 
     let mut score = if do_lmr {
         let reduction = calculate_lmr_reduction(depth, state.move_num, state.pv_node, mv);

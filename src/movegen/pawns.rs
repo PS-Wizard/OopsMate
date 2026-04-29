@@ -1,6 +1,6 @@
 use super::analysis::Analysis;
 use super::stage::{include_captures, include_quiets};
-use crate::{Color, Move, MoveCollector, MoveType, Position, Piece};
+use crate::{Color, Move, MoveCollector, MoveType, Piece, Position};
 use std::arch::x86_64::_pext_u64;
 
 use strikes::{PAWN_ATTACKS, ROOK_ATTACKS, ROOK_MASKS};
@@ -32,7 +32,11 @@ fn generate_white<const STAGE: u8>(
         let from = bb.trailing_zeros() as usize;
         bb &= bb - 1;
 
-        let pin_ray = if analysis.is_pinned(from) { analysis.pin_ray(from) } else { !0u64 };
+        let pin_ray = if analysis.is_pinned(from) {
+            analysis.pin_ray(from)
+        } else {
+            !0u64
+        };
 
         let to = from + 8;
         if to < 64 && (empty >> to) & 1 != 0 {
@@ -90,7 +94,11 @@ fn generate_black<const STAGE: u8>(
         let from = bb.trailing_zeros() as usize;
         bb &= bb - 1;
 
-        let pin_ray = if analysis.is_pinned(from) { analysis.pin_ray(from) } else { !0u64 };
+        let pin_ray = if analysis.is_pinned(from) {
+            analysis.pin_ray(from)
+        } else {
+            !0u64
+        };
 
         if from >= 8 {
             let to = from - 8;
@@ -179,7 +187,11 @@ fn generate_en_passant<const STAGE: u8>(
         return;
     }
 
-    let captured_sq = if pos.side_to_move == Color::White { ep_sq - 8 } else { ep_sq + 8 };
+    let captured_sq = if pos.side_to_move == Color::White {
+        ep_sq - 8
+    } else {
+        ep_sq + 8
+    };
     let ep_target = 1u64 << ep_sq;
     let captured_bit = 1u64 << captured_sq;
 

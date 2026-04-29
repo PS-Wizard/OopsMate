@@ -1,5 +1,5 @@
 use crate::{Color, Piece, Position};
-use strikes::{line_between, THROUGH, BISHOP_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS};
+use strikes::{line_between, BISHOP_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS, THROUGH};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Analysis {

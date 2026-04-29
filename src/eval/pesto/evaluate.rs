@@ -11,12 +11,54 @@ pub(super) fn evaluate(pos: &Position) -> i32 {
     let black_pieces = pos.colors[crate::Color::Black as usize].0;
 
     unsafe {
-        eval_piece::<0>(&pos.pieces, white_pieces, black_pieces, &mut mg, &mut eg, &mut game_phase);
-        eval_piece::<1>(&pos.pieces, white_pieces, black_pieces, &mut mg, &mut eg, &mut game_phase);
-        eval_piece::<2>(&pos.pieces, white_pieces, black_pieces, &mut mg, &mut eg, &mut game_phase);
-        eval_piece::<3>(&pos.pieces, white_pieces, black_pieces, &mut mg, &mut eg, &mut game_phase);
-        eval_piece::<4>(&pos.pieces, white_pieces, black_pieces, &mut mg, &mut eg, &mut game_phase);
-        eval_piece::<5>(&pos.pieces, white_pieces, black_pieces, &mut mg, &mut eg, &mut game_phase);
+        eval_piece::<0>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        eval_piece::<1>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        eval_piece::<2>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        eval_piece::<3>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        eval_piece::<4>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
+        eval_piece::<5>(
+            &pos.pieces,
+            white_pieces,
+            black_pieces,
+            &mut mg,
+            &mut eg,
+            &mut game_phase,
+        );
     }
 
     let side = pos.side_to_move as usize;

@@ -8,10 +8,10 @@
 pub mod engine;
 /// Evaluation providers and shared eval abstraction.
 pub mod eval;
-/// Legal move generation and attack detection.
-pub mod movegen;
 /// Search memory tables and heuristics state.
 pub mod memory;
+/// Legal move generation and attack detection.
+pub mod movegen;
 /// Board state, FEN parsing, hashing, and make/unmake logic.
 pub mod position;
 /// Search orchestration, pruning, and root reporting.
@@ -31,10 +31,10 @@ pub mod zobrist;
 pub use engine::Engine;
 /// Evaluation providers and trait.
 pub use eval::{EvalProvider, NnueProvider, PestoProvider};
-/// The engine board representation.
-pub use position::Position;
 /// Static exchange evaluation.
 pub use movegen::see;
+/// The engine board representation.
+pub use position::Position;
 /// Common engine types re-exported at the crate root.
 pub use types::*;
 

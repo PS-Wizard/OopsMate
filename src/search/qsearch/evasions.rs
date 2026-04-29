@@ -1,5 +1,5 @@
 use crate::eval::EvalProvider;
-use crate::movegen::generate_evasions_with_analysis;
+use crate::movegen::{generate_evasions_with_analysis, Analysis};
 use crate::search::context::SearchContext;
 use crate::search::ordering::{pick_next_move, score_move};
 use crate::search::qsearch::search::qsearch;
@@ -11,13 +11,14 @@ const MAX_MOVES: usize = 256;
 pub(super) fn qsearch_evasions<E: EvalProvider>(
     pos: &mut Position,
     ctx: &mut SearchContext<'_, E>,
-    analysis: crate::movegen::Analysis,
+    analysis: &Analysis,
+    tt_move: Option<Move>,
     mut alpha: i32,
     beta: i32,
-    ply: i32,
+    ply: u8,
 ) -> i32 {
     let mut collector = MoveCollector::new();
-    generate_evasions_with_analysis(pos, &analysis, &mut collector);
+    generate_evasions_with_analysis(pos, analysis, &mut collector);
     let moves = collector.as_slice();
 
     if moves.is_empty() {
@@ -29,7 +30,7 @@ pub(super) fn qsearch_evasions<E: EvalProvider>(
     let mut scores = [0i32; MAX_MOVES];
     for i in 0..move_count {
         move_list[i] = moves[i];
-        scores[i] = score_move(moves[i], pos, None, None, 0);
+        scores[i] = score_move(moves[i], pos, tt_move, None, 0);
     }
 
     for i in 0..move_count {

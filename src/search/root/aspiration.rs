@@ -1,9 +1,9 @@
 use crate::eval::EvalProvider;
+use crate::movegen::{analyze, generate_all_with_analysis};
 use crate::search::context::SearchContext;
 use crate::search::features;
 use crate::search::params::{ASPIRATION_DEPTH, INFINITY, MAX_MOVES};
 use crate::search::root::search::search_root;
-use crate::movegen::{analyze, generate_all_with_analysis};
 use crate::search::score::checkmate_score;
 use crate::{Move, MoveCollector, Position};
 

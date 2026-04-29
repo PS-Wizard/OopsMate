@@ -1,10 +1,10 @@
 use crate::eval::EvalProvider;
+use crate::movegen::{analyze, generate_all_with_analysis};
 use crate::search::api::SearchInfo;
 use crate::search::context::SearchContext;
 use crate::search::limits::{should_stop_next_iteration, SearchLimits};
 use crate::search::output::print_uci_info;
 use crate::search::root::aspiration::search_with_aspiration;
-use crate::movegen::{analyze, generate_all_with_analysis};
 use crate::{MoveCollector, Position};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

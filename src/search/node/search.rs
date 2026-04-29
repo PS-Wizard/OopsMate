@@ -12,8 +12,8 @@ use crate::search::pruning::{
     try_razoring,
 };
 use crate::search::qsearch::qsearch;
-use crate::search::score::{checkmate_score, score_from_tt, score_to_tt};
-use crate::tpt::{EXACT, LOWER_BOUND, UPPER_BOUND};
+use crate::search::score::checkmate_score;
+use crate::tpt::{Bound, NO_STATIC_EVAL};
 use crate::{Move, MoveCollector, Position};
 
 #[inline(always)]
@@ -26,7 +26,7 @@ pub(crate) fn search_node<E: EvalProvider>(
     node: NodeState,
 ) -> i32 {
     if depth == 0 {
-        return qsearch(pos, ctx, alpha, beta, 0);
+        return qsearch(pos, ctx, alpha, beta, node.ply as u8);
     }
 
     ctx.stats.nodes += 1;
@@ -42,10 +42,7 @@ pub(crate) fn search_node<E: EvalProvider>(
 
     let hash = pos.hash();
     let tt_entry = if features::TT_CUTOFFS {
-        ctx.tt.probe(hash).map(|mut entry| {
-            entry.score = score_from_tt(entry.score, node.ply);
-            entry
-        })
+        ctx.tt.probe(hash, node.ply as u8)
     } else {
         None
     };
@@ -53,10 +50,10 @@ pub(crate) fn search_node<E: EvalProvider>(
     let tt_move = if let Some(entry) = tt_entry {
         if entry.depth >= depth && node.excluded_move.is_none() {
             ctx.stats.tt_hits += 1;
-            match entry.flag {
-                EXACT => return entry.score,
-                LOWER_BOUND if entry.score >= beta => return entry.score,
-                UPPER_BOUND if entry.score <= alpha => return entry.score,
+            match entry.bound {
+                Bound::Exact => return entry.score,
+                Bound::Lower if entry.score >= beta => return entry.score,
+                Bound::Upper if entry.score <= alpha => return entry.score,
                 _ => {}
             }
         }
@@ -67,20 +64,36 @@ pub(crate) fn search_node<E: EvalProvider>(
 
     let analysis = analyze(pos);
     let in_check = analysis.in_check();
-    let static_eval = ctx.eval.eval(pos, &mut ctx.eval_state);
+    let raw_static_eval = if let Some(entry) = tt_entry {
+        if entry.static_eval != NO_STATIC_EVAL {
+            i32::from(entry.static_eval)
+        } else {
+            ctx.eval.eval(pos, &mut ctx.eval_state)
+        }
+    } else {
+        ctx.eval.eval(pos, &mut ctx.eval_state)
+    };
 
     if let Some(score) = try_probcut(pos, ctx, depth, beta, node.pv_node, in_check, node.ply) {
         return score;
     }
 
-    if let Some(score) = try_razoring(pos, ctx, depth, alpha, in_check, node.pv_node, static_eval) {
+    if let Some(score) = try_razoring(
+        pos,
+        ctx,
+        depth,
+        alpha,
+        in_check,
+        node.pv_node,
+        raw_static_eval,
+    ) {
         return score;
     }
 
     if can_use_reverse_futility(depth, in_check, node.pv_node, beta) {
         let rfp_margin = get_rfp_margin(depth);
-        if should_rfp_prune(static_eval, beta, rfp_margin) {
-            return static_eval - rfp_margin;
+        if should_rfp_prune(raw_static_eval, beta, rfp_margin) {
+            return raw_static_eval - rfp_margin;
         }
     }
 
@@ -91,7 +104,7 @@ pub(crate) fn search_node<E: EvalProvider>(
         beta,
         node.allow_null,
         in_check,
-        static_eval,
+        raw_static_eval,
         node.ply,
     ) {
         return score;
@@ -105,7 +118,7 @@ pub(crate) fn search_node<E: EvalProvider>(
         && !in_check
     {
         if let Some(entry) = tt_entry {
-            if entry.depth >= depth.saturating_sub(3) && entry.flag == LOWER_BOUND {
+            if entry.depth >= depth.saturating_sub(3) && entry.bound == Bound::Lower {
                 let singular_beta = entry.score.saturating_sub(depth as i32 * 2);
                 let singular_depth = depth / 2;
 
@@ -139,11 +152,15 @@ pub(crate) fn search_node<E: EvalProvider>(
         node.ply,
     );
     let tt_move = tt_move.or(iid_move);
-    let tt_order_move = if features::TT_MOVE_ORDERING { tt_move } else { None };
+    let tt_order_move = if features::TT_MOVE_ORDERING {
+        tt_move
+    } else {
+        None
+    };
 
     let use_futility = can_use_futility_pruning(depth, in_check, node.pv_node, alpha, beta);
-    let (static_eval, futility_margin) = if use_futility {
-        (static_eval, get_futility_margin(depth))
+    let (futility_static_eval, futility_margin) = if use_futility {
+        (raw_static_eval, get_futility_margin(depth))
     } else {
         (0, 0)
     };
@@ -153,7 +170,11 @@ pub(crate) fn search_node<E: EvalProvider>(
     let moves = collector.as_slice();
 
     if moves.is_empty() {
-        return if in_check { checkmate_score(node.ply) } else { 0 };
+        return if in_check {
+            checkmate_score(node.ply)
+        } else {
+            0
+        };
     }
 
     let move_count = moves.len();
@@ -185,11 +206,21 @@ pub(crate) fn search_node<E: EvalProvider>(
         let delta = ctx.eval.update_on_move(&mut ctx.eval_state, pos, mv);
         pos.make_move(mv);
         let gives_check = pos.is_in_check();
-        let check_extension = if features::CHECK_EXTENSIONS && gives_check { 1 } else { 0 };
+        let check_extension = if features::CHECK_EXTENSIONS && gives_check {
+            1
+        } else {
+            0
+        };
 
         if use_futility
             && i > 0
-            && should_prune_futility(mv, gives_check, static_eval, alpha, futility_margin)
+            && should_prune_futility(
+                mv,
+                gives_check,
+                futility_static_eval,
+                alpha,
+                futility_margin,
+            )
         {
             pos.unmake_move(mv);
             ctx.eval.update_on_undo(&mut ctx.eval_state, delta);
@@ -249,8 +280,15 @@ pub(crate) fn search_node<E: EvalProvider>(
             }
 
             if features::TT_CUTOFFS {
-                ctx.tt
-                    .store(hash, mv, score_to_tt(beta, node.ply), depth, LOWER_BOUND);
+                ctx.tt.store(
+                    hash,
+                    node.ply as u8,
+                    mv,
+                    score,
+                    static_eval_to_tt(raw_static_eval),
+                    depth,
+                    Bound::Lower,
+                );
             }
             return beta;
         }
@@ -264,21 +302,29 @@ pub(crate) fn search_node<E: EvalProvider>(
         }
     }
 
-    let flag = if best_score <= alpha_start {
-        UPPER_BOUND
+    let bound = if best_score <= alpha_start {
+        Bound::Upper
     } else {
-        EXACT
+        Bound::Exact
     };
 
     if features::TT_CUTOFFS {
         ctx.tt.store(
             hash,
+            node.ply as u8,
             best_move,
-            score_to_tt(best_score, node.ply),
+            best_score,
+            static_eval_to_tt(raw_static_eval),
             depth,
-            flag,
+            bound,
         );
     }
 
     best_score
+}
+
+#[inline(always)]
+fn static_eval_to_tt(score: i32) -> i16 {
+    debug_assert!(score >= i16::MIN as i32 && score <= i16::MAX as i32);
+    score as i16
 }

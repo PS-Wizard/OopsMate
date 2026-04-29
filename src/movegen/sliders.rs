@@ -1,6 +1,6 @@
 use super::analysis::Analysis;
 use super::stage::{include_captures, include_quiets};
-use crate::{Move, MoveCollector, MoveType, Position, Piece};
+use crate::{Move, MoveCollector, MoveType, Piece, Position};
 use std::arch::x86_64::_pext_u64;
 
 use strikes::{BISHOP_ATTACKS, BISHOP_MASKS, ROOK_ATTACKS, ROOK_MASKS};
@@ -77,8 +77,9 @@ fn generate_queens<const STAGE: u8>(
 
         let bishop_idx = unsafe { _pext_u64(analysis.occ, BISHOP_MASKS[from]) as usize };
         let rook_idx = unsafe { _pext_u64(analysis.occ, ROOK_MASKS[from]) as usize };
-        let mut attacks =
-            (BISHOP_ATTACKS[from][bishop_idx] | ROOK_ATTACKS[from][rook_idx]) & !analysis.us_occ & !enemy_king;
+        let mut attacks = (BISHOP_ATTACKS[from][bishop_idx] | ROOK_ATTACKS[from][rook_idx])
+            & !analysis.us_occ
+            & !enemy_king;
         if analysis.is_pinned(from) {
             attacks &= analysis.pin_ray(from);
         }
@@ -88,7 +89,12 @@ fn generate_queens<const STAGE: u8>(
 }
 
 #[inline(always)]
-fn emit<const STAGE: u8>(collector: &mut MoveCollector, from: usize, mut attacks: u64, enemies: u64) {
+fn emit<const STAGE: u8>(
+    collector: &mut MoveCollector,
+    from: usize,
+    mut attacks: u64,
+    enemies: u64,
+) {
     while attacks != 0 {
         let to = attacks.trailing_zeros() as usize;
         attacks &= attacks - 1;

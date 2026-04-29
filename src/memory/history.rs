@@ -48,7 +48,11 @@ impl KillerTable {
         }
 
         let mv = self.killers[ply][0];
-        if mv.0 == 0 { None } else { Some(mv) }
+        if mv.0 == 0 {
+            None
+        } else {
+            Some(mv)
+        }
     }
 }
 
@@ -107,4 +111,3 @@ impl Default for MoveHistory {
         Self::new()
     }
 }
-

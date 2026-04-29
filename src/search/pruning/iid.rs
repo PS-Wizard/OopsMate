@@ -47,5 +47,7 @@ pub fn try_iid<E: EvalProvider>(
         NodeState::new(true, pv_node, None, ply),
     );
 
-    ctx.tt.probe(pos.hash()).map(|entry| entry.best_move)
+    ctx.tt
+        .probe(pos.hash(), ply as u8)
+        .map(|entry| entry.best_move)
 }

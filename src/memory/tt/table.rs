@@ -1,150 +1,245 @@
-//! Transposition table storage.
-//!
-//! The table stores one packed entry per bucket and uses a simple depth-and-age
-//! replacement policy tuned for single-search throughput.
+use std::mem::size_of;
 
-use super::entry::{PackedTTEntry, TTEntry};
+use super::entry::{Bound, TtEntry, TtHit};
 use crate::Move;
 
-const ENTRY_SIZE_BYTES: usize = 24;
-const FLAG_SHIFT: u64 = 56;
-const AGE_SHIFT: u64 = 58;
-const DEPTH_SHIFT: u64 = 48;
+const MIB_BYTES: usize = 1024 * 1024;
+const HASHFULL_SAMPLE_ENTRIES: usize = 1000;
 
-#[inline(always)]
-fn unpack_entry(hash: u64, data: u64, signature: u64) -> Option<TTEntry> {
-    if (data ^ signature) != hash {
-        return None;
-    }
-
-    Some(TTEntry {
-        key: hash,
-        best_move: Move(((data >> 32) & 0xFFFF) as u16),
-        score: (data as u32) as i32,
-        depth: ((data >> DEPTH_SHIFT) & 0xFF) as u8,
-        flag: ((data >> FLAG_SHIFT) & 0x3) as u8,
-        age: ((data >> AGE_SHIFT) & 0x3F) as u8,
-    })
+#[repr(C, align(64))]
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct Bucket {
+    entries: [TtEntry; 4],
 }
 
-#[inline(always)]
-fn pack_entry(best_move: Move, score: i32, depth: u8, flag: u8, age: u8) -> u64 {
-    (score as u32) as u64
-        | ((best_move.0 as u64) << 32)
-        | ((depth as u64) << DEPTH_SHIFT)
-        | ((flag as u64) << FLAG_SHIFT)
-        | ((age as u64) << AGE_SHIFT)
+impl Bucket {
+    pub(crate) const EMPTY: Self = Self {
+        entries: [TtEntry::EMPTY; 4],
+    };
 }
 
-/// Packed transposition table with one entry per bucket.
+#[derive(Debug)]
 pub struct TranspositionTable {
-    table: Vec<PackedTTEntry>,
-    mask: u64,
+    buckets: Box<[Bucket]>,
+    bucket_mask: usize,
     generation: u8,
 }
 
 impl TranspositionTable {
-    /// Allocates a transposition table sized in megabytes.
-    pub fn new_mb(mb: usize) -> Self {
-        let bytes = mb * 1024 * 1024;
-        let entries = bytes / ENTRY_SIZE_BYTES;
+    #[must_use]
+    #[inline(always)]
+    pub fn new(mebibytes: usize) -> Self {
+        let buckets = allocate_buckets(mebibytes);
+        let bucket_mask = buckets.len() - 1;
 
-        let size = if entries.is_power_of_two() {
-            entries
-        } else {
-            entries.next_power_of_two() / 2
-        };
-
-        let mut table = Vec::with_capacity(size);
-        for _ in 0..size {
-            table.push(PackedTTEntry::default());
-        }
-
-        TranspositionTable {
-            table,
-            mask: (size - 1) as u64,
+        Self {
+            buckets,
+            bucket_mask,
             generation: 0,
         }
     }
 
-    /// Starts a new search generation for aging decisions.
+    #[must_use]
+    #[inline(always)]
+    pub fn new_mb(mebibytes: usize) -> Self {
+        Self::new(mebibytes)
+    }
+
+    #[inline(always)]
+    pub fn resize(&mut self, mebibytes: usize) {
+        self.buckets = allocate_buckets(mebibytes);
+        self.bucket_mask = self.buckets.len() - 1;
+        self.generation = 0;
+    }
+
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        self.buckets.fill(Bucket::EMPTY);
+        self.generation = 0;
+    }
+
     #[inline(always)]
     pub fn new_search(&mut self) {
         self.generation = self.generation.wrapping_add(1);
     }
 
-    /// Looks up a position by hash.
+    #[must_use]
     #[inline(always)]
-    pub fn probe(&self, hash: u64) -> Option<TTEntry> {
-        let idx = (hash & self.mask) as usize;
+    pub fn probe(&self, hash: u64, ply: u8) -> Option<TtHit> {
+        let key32 = (hash >> 32) as u32;
+        let bucket = &self.buckets[self.bucket_index(hash)];
 
         #[cfg(target_arch = "x86_64")]
         unsafe {
             use std::arch::x86_64::_mm_prefetch;
-            let ptr = self.table.as_ptr().add(idx) as *const i8;
-            _mm_prefetch::<3>(ptr);
+            _mm_prefetch::<3>(bucket as *const Bucket as *const i8);
         }
 
-        let entry = unsafe { self.table.get_unchecked(idx) };
-        unpack_entry(hash, entry.data, entry.signature)
+        for entry in &bucket.entries {
+            if entry.matches_key(key32) {
+                return Some(entry.to_hit(ply));
+            }
+        }
+
+        None
     }
 
-    /// Stores a search result for `hash` if the replacement policy allows it.
     #[inline(always)]
-    pub fn store(&mut self, hash: u64, best_move: Move, score: i32, depth: u8, flag: u8) {
-        let idx = (hash & self.mask) as usize;
-        let entry = unsafe { self.table.get_unchecked(idx) };
-
-        let old_data = entry.data;
-        let old_signature = entry.signature;
-        let old_hash = old_data ^ old_signature;
-
-        let mut replace = false;
+    pub fn store(
+        &mut self,
+        hash: u64,
+        ply: u8,
+        best_move: Move,
+        score: i32,
+        static_eval: i16,
+        depth: u8,
+        bound: Bound,
+    ) {
+        let key32 = (hash >> 32) as u32;
         let generation = self.generation;
+        let index = self.bucket_index(hash);
+        let bucket = &mut self.buckets[index];
 
-        if old_hash == 0 || old_hash == hash {
-            replace = true;
-        } else {
-            let old_age = ((old_data >> AGE_SHIFT) & 0x3F) as u8;
-            let current_age_bits = generation & 0x3F;
-            if old_age != current_age_bits && depth >= ((old_data >> DEPTH_SHIFT) & 0xFF) as u8 {
-                replace = true;
+        for entry in &mut bucket.entries {
+            if entry.matches_key(key32) {
+                *entry = TtEntry::from_values(
+                    key32,
+                    best_move,
+                    score,
+                    static_eval,
+                    depth,
+                    generation,
+                    bound,
+                    ply,
+                );
+                return;
             }
         }
 
-        if replace {
-            let new_data = pack_entry(best_move, score, depth, flag, generation & 0x3F);
-            let new_signature = hash ^ new_data;
-
-            unsafe {
-                let slot = self.table.get_unchecked_mut(idx);
-                slot.data = new_data;
-                slot.signature = new_signature;
+        for entry in &mut bucket.entries {
+            if entry.is_empty() {
+                *entry = TtEntry::from_values(
+                    key32,
+                    best_move,
+                    score,
+                    static_eval,
+                    depth,
+                    generation,
+                    bound,
+                    ply,
+                );
+                return;
             }
         }
-    }
 
-    /// Clears all entries and resets the generation counter.
-    pub fn clear(&mut self) {
-        for entry in &mut self.table {
-            entry.data = 0;
-            entry.signature = 0;
+        let mut victim_index = 0usize;
+        let mut victim_value = i16::MAX;
+        for (index, entry) in bucket.entries.iter().copied().enumerate() {
+            let value = entry.replacement_value(generation);
+            if value < victim_value {
+                victim_value = value;
+                victim_index = index;
+            }
         }
-        self.generation = 0;
+
+        bucket.entries[victim_index] = TtEntry::from_values(
+            key32,
+            best_move,
+            score,
+            static_eval,
+            depth,
+            generation,
+            bound,
+            ply,
+        );
     }
 
-    /// Returns hash table occupancy in permille, matching the UCI `hashfull` convention.
+    #[must_use]
+    #[inline(always)]
+    pub fn size_mib(&self) -> usize {
+        self.buckets.len() * size_of::<Bucket>() / MIB_BYTES
+    }
+
+    #[must_use]
+    #[inline(always)]
     pub fn hashfull(&self) -> usize {
-        let sample_size = 1000.min(self.table.len());
-        let mut filled = 0;
+        let sample_buckets = (HASHFULL_SAMPLE_ENTRIES / 4).min(self.buckets.len());
+        let mut used = 0usize;
+        let mut total = 0usize;
 
-        for i in 0..sample_size {
-            let entry = unsafe { self.table.get_unchecked(i) };
-            if (entry.data ^ entry.signature) != 0 {
-                filled += 1;
+        for bucket in &self.buckets[..sample_buckets] {
+            for entry in &bucket.entries {
+                total += 1;
+                if !entry.is_empty() {
+                    used += 1;
+                }
             }
         }
 
-        (filled * 1000) / sample_size
+        if total == 0 {
+            return 0;
+        }
+
+        (used * 1000) / total
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn bucket_count(&self) -> usize {
+        self.buckets.len()
+    }
+
+    #[inline(always)]
+    fn bucket_index(&self, hash: u64) -> usize {
+        hash as usize & self.bucket_mask
+    }
+}
+
+fn allocate_buckets(mebibytes: usize) -> Box<[Bucket]> {
+    let requested_bytes = mebibytes.saturating_mul(MIB_BYTES);
+    let raw_bucket_count = requested_bytes / size_of::<Bucket>();
+    let bucket_count = floor_power_of_two(raw_bucket_count);
+    vec![Bucket::EMPTY; bucket_count].into_boxed_slice()
+}
+
+#[inline(always)]
+fn floor_power_of_two(value: usize) -> usize {
+    if value <= 1 {
+        return 1;
+    }
+
+    1usize << (usize::BITS - 1 - value.leading_zeros())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zero_mb_still_allocates_one_bucket() {
+        let tt = TranspositionTable::new(0);
+        assert_eq!(tt.bucket_count(), 1);
+    }
+
+    #[test]
+    fn hashfull_is_zero_for_empty_table() {
+        let tt = TranspositionTable::new(1);
+        assert_eq!(tt.hashfull(), 0);
+    }
+
+    #[test]
+    fn static_eval_sentinel_roundtrips() {
+        let mut tt = TranspositionTable::new(1);
+        tt.store(
+            0x1234_5678_9abc_def0,
+            0,
+            Move(1),
+            42,
+            super::super::NO_STATIC_EVAL,
+            5,
+            Bound::Exact,
+        );
+        let hit = tt.probe(0x1234_5678_9abc_def0, 0).unwrap();
+        assert_eq!(hit.static_eval, super::super::NO_STATIC_EVAL);
     }
 }
