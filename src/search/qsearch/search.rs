@@ -1,13 +1,11 @@
 use crate::eval::EvalProvider;
-use crate::movegen::{analyze, generate_captures_with_analysis};
+use crate::movegen::analyze;
 use crate::search::context::SearchContext;
 use crate::search::features;
-use crate::search::ordering::{pick_next_move, score_move};
+use crate::search::ordering::{MovePicker, TtMode};
 use crate::search::qsearch::evasions::qsearch_evasions;
 use crate::tpt::{Bound, NO_STATIC_EVAL};
-use crate::{Move, MoveCollector, Position};
-
-const MAX_MOVES: usize = 256;
+use crate::{Move, Position};
 
 pub(crate) fn qsearch<E: EvalProvider>(
     pos: &mut Position,
@@ -87,62 +85,21 @@ pub(crate) fn qsearch<E: EvalProvider>(
         return original_alpha;
     }
 
-    let mut collector = MoveCollector::new();
-    generate_captures_with_analysis(pos, &analysis, &mut collector);
-    let moves = collector.as_slice();
-
-    let mut capture_list = [Move(0); MAX_MOVES];
-    let mut scores = [0i32; MAX_MOVES];
-    let mut capture_count = 0;
-
-    for &m in moves {
-        if m.is_capture() || m.is_promotion() {
-            if m.is_capture() && features::SEE {
-                let see_score = pos.see(&m);
-                if see_score < 0 {
-                    continue;
-                }
-            }
-
-            capture_list[capture_count] = m;
-            scores[capture_count] = score_move(m, pos, tt_move, None, 0);
-            capture_count += 1;
-        }
-    }
-
-    if capture_count == 0 {
-        if features::TT_CUTOFFS {
-            ctx.tt.store(
-                hash,
-                ply,
-                Move(0),
-                raw_static_eval,
-                static_eval_to_tt(raw_static_eval),
-                0,
-                if raw_static_eval <= original_alpha {
-                    Bound::Upper
-                } else {
-                    Bound::Exact
-                },
-            );
-        }
-        return raw_static_eval;
-    }
-
+    let mut picker = MovePicker::new(&analysis, tt_move, TtMode::ValidateInStage, false);
     let mut best_score = raw_static_eval;
     let mut best_move = Move(0);
+    let mut saw_tactical = false;
 
-    for i in 0..capture_count {
+    while let Some(mv) = picker.next_move(pos, &analysis, None, 0) {
         if ctx.stats.should_stop() {
             break;
         }
 
-        pick_next_move(
-            &mut capture_list[..capture_count],
-            &mut scores[..capture_count],
-            i,
-        );
-        let mv = capture_list[i];
+        if mv.is_capture() && features::SEE && pos.see(&mv) < 0 {
+            continue;
+        }
+
+        saw_tactical = true;
 
         let delta = ctx.eval.update_on_move(&mut ctx.eval_state, pos, mv);
         pos.make_move(mv);
@@ -173,6 +130,25 @@ pub(crate) fn qsearch<E: EvalProvider>(
         if score > alpha {
             alpha = score;
         }
+    }
+
+    if !saw_tactical {
+        if features::TT_CUTOFFS {
+            ctx.tt.store(
+                hash,
+                ply,
+                Move(0),
+                raw_static_eval,
+                static_eval_to_tt(raw_static_eval),
+                0,
+                if raw_static_eval <= original_alpha {
+                    Bound::Upper
+                } else {
+                    Bound::Exact
+                },
+            );
+        }
+        return raw_static_eval;
     }
 
     if features::TT_CUTOFFS {

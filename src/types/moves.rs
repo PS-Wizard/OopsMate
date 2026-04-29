@@ -145,6 +145,23 @@ impl MoveCollector {
     pub fn as_slice(&self) -> &[Move] {
         unsafe { std::slice::from_raw_parts(self.moves.as_ptr() as *const Move, self.count) }
     }
+
+    #[inline(always)]
+    /// Swaps two initialized entries.
+    pub fn swap(&mut self, a: usize, b: usize) {
+        debug_assert!(a < self.count);
+        debug_assert!(b < self.count);
+        if a == b {
+            return;
+        }
+
+        unsafe {
+            std::ptr::swap(
+                self.moves.get_unchecked_mut(a).as_mut_ptr(),
+                self.moves.get_unchecked_mut(b).as_mut_ptr(),
+            );
+        }
+    }
 }
 
 impl Default for MoveCollector {

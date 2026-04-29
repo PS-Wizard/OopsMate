@@ -1,11 +1,11 @@
 use crate::eval::EvalProvider;
-use crate::movegen::{analyze, generate_all_with_analysis};
+use crate::movegen::analyze;
 use crate::search::context::SearchContext;
 use crate::search::features;
 use crate::search::node::child::{search_with_lmr, search_with_pvs};
 use crate::search::node::NodeState;
-use crate::search::ordering::{pick_next_move, score_move};
-use crate::search::params::{INFINITY, MAX_MOVES};
+use crate::search::ordering::{MovePicker, TtMode};
+use crate::search::params::INFINITY;
 use crate::search::pruning::{
     can_use_futility_pruning, can_use_reverse_futility, get_futility_margin, get_rfp_margin,
     should_prune_futility, should_rfp_prune, try_iid, try_null_move_pruning, try_probcut,
@@ -14,7 +14,7 @@ use crate::search::pruning::{
 use crate::search::qsearch::qsearch;
 use crate::search::score::checkmate_score;
 use crate::tpt::{Bound, NO_STATIC_EVAL};
-use crate::{Move, MoveCollector, Position};
+use crate::{Move, Position};
 
 #[inline(always)]
 pub(crate) fn search_node<E: EvalProvider>(
@@ -152,11 +152,6 @@ pub(crate) fn search_node<E: EvalProvider>(
         node.ply,
     );
     let tt_move = tt_move.or(iid_move);
-    let tt_order_move = if features::TT_MOVE_ORDERING {
-        tt_move
-    } else {
-        None
-    };
 
     let use_futility = can_use_futility_pruning(depth, in_check, node.pv_node, alpha, beta);
     let (futility_static_eval, futility_margin) = if use_futility {
@@ -165,40 +160,32 @@ pub(crate) fn search_node<E: EvalProvider>(
         (0, 0)
     };
 
-    let mut collector = MoveCollector::new();
-    generate_all_with_analysis(pos, &analysis, &mut collector);
-    let moves = collector.as_slice();
-
-    if moves.is_empty() {
-        return if in_check {
-            checkmate_score(node.ply)
+    let mut picker = MovePicker::new(
+        &analysis,
+        tt_move,
+        if in_check {
+            TtMode::ValidateInStage
         } else {
-            0
-        };
-    }
-
-    let move_count = moves.len();
-    let mut move_list = [Move(0); MAX_MOVES];
-    let mut scores = [0i32; MAX_MOVES];
-
-    for i in 0..move_count {
-        move_list[i] = moves[i];
-        scores[i] = score_move(moves[i], pos, tt_order_move, Some(&ctx.history), node.ply);
-    }
+            TtMode::BlindTrust
+        },
+        true,
+    );
 
     let mut best_score = -INFINITY;
     let mut best_move = Move(0);
+    let mut saw_legal_move = false;
+    let mut move_index = 0usize;
 
-    for i in 0..move_count {
+    while let Some(mv) = picker.next_move(pos, &analysis, Some(&ctx.history), node.ply) {
         if ctx.stats.should_stop() {
             break;
         }
 
-        pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
-        let mv = move_list[i];
+        saw_legal_move = true;
 
         if let Some(excluded) = node.excluded_move {
             if mv.0 == excluded.0 {
+                move_index += 1;
                 continue;
             }
         }
@@ -213,7 +200,7 @@ pub(crate) fn search_node<E: EvalProvider>(
         };
 
         if use_futility
-            && i > 0
+            && move_index > 0
             && should_prune_futility(
                 mv,
                 gives_check,
@@ -224,6 +211,7 @@ pub(crate) fn search_node<E: EvalProvider>(
         {
             pos.unmake_move(mv);
             ctx.eval.update_on_undo(&mut ctx.eval_state, delta);
+            move_index += 1;
             continue;
         }
 
@@ -235,14 +223,14 @@ pub(crate) fn search_node<E: EvalProvider>(
                 depth,
                 alpha,
                 beta,
-                i,
+                move_index,
                 in_check,
                 gives_check,
                 check_extension,
                 node,
             )
         } else {
-            let is_hash_move = tt_order_move.is_some_and(|tt_mv| mv.0 == tt_mv.0);
+            let is_hash_move = tt_move.is_some_and(|tt_mv| mv.0 == tt_mv.0);
             search_with_pvs(
                 pos,
                 ctx,
@@ -250,7 +238,7 @@ pub(crate) fn search_node<E: EvalProvider>(
                 depth,
                 alpha,
                 beta,
-                i,
+                move_index,
                 in_check,
                 gives_check,
                 check_extension,
@@ -258,6 +246,8 @@ pub(crate) fn search_node<E: EvalProvider>(
                 is_hash_move,
             )
         };
+
+        move_index += 1;
 
         pos.unmake_move(mv);
         ctx.eval.update_on_undo(&mut ctx.eval_state, delta);
@@ -300,6 +290,14 @@ pub(crate) fn search_node<E: EvalProvider>(
                 alpha = score;
             }
         }
+    }
+
+    if !saw_legal_move {
+        return if in_check {
+            checkmate_score(node.ply)
+        } else {
+            0
+        };
     }
 
     let bound = if best_score <= alpha_start {

@@ -1,12 +1,10 @@
 use crate::eval::EvalProvider;
-use crate::movegen::{generate_evasions_with_analysis, Analysis};
+use crate::movegen::Analysis;
 use crate::search::context::SearchContext;
-use crate::search::ordering::{pick_next_move, score_move};
+use crate::search::ordering::{MovePicker, TtMode};
 use crate::search::qsearch::search::qsearch;
 use crate::search::score::checkmate_score;
-use crate::{Move, MoveCollector, Position};
-
-const MAX_MOVES: usize = 256;
+use crate::{Move, Position};
 
 pub(super) fn qsearch_evasions<E: EvalProvider>(
     pos: &mut Position,
@@ -17,29 +15,15 @@ pub(super) fn qsearch_evasions<E: EvalProvider>(
     beta: i32,
     ply: u8,
 ) -> i32 {
-    let mut collector = MoveCollector::new();
-    generate_evasions_with_analysis(pos, analysis, &mut collector);
-    let moves = collector.as_slice();
+    let mut picker = MovePicker::new(analysis, tt_move, TtMode::ValidateInStage, false);
+    let mut saw_legal_move = false;
 
-    if moves.is_empty() {
-        return checkmate_score(ply as usize);
-    }
-
-    let move_count = moves.len();
-    let mut move_list = [Move(0); MAX_MOVES];
-    let mut scores = [0i32; MAX_MOVES];
-    for i in 0..move_count {
-        move_list[i] = moves[i];
-        scores[i] = score_move(moves[i], pos, tt_move, None, 0);
-    }
-
-    for i in 0..move_count {
+    while let Some(mv) = picker.next_move(pos, analysis, None, 0) {
         if ctx.stats.should_stop() {
             break;
         }
 
-        pick_next_move(&mut move_list[..move_count], &mut scores[..move_count], i);
-        let mv = move_list[i];
+        saw_legal_move = true;
 
         let delta = ctx.eval.update_on_move(&mut ctx.eval_state, pos, mv);
         pos.make_move(mv);
@@ -54,6 +38,10 @@ pub(super) fn qsearch_evasions<E: EvalProvider>(
         if score > alpha {
             alpha = score;
         }
+    }
+
+    if !saw_legal_move {
+        return checkmate_score(ply as usize);
     }
 
     alpha
