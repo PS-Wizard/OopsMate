@@ -10,12 +10,12 @@ pub mod engine;
 pub mod eval;
 /// Legal move generation and attack detection.
 pub mod movegen;
+/// Search memory tables and heuristics state.
+pub mod memory;
 /// Board state, FEN parsing, hashing, and make/unmake logic.
 pub mod position;
 /// Search orchestration, pruning, and root reporting.
 pub mod search;
-/// Static exchange evaluation.
-pub mod see;
 /// Time allocation helpers used by the UCI front-end.
 pub mod time_control;
 /// Transposition table storage.
@@ -33,6 +33,8 @@ pub use engine::Engine;
 pub use eval::{EvalProvider, NnueProvider, PestoProvider};
 /// The engine board representation.
 pub use position::Position;
+/// Static exchange evaluation.
+pub use movegen::see;
 /// Common engine types re-exported at the crate root.
 pub use types::*;
 

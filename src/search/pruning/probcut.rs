@@ -1,4 +1,5 @@
 use crate::eval::EvalProvider;
+use crate::movegen::{analyze, generate_captures_with_analysis};
 use crate::search::context::SearchContext;
 use crate::search::features;
 use crate::search::node::{search_node, NodeState};
@@ -29,8 +30,9 @@ pub fn try_probcut<E: EvalProvider>(
     let probcut_beta = beta + PROBCUT_MARGIN;
     let probcut_depth = depth - 5;
 
+    let analysis = analyze(pos);
     let mut collector = crate::MoveCollector::new();
-    pos.generate_captures(&mut collector);
+    generate_captures_with_analysis(pos, &analysis, &mut collector);
     let moves = collector.as_slice();
 
     for &mv in moves {

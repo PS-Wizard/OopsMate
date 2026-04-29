@@ -16,6 +16,7 @@ impl Position {
             pieces: [Bitboard::new(); 6],
             colors: [Bitboard::new(); 2],
             board: [None; 64],
+            king_sq: [64; 2],
             side_to_move: Color::White,
             castling_rights: CastleRights::NONE,
             en_passant: None,

@@ -28,6 +28,8 @@ pub struct Position {
     pub colors: [Bitboard; 2],
     /// Piece lookup table indexed by square.
     pub board: [Option<(Piece, Color)>; 64],
+    /// Cached king squares indexed by `Color`.
+    pub king_sq: [u8; 2],
     /// Side to move.
     pub side_to_move: Color,
     /// Current castling rights.
@@ -61,6 +63,24 @@ impl Position {
     /// Returns the current side's pieces of the requested type.
     pub const fn our(&self, piece: Piece) -> Bitboard {
         Bitboard(self.pieces[piece as usize].0 & self.colors[self.side_to_move as usize].0)
+    }
+
+    #[inline(always)]
+    /// Returns the king square for `color`.
+    pub const fn king_sq(&self, color: Color) -> usize {
+        self.king_sq[color as usize] as usize
+    }
+
+    #[inline(always)]
+    /// Returns the current side's king square.
+    pub const fn our_king_sq(&self) -> usize {
+        self.king_sq(self.side_to_move)
+    }
+
+    #[inline(always)]
+    /// Returns the opponent king square.
+    pub const fn their_king_sq(&self) -> usize {
+        self.king_sq(self.side_to_move.flip())
     }
 
     #[inline(always)]
@@ -99,6 +119,10 @@ impl Position {
         self.pieces[piece as usize].set(sq);
         self.colors[color as usize].set(sq);
         self.board[sq] = Some((piece, color));
+
+        if piece == Piece::King {
+            self.king_sq[color as usize] = sq as u8;
+        }
     }
 
     #[inline(always)]
@@ -110,6 +134,10 @@ impl Position {
         self.colors[color as usize].set(to);
         self.board[from] = None;
         self.board[to] = Some((piece, color));
+
+        if piece == Piece::King {
+            self.king_sq[color as usize] = to as u8;
+        }
     }
 
     #[inline(always)]
@@ -119,6 +147,10 @@ impl Position {
             self.pieces[piece as usize].clear(sq);
             self.colors[color as usize].clear(sq);
             self.board[sq] = None;
+
+            if piece == Piece::King {
+                self.king_sq[color as usize] = 64;
+            }
         }
     }
 }

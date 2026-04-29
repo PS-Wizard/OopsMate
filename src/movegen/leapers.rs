@@ -1,38 +1,34 @@
-use crate::{
-    position::Position,
-    types::{Move, MoveCollector, MoveType, Piece},
-};
+use super::analysis::Analysis;
+use super::stage::{include_captures, include_quiets};
+use crate::{Move, MoveCollector, MoveType, Position, Piece};
 use strikes::KNIGHT_ATTACKS;
 
-impl Position {
-    #[inline(always)]
-    pub(super) fn gen_knight_moves(
-        &self,
-        collector: &mut MoveCollector,
-        pinned: u64,
-        check_mask: u64,
-    ) {
-        let knights = self.our(Piece::Knight).0 & !pinned;
-        let us = self.us().0;
-        let them = self.them().0;
-        let enemy_king = self.their(Piece::King).0;
+#[inline(always)]
+pub(super) fn generate<const STAGE: u8>(
+    pos: &Position,
+    analysis: &Analysis,
+    collector: &mut MoveCollector,
+) {
+    let knights = pos.our(Piece::Knight).0 & !analysis.pinned;
+    let enemy_king = 1u64 << pos.their_king_sq();
+    let mut bb = knights;
 
-        let mut bb = knights;
-        while bb != 0 {
-            let from = bb.trailing_zeros() as usize;
-            bb &= bb - 1;
+    while bb != 0 {
+        let from = bb.trailing_zeros() as usize;
+        bb &= bb - 1;
 
-            let mut attacks = KNIGHT_ATTACKS[from] & !us & !enemy_king & check_mask;
-            while attacks != 0 {
-                let to = attacks.trailing_zeros() as usize;
-                attacks &= attacks - 1;
+        let mut attacks = KNIGHT_ATTACKS[from] & !analysis.us_occ & !enemy_king & analysis.check_mask;
+        while attacks != 0 {
+            let to = attacks.trailing_zeros() as usize;
+            attacks &= attacks - 1;
 
-                let move_type = if (them >> to) & 1 != 0 {
-                    MoveType::Capture
-                } else {
-                    MoveType::Quiet
-                };
-                collector.push(Move::new(from, to, move_type));
+            let is_capture = (analysis.them_occ >> to) & 1 != 0;
+            if is_capture {
+                if include_captures::<STAGE>() {
+                    collector.push(Move::new(from, to, MoveType::Capture));
+                }
+            } else if include_quiets::<STAGE>() {
+                collector.push(Move::new(from, to, MoveType::Quiet));
             }
         }
     }

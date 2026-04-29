@@ -1,7 +1,9 @@
 use crate::eval::EvalProvider;
+use crate::movegen::{analyze, generate_captures_with_analysis};
 use crate::search::context::SearchContext;
 use crate::search::features;
 use crate::search::ordering::{pick_next_move, score_capture, SCORE_PROMOTION};
+use crate::search::qsearch::evasions::qsearch_evasions;
 use crate::{Move, MoveCollector, Position};
 
 const MAX_MOVES: usize = 256;
@@ -27,9 +29,12 @@ pub(crate) fn qsearch<E: EvalProvider>(
         return ctx.eval.eval(pos, &mut ctx.eval_state);
     }
 
-    // stand pat: test the static evaluation before exploring any forcing captures.
-    let stand_pat = ctx.eval.eval(pos, &mut ctx.eval_state);
+    let analysis = analyze(pos);
+    if analysis.in_check() {
+        return qsearch_evasions(pos, ctx, analysis, alpha, beta, ply);
+    }
 
+    let stand_pat = ctx.eval.eval(pos, &mut ctx.eval_state);
     if stand_pat >= beta {
         return beta;
     }
@@ -39,23 +44,19 @@ pub(crate) fn qsearch<E: EvalProvider>(
         alpha = stand_pat;
     }
 
-    // qsearch delta pruning: bail out when even a big tactical swing cannot reach alpha.
-    if !pos.is_in_check() {
-        const QUEEN_VALUE: i32 = 900;
-        if stand_pat + QUEEN_VALUE + 300 < original_alpha {
-            return original_alpha;
-        }
+    const QUEEN_VALUE: i32 = 900;
+    if stand_pat + QUEEN_VALUE + 300 < original_alpha {
+        return original_alpha;
     }
 
     let mut collector = MoveCollector::new();
-    pos.generate_captures(&mut collector);
+    generate_captures_with_analysis(pos, &analysis, &mut collector);
     let moves = collector.as_slice();
 
     let mut capture_list = [Move(0); MAX_MOVES];
     let mut scores = [0i32; MAX_MOVES];
     let mut capture_count = 0;
 
-    // qsearch move filtering: keep only tactical moves worth searching in the capture phase.
     for &m in moves {
         if m.is_capture() || m.is_promotion() {
             let score = if m.is_capture() {
@@ -65,7 +66,6 @@ pub(crate) fn qsearch<E: EvalProvider>(
                         continue;
                     }
                 }
-
                 score_capture(m, pos)
             } else {
                 SCORE_PROMOTION
@@ -85,7 +85,6 @@ pub(crate) fn qsearch<E: EvalProvider>(
         return stand_pat;
     }
 
-    // qsearch move loop: search captures in order until a tactical cutoff appears.
     for i in 0..capture_count {
         if ctx.stats.should_stop() {
             break;

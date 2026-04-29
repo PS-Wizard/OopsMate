@@ -3,19 +3,19 @@
 mod api;
 mod context;
 mod features;
-mod heuristics;
 mod limits;
 mod node;
 mod ordering;
 mod output;
-mod params;
+pub(crate) mod params;
+mod pruning;
 pub(crate) mod qsearch;
 mod root;
 mod score;
 
 pub use api::{search, search_with_eval, SearchInfo};
-pub use heuristics::init_lmr;
 pub use limits::SearchLimits;
+pub use pruning::init_lmr;
 
 pub(crate) use api::search_with_stop_signal;
 

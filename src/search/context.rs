@@ -1,5 +1,4 @@
-use super::ordering::MoveHistory;
-use crate::{eval::EvalProvider, tpt::TranspositionTable, Position};
+use crate::{eval::EvalProvider, memory::MoveHistory, tpt::TranspositionTable, Position};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
