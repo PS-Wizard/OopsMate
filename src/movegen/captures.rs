@@ -2,9 +2,8 @@ use crate::{
     position::Position,
     types::{Move, MoveCollector, MoveType, Piece},
 };
-use std::arch::x86_64::_pext_u64;
 
-use strikes::{BISHOP_ATTACKS, BISHOP_MASKS, KNIGHT_ATTACKS, ROOK_ATTACKS, ROOK_MASKS, THROUGH};
+use strikes::{bishop_attacks, knight_attacks, line_through, queen_attacks, rook_attacks};
 
 impl Position {
     #[inline(always)]
@@ -26,7 +25,7 @@ impl Position {
                 let from = bb.trailing_zeros() as usize;
                 bb &= bb - 1;
 
-                let mut attacks = KNIGHT_ATTACKS[from] & enemies & check_mask;
+                let mut attacks = knight_attacks(from) & enemies & check_mask;
                 while attacks != 0 {
                     let to = attacks.trailing_zeros() as usize;
                     attacks &= attacks - 1;
@@ -46,26 +45,16 @@ impl Position {
             bb &= bb - 1;
 
             let mut attacks = match PIECE {
-                2 => {
-                    let idx = unsafe { _pext_u64(blockers, BISHOP_MASKS[from]) as usize };
-                    BISHOP_ATTACKS[from][idx]
-                }
-                3 => {
-                    let idx = unsafe { _pext_u64(blockers, ROOK_MASKS[from]) as usize };
-                    ROOK_ATTACKS[from][idx]
-                }
-                4 => {
-                    let bishop_idx = unsafe { _pext_u64(blockers, BISHOP_MASKS[from]) as usize };
-                    let rook_idx = unsafe { _pext_u64(blockers, ROOK_MASKS[from]) as usize };
-                    BISHOP_ATTACKS[from][bishop_idx] | ROOK_ATTACKS[from][rook_idx]
-                }
+                2 => bishop_attacks(from, blockers),
+                3 => rook_attacks(from, blockers),
+                4 => queen_attacks(from, blockers),
                 _ => unreachable!(),
             };
 
             attacks &= enemies & !enemy_king;
 
             if (pinned >> from) & 1 != 0 {
-                attacks &= THROUGH[king_sq][from];
+                attacks &= line_through(king_sq, from);
             }
             attacks &= check_mask;
 

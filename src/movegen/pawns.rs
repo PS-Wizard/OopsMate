@@ -1,9 +1,8 @@
 use super::analysis::Analysis;
 use super::stage::{include_captures, include_quiets};
 use crate::{Color, Move, MoveCollector, MoveType, Piece, Position};
-use std::arch::x86_64::_pext_u64;
 
-use strikes::{PAWN_ATTACKS, ROOK_ATTACKS, ROOK_MASKS};
+use strikes::{pawn_attacks, rook_attacks};
 
 #[inline(always)]
 pub(super) fn generate<const STAGE: u8>(
@@ -62,7 +61,7 @@ fn generate_white<const STAGE: u8>(
             }
         }
 
-        let mut attacks = PAWN_ATTACKS[Color::White as usize][from]
+        let mut attacks = pawn_attacks(Color::White as usize, from)
             & analysis.them_occ
             & !enemy_king
             & pin_ray
@@ -126,7 +125,7 @@ fn generate_black<const STAGE: u8>(
             }
         }
 
-        let mut attacks = PAWN_ATTACKS[Color::Black as usize][from]
+        let mut attacks = pawn_attacks(Color::Black as usize, from)
             & analysis.them_occ
             & !enemy_king
             & pin_ray
@@ -206,7 +205,7 @@ fn generate_en_passant<const STAGE: u8>(
         let from = bb.trailing_zeros() as usize;
         bb &= bb - 1;
 
-        if (PAWN_ATTACKS[color_idx][from] & ep_target) == 0 {
+        if (pawn_attacks(color_idx, from) & ep_target) == 0 {
             continue;
         }
 
@@ -218,10 +217,9 @@ fn generate_en_passant<const STAGE: u8>(
         let from_rank = from / 8;
         if king_rank == from_rank && from_rank == captured_sq / 8 {
             let after_ep = analysis.occ & !(1u64 << from) & !captured_bit | ep_target;
-            let rook_idx = unsafe { _pext_u64(after_ep, ROOK_MASKS[analysis.king_sq]) as usize };
-            let rook_attacks = ROOK_ATTACKS[analysis.king_sq][rook_idx];
+            let rook_rays = rook_attacks(analysis.king_sq, after_ep);
             let enemy_rooks_queens = pos.their(Piece::Rook).0 | pos.their(Piece::Queen).0;
-            if (rook_attacks & enemy_rooks_queens) != 0 {
+            if (rook_rays & enemy_rooks_queens) != 0 {
                 continue;
             }
         }

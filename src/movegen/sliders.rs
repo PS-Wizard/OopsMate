@@ -1,9 +1,8 @@
 use super::analysis::Analysis;
 use super::stage::{include_captures, include_quiets};
 use crate::{Move, MoveCollector, MoveType, Piece, Position};
-use std::arch::x86_64::_pext_u64;
 
-use strikes::{BISHOP_ATTACKS, BISHOP_MASKS, ROOK_ATTACKS, ROOK_MASKS};
+use strikes::{bishop_attacks, queen_attacks, rook_attacks};
 
 #[inline(always)]
 pub(super) fn generate<const STAGE: u8>(
@@ -29,8 +28,7 @@ fn generate_bishops<const STAGE: u8>(
         let from = bb.trailing_zeros() as usize;
         bb &= bb - 1;
 
-        let idx = unsafe { _pext_u64(analysis.occ, BISHOP_MASKS[from]) as usize };
-        let mut attacks = BISHOP_ATTACKS[from][idx] & !analysis.us_occ & !enemy_king;
+        let mut attacks = bishop_attacks(from, analysis.occ) & !analysis.us_occ & !enemy_king;
         if analysis.is_pinned(from) {
             attacks &= analysis.pin_ray(from);
         }
@@ -52,8 +50,7 @@ fn generate_rooks<const STAGE: u8>(
         let from = bb.trailing_zeros() as usize;
         bb &= bb - 1;
 
-        let idx = unsafe { _pext_u64(analysis.occ, ROOK_MASKS[from]) as usize };
-        let mut attacks = ROOK_ATTACKS[from][idx] & !analysis.us_occ & !enemy_king;
+        let mut attacks = rook_attacks(from, analysis.occ) & !analysis.us_occ & !enemy_king;
         if analysis.is_pinned(from) {
             attacks &= analysis.pin_ray(from);
         }
@@ -75,11 +72,7 @@ fn generate_queens<const STAGE: u8>(
         let from = bb.trailing_zeros() as usize;
         bb &= bb - 1;
 
-        let bishop_idx = unsafe { _pext_u64(analysis.occ, BISHOP_MASKS[from]) as usize };
-        let rook_idx = unsafe { _pext_u64(analysis.occ, ROOK_MASKS[from]) as usize };
-        let mut attacks = (BISHOP_ATTACKS[from][bishop_idx] | ROOK_ATTACKS[from][rook_idx])
-            & !analysis.us_occ
-            & !enemy_king;
+        let mut attacks = queen_attacks(from, analysis.occ) & !analysis.us_occ & !enemy_king;
         if analysis.is_pinned(from) {
             attacks &= analysis.pin_ray(from);
         }

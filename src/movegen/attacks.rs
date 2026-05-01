@@ -1,10 +1,6 @@
 use crate::{Color, Piece, Position};
-use std::arch::x86_64::_pext_u64;
 
-use strikes::{
-    BISHOP_ATTACKS, BISHOP_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS,
-    ROOK_MASKS,
-};
+use strikes::{bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks};
 
 #[inline(always)]
 pub fn is_square_attacked(pos: &Position, sq: usize, by: Color) -> bool {
@@ -20,20 +16,19 @@ pub fn is_square_attacked_with_blockers(
 ) -> bool {
     let attackers = pos.colors[by as usize].0;
 
-    if KNIGHT_ATTACKS[sq] & pos.pieces[Piece::Knight as usize].0 & attackers != 0 {
+    if knight_attacks(sq) & pos.pieces[Piece::Knight as usize].0 & attackers != 0 {
         return true;
     }
 
-    if KING_ATTACKS[sq] & pos.pieces[Piece::King as usize].0 & attackers != 0 {
+    if king_attacks(sq) & pos.pieces[Piece::King as usize].0 & attackers != 0 {
         return true;
     }
 
-    if PAWN_ATTACKS[by.flip() as usize][sq] & pos.pieces[Piece::Pawn as usize].0 & attackers != 0 {
+    if pawn_attacks(by.flip() as usize, sq) & pos.pieces[Piece::Pawn as usize].0 & attackers != 0 {
         return true;
     }
 
-    let bishop_idx = unsafe { _pext_u64(blockers, BISHOP_MASKS[sq]) as usize };
-    if BISHOP_ATTACKS[sq][bishop_idx]
+    if bishop_attacks(sq, blockers)
         & (pos.pieces[Piece::Bishop as usize].0 | pos.pieces[Piece::Queen as usize].0)
         & attackers
         != 0
@@ -41,8 +36,7 @@ pub fn is_square_attacked_with_blockers(
         return true;
     }
 
-    let rook_idx = unsafe { _pext_u64(blockers, ROOK_MASKS[sq]) as usize };
-    if ROOK_ATTACKS[sq][rook_idx]
+    if rook_attacks(sq, blockers)
         & (pos.pieces[Piece::Rook as usize].0 | pos.pieces[Piece::Queen as usize].0)
         & attackers
         != 0

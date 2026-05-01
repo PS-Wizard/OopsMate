@@ -1,11 +1,6 @@
 //! Static exchange evaluation.
 
-use std::arch::x86_64::_pext_u64;
-
-use strikes::{
-    BISHOP_ATTACKS, BISHOP_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS,
-    ROOK_MASKS,
-};
+use strikes::{bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks};
 
 use crate::{Color, Move, MoveType, Piece, Position};
 
@@ -65,8 +60,6 @@ impl Position {
 
         let mut occupancy = (self.occupied().0 ^ (1u64 << from)) | (1u64 << to);
         let mut attackers = self.attackers_to_board(to, occupancy);
-        let bishop_mask = BISHOP_MASKS[to];
-        let rook_mask = ROOK_MASKS[to];
         let bishops_queens =
             self.pieces[Piece::Bishop as usize].0 | self.pieces[Piece::Queen as usize].0;
         let rooks_queens =
@@ -83,15 +76,8 @@ impl Position {
             occupancy ^= 1u64 << lva_sq;
             attackers ^= 1u64 << lva_sq;
 
-            if (1u64 << lva_sq) & bishop_mask != 0 {
-                let bishop_idx = unsafe { _pext_u64(occupancy, bishop_mask) as usize };
-                attackers |= BISHOP_ATTACKS[to][bishop_idx] & bishops_queens;
-            }
-
-            if (1u64 << lva_sq) & rook_mask != 0 {
-                let rook_idx = unsafe { _pext_u64(occupancy, rook_mask) as usize };
-                attackers |= ROOK_ATTACKS[to][rook_idx] & rooks_queens;
-            }
+            attackers |= bishop_attacks(to, occupancy) & bishops_queens;
+            attackers |= rook_attacks(to, occupancy) & rooks_queens;
             attackers &= occupancy;
         }
 
@@ -147,22 +133,20 @@ impl Position {
     fn attackers_to_board(&self, sq: usize, occupancy: u64) -> u64 {
         let mut attackers = 0u64;
 
-        attackers |= PAWN_ATTACKS[Color::Black as usize][sq]
+        attackers |= pawn_attacks(Color::Black as usize, sq)
             & self.pieces[Piece::Pawn as usize].0
             & self.colors[Color::White as usize].0;
-        attackers |= PAWN_ATTACKS[Color::White as usize][sq]
+        attackers |= pawn_attacks(Color::White as usize, sq)
             & self.pieces[Piece::Pawn as usize].0
             & self.colors[Color::Black as usize].0;
 
-        attackers |= KNIGHT_ATTACKS[sq] & self.pieces[Piece::Knight as usize].0;
-        attackers |= KING_ATTACKS[sq] & self.pieces[Piece::King as usize].0;
+        attackers |= knight_attacks(sq) & self.pieces[Piece::Knight as usize].0;
+        attackers |= king_attacks(sq) & self.pieces[Piece::King as usize].0;
 
-        let bishop_idx = unsafe { _pext_u64(occupancy, BISHOP_MASKS[sq]) as usize };
-        attackers |= BISHOP_ATTACKS[sq][bishop_idx]
+        attackers |= bishop_attacks(sq, occupancy)
             & (self.pieces[Piece::Bishop as usize].0 | self.pieces[Piece::Queen as usize].0);
 
-        let rook_idx = unsafe { _pext_u64(occupancy, ROOK_MASKS[sq]) as usize };
-        attackers |= ROOK_ATTACKS[sq][rook_idx]
+        attackers |= rook_attacks(sq, occupancy)
             & (self.pieces[Piece::Rook as usize].0 | self.pieces[Piece::Queen as usize].0);
 
         attackers

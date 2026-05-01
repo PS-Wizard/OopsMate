@@ -2,7 +2,7 @@ use super::analysis::Analysis;
 use super::attacks::is_square_attacked_with_blockers;
 use super::stage::{include_captures, include_quiets};
 use crate::{Color, Move, MoveCollector, MoveType, Position};
-use strikes::KING_ATTACKS;
+use strikes::king_attacks;
 
 #[inline(always)]
 pub(super) fn generate<const STAGE: u8>(
@@ -13,7 +13,7 @@ pub(super) fn generate<const STAGE: u8>(
     let king_sq = analysis.king_sq;
     let blockers_without_king = analysis.occ & !(1u64 << king_sq);
     let enemy_king = 1u64 << pos.their_king_sq();
-    let mut attacks = KING_ATTACKS[king_sq] & !analysis.us_occ & !enemy_king;
+    let mut attacks = king_attacks(king_sq) & !analysis.us_occ & !enemy_king;
 
     while attacks != 0 {
         let to = attacks.trailing_zeros() as usize;

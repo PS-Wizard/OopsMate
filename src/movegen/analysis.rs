@@ -1,5 +1,5 @@
 use crate::{Color, Piece, Position};
-use strikes::{line_between, BISHOP_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS, THROUGH};
+use strikes::{bishop_attacks, knight_attacks, line_between, line_through, pawn_attacks, rook_attacks};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Analysis {
@@ -32,7 +32,7 @@ impl Analysis {
 
     #[inline(always)]
     pub fn pin_ray(self, sq: usize) -> u64 {
-        THROUGH[self.king_sq][sq]
+        line_through(self.king_sq, sq)
     }
 }
 
@@ -51,8 +51,8 @@ pub fn analyze(pos: &Position) -> Analysis {
     let mut pinned = 0u64;
     let mut checkers = 0u64;
 
-    let mut potential = (BISHOP_ATTACKS[king_sq][0] & enemy_bishops_queens)
-        | (ROOK_ATTACKS[king_sq][0] & enemy_rooks_queens);
+    let mut potential = (bishop_attacks(king_sq, 0) & enemy_bishops_queens)
+        | (rook_attacks(king_sq, 0) & enemy_rooks_queens);
 
     while potential != 0 {
         let sq = potential.trailing_zeros() as usize;
@@ -68,8 +68,8 @@ pub fn analyze(pos: &Position) -> Analysis {
         }
     }
 
-    checkers |= pos.their(Piece::Knight).0 & KNIGHT_ATTACKS[king_sq];
-    checkers |= pos.their(Piece::Pawn).0 & PAWN_ATTACKS[us as usize][king_sq];
+    checkers |= pos.their(Piece::Knight).0 & knight_attacks(king_sq);
+    checkers |= pos.their(Piece::Pawn).0 & pawn_attacks(us as usize, king_sq);
 
     let check_mask = if checkers == 0 {
         !0u64

@@ -1,7 +1,7 @@
 use super::analysis::Analysis;
 use super::stage::{include_captures, include_quiets};
 use crate::{Move, MoveCollector, MoveType, Piece, Position};
-use strikes::KNIGHT_ATTACKS;
+use strikes::knight_attacks;
 
 #[inline(always)]
 pub(super) fn generate<const STAGE: u8>(
@@ -18,7 +18,7 @@ pub(super) fn generate<const STAGE: u8>(
         bb &= bb - 1;
 
         let mut attacks =
-            KNIGHT_ATTACKS[from] & !analysis.us_occ & !enemy_king & analysis.check_mask;
+            knight_attacks(from) & !analysis.us_occ & !enemy_king & analysis.check_mask;
         while attacks != 0 {
             let to = attacks.trailing_zeros() as usize;
             attacks &= attacks - 1;

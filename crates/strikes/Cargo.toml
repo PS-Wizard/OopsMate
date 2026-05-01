@@ -2,6 +2,29 @@
 name = "strikes"
 version = "0.1.0"
 edition = "2024"
+build = "build.rs"
 
-[dependencies]
-utilities = {path = "../utilities/"}
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[profile.dev]
+opt-level = 1
+incremental = true
+
+[profile.test]
+opt-level = 1
+incremental = true
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+overflow-checks = false
+incremental = false
+
+[profile.bench]
+inherits = "release"

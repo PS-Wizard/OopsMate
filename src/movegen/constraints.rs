@@ -1,5 +1,5 @@
 use crate::{position::Position, types::Piece};
-use strikes::{line_between, BISHOP_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS};
+use strikes::{bishop_attacks, knight_attacks, line_between, pawn_attacks, rook_attacks};
 
 pub(super) fn get_constraints(pos: &Position) -> (u64, u64) {
     let king_sq = pos.our(Piece::King).0.trailing_zeros() as usize;
@@ -13,8 +13,8 @@ pub(super) fn get_constraints(pos: &Position) -> (u64, u64) {
     let enemy_bishops_queens = pos.their(Piece::Bishop).0 | pos.their(Piece::Queen).0;
     let enemy_rooks_queens = pos.their(Piece::Rook).0 | pos.their(Piece::Queen).0;
 
-    let bishop_rays = BISHOP_ATTACKS[king_sq][0];
-    let rook_rays = ROOK_ATTACKS[king_sq][0];
+    let bishop_rays = bishop_attacks(king_sq, 0);
+    let rook_rays = rook_attacks(king_sq, 0);
 
     let mut potential = (bishop_rays & enemy_bishops_queens) | (rook_rays & enemy_rooks_queens);
     while potential != 0 {
@@ -31,8 +31,8 @@ pub(super) fn get_constraints(pos: &Position) -> (u64, u64) {
         }
     }
 
-    checkers |= pos.their(Piece::Knight).0 & KNIGHT_ATTACKS[king_sq];
-    checkers |= pos.their(Piece::Pawn).0 & PAWN_ATTACKS[pos.side_to_move as usize][king_sq];
+    checkers |= pos.their(Piece::Knight).0 & knight_attacks(king_sq);
+    checkers |= pos.their(Piece::Pawn).0 & pawn_attacks(pos.side_to_move as usize, king_sq);
 
     let check_mask = if checkers == 0 {
         !0u64

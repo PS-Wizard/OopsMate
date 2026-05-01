@@ -6,6 +6,7 @@ use crate::eval::nnue::{NnueContext, NnueNetworks};
 use crate::movegen::generate_all;
 use crate::MoveCollector;
 use std::sync::OnceLock;
+use std::thread;
 
 static NETWORKS: OnceLock<NnueNetworks> = OnceLock::new();
 
@@ -15,6 +16,18 @@ fn networks() -> &'static NnueNetworks {
 
 fn white_side_cp(output: EvalOutput, position: &Position) -> i32 {
     output.white_side_cp(position.side_to_move())
+}
+
+fn run_with_large_stack<F>(f: F)
+where
+    F: FnOnce() + Send + 'static,
+{
+    thread::Builder::new()
+        .stack_size(32 * 1024 * 1024)
+        .spawn(f)
+        .expect("failed to spawn test thread")
+        .join()
+        .expect("test thread panicked");
 }
 
 fn sq(text: &str) -> Square {
@@ -170,12 +183,14 @@ fn white_side_cp_flips_black_positions() {
 
 #[test]
 fn incremental_matches_full_on_limited_startpos_tree() {
-    let networks = networks();
-    let mut position = Position::new();
-    let mut incremental_ctx = NnueContext::new();
-    networks.reset_context(&position, &mut incremental_ctx);
+    run_with_large_stack(|| {
+        let networks = networks();
+        let mut position = Position::new();
+        let mut incremental_ctx = NnueContext::new();
+        networks.reset_context(&position, &mut incremental_ctx);
 
-    walk_limited_tree(networks, &mut position, &mut incremental_ctx, 3, 6);
+        walk_limited_tree(networks, &mut position, &mut incremental_ctx, 3, 6);
+    });
 }
 
 #[test]

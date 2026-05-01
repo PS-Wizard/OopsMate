@@ -2,7 +2,7 @@ use crate::{
     position::Position,
     types::{Color, Move, MoveCollector, MoveType, Piece},
 };
-use strikes::{PAWN_ATTACKS, THROUGH};
+use strikes::{line_through, pawn_attacks};
 
 impl Position {
     #[inline(always)]
@@ -38,7 +38,7 @@ impl Position {
             bb &= bb - 1;
 
             let pin_ray = if (pinned >> from) & 1 != 0 {
-                THROUGH[king_sq][from]
+                line_through(king_sq, from)
             } else {
                 !0u64
             };
@@ -51,7 +51,7 @@ impl Position {
                 }
             }
 
-            let mut attacks = PAWN_ATTACKS[0][from] & enemies & !enemy_king & pin_ray & check_mask;
+            let mut attacks = pawn_attacks(0, from) & enemies & !enemy_king & pin_ray & check_mask;
             while attacks != 0 {
                 let to = attacks.trailing_zeros() as usize;
                 attacks &= attacks - 1;
@@ -88,7 +88,7 @@ impl Position {
             bb &= bb - 1;
 
             let pin_ray = if (pinned >> from) & 1 != 0 {
-                THROUGH[king_sq][from]
+                line_through(king_sq, from)
             } else {
                 !0u64
             };
@@ -103,7 +103,7 @@ impl Position {
                 }
             }
 
-            let mut attacks = PAWN_ATTACKS[1][from] & enemies & !enemy_king & pin_ray & check_mask;
+            let mut attacks = pawn_attacks(1, from) & enemies & !enemy_king & pin_ray & check_mask;
             while attacks != 0 {
                 let to = attacks.trailing_zeros() as usize;
                 attacks &= attacks - 1;
