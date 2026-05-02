@@ -1,5 +1,5 @@
 use super::{
-    accum_add_into_both, accum_add_sub, accum_add1_sub2_into, accum_add2_sub1_into_both,
+    accum_add1_sub2_into, accum_add2_sub1_into_both, accum_add_into_both, accum_add_sub,
     psqt_add2_sub2_into, psqt_sub_into_both,
 };
 use crate::aligned::CacheAligned;

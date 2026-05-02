@@ -5,8 +5,8 @@ use crate::constants::{
 };
 use crate::finny::FinnyTables;
 use crate::oopsmate_core::{
-    Color, EMPTY_SQUARE, MAX_POSITION_HISTORY, Move, MoveKind, Piece, Position, Square,
-    color_from_code, encode_piece,
+    color_from_code, encode_piece, Color, Move, MoveKind, Piece, Position, Square, EMPTY_SQUARE,
+    MAX_POSITION_HISTORY,
 };
 
 const MAX_DIRTY_PIECES: usize = 3;
@@ -240,7 +240,9 @@ fn castle_rook_squares(king_to: Square) -> (Square, Square) {
 mod tests {
     use super::{DirtyPiece, NnueContext};
     use crate::aligned::CACHELINE_BYTES;
-    use crate::oopsmate_core::{Move, MoveKind, Piece, Position, Square, encode_piece, piece_from_code};
+    use crate::oopsmate_core::{
+        encode_piece, piece_from_code, Move, MoveKind, Piece, Position, Square,
+    };
 
     fn sq(text: &str) -> Square {
         Square::from_algebraic(text).unwrap()

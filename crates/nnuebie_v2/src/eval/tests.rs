@@ -1,5 +1,5 @@
-use super::EvalOutput;
 use super::refresh::{full_refresh_frame_big, full_refresh_frame_small};
+use super::EvalOutput;
 use crate::context::AccumulatorFrame;
 use crate::oopsmate_core::{Color, Move, MoveKind, Position, Square};
 use crate::{NnueContext, NnueNetworks};

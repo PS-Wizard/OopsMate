@@ -3,12 +3,12 @@ use crate::constants::{BIG_HALF_DIMS, PSQT_BUCKETS, SMALL_HALF_DIMS};
 use crate::context::{AccumulatorFrame, DirtyPiece, NnueContext};
 use crate::features::feature_index_from_piece_code;
 use crate::network::{FeatureTransformer, LoadedNetwork};
+use crate::oopsmate_core::{Color, Position, Square};
 use crate::update::{
     accum_add, accum_add1_sub1_into, accum_add1_sub2_into, accum_add2_sub1_into,
     accum_add2_sub2_into, accum_sub, psqt_add, psqt_add1_sub1_into, psqt_add1_sub2_into,
     psqt_add2_sub1_into, psqt_add2_sub2_into, psqt_sub,
 };
-use crate::oopsmate_core::{Color, Position, Square};
 
 pub(crate) fn ensure_big_frame(
     network: &LoadedNetwork,

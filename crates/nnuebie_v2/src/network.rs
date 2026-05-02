@@ -7,7 +7,7 @@ use crate::constants::{
 };
 use crate::layout::{repack_dense_weights, repack_feature_transformer};
 use crate::loader::{
-    read_i8_array, read_i32_array, read_leb128_i16_array, read_leb128_i32_array, read_u32,
+    read_i32_array, read_i8_array, read_leb128_i16_array, read_leb128_i32_array, read_u32,
 };
 use crate::oopsmate_core::{Color, Position, Square};
 use std::fs::File;

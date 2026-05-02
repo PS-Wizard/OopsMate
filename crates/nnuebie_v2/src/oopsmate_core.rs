@@ -461,7 +461,9 @@ impl Position {
     #[inline(always)]
     #[must_use]
     pub fn piece_at(&self, square: Square) -> Option<(Piece, Color)> {
-        self.0.piece_at(square.index()).map(|(piece, color)| (piece.into(), color.into()))
+        self.0
+            .piece_at(square.index())
+            .map(|(piece, color)| (piece.into(), color.into()))
     }
 
     #[inline(always)]

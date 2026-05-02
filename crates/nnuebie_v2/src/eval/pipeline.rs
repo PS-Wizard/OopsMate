@@ -10,8 +10,8 @@ use crate::layers::{
     sqr_clipped_relu,
 };
 use crate::network::{LayerStack, LoadedNetwork};
-use crate::transform::transform_features;
 use crate::oopsmate_core::{Color, Position};
+use crate::transform::transform_features;
 
 pub(super) fn evaluate_big_network(
     network: &LoadedNetwork,

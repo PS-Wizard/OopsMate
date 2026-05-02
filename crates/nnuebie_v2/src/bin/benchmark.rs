@@ -14,7 +14,11 @@ fn sq(file: u8, rank: u8) -> Square {
 }
 
 #[inline(always)]
-fn evaluate<const RAW: bool>(networks: &NnueNetworks, position: &Position, ctx: &mut NnueContext) -> i32 {
+fn evaluate<const RAW: bool>(
+    networks: &NnueNetworks,
+    position: &Position,
+    ctx: &mut NnueContext,
+) -> i32 {
     if RAW {
         networks.evaluate_raw(position, ctx)
     } else {

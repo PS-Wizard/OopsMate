@@ -1,7 +1,7 @@
 use crate::constants::FEATURE_DIMS;
+use crate::oopsmate_core::{color_from_code, piece_from_code, Color, Piece, Square, EMPTY_SQUARE};
 #[cfg(test)]
 use crate::oopsmate_core::{Board, Position};
-use crate::oopsmate_core::{Color, EMPTY_SQUARE, Piece, Square, color_from_code, piece_from_code};
 
 const NO_FLIP: usize = 0;
 const FLIP_HORIZONTAL: usize = 7;
@@ -183,7 +183,7 @@ fn push_perspective_features(
 mod tests {
     use super::{enumerate_active_features, feature_index_from_piece_code};
     use crate::constants::MAX_ACTIVE_FEATURES;
-    use crate::oopsmate_core::{Color, Piece, Position, Square, encode_piece};
+    use crate::oopsmate_core::{encode_piece, Color, Piece, Position, Square};
 
     #[test]
     fn startpos_enumerates_32_features_per_perspective() {
