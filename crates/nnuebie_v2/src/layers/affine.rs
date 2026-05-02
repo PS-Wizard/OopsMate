@@ -2,12 +2,9 @@ use crate::aligned::CacheAligned;
 use crate::arch::DENSE_CHUNK_SIZE;
 use crate::constants::{FC1_OUTPUTS, FC1_PADDED_INPUT_DIMS};
 use crate::network::DenseLayer;
-
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::{
-    __m256i, _mm_add_epi32, _mm_cvtsi128_si32, _mm_shuffle_epi32, _mm256_castsi256_si128,
-    _mm256_dpbusd_epi32, _mm256_extracti128_si256, _mm256_load_si256, _mm256_set1_epi32,
-    _mm256_setzero_si256, _mm256_store_si256,
+use crate::simd256::{
+    broadcast_i32_bytes32, dpbusd_i32x8, horizontal_sum_i32x8, load_bytes32_i8,
+    load_bytes32_u8_aligned, load_i32x8, store_i32x8, zero_i32x8, I32x8,
 };
 
 #[inline(always)]
@@ -37,18 +34,19 @@ pub fn affine_forward(
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2,avx512vnni,avx512vl")]
 unsafe fn affine_forward_vnni256(layer: &DenseLayer, input: &[u8], output: &mut [i32]) {
-    let (mut acc0, mut acc1, mut acc2, mut acc3) = unsafe {
+    let (mut acc0, mut acc1, mut acc2, mut acc3): (I32x8, I32x8, I32x8, I32x8) = unsafe {
         // SAFETY: biases are 64-byte aligned and contain 32 i32 outputs.
         (
-            _mm256_load_si256(layer.biases.as_ptr().cast::<__m256i>()),
-            _mm256_load_si256(layer.biases.as_ptr().add(8).cast::<__m256i>()),
-            _mm256_load_si256(layer.biases.as_ptr().add(16).cast::<__m256i>()),
-            _mm256_load_si256(layer.biases.as_ptr().add(24).cast::<__m256i>()),
+            load_i32x8(layer.biases.as_ptr(), 0),
+            load_i32x8(layer.biases.as_ptr(), 8),
+            load_i32x8(layer.biases.as_ptr(), 16),
+            load_i32x8(layer.biases.as_ptr(), 24),
         )
     };
 
     let input32 = input.as_ptr().cast::<u32>();
     let chunk_count = layer.padded_input_dims / DENSE_CHUNK_SIZE;
+    let weight_stride = layer.output_dims * DENSE_CHUNK_SIZE;
     let weights = layer.weights.as_ptr();
 
     for chunk in 0..chunk_count {
@@ -60,30 +58,28 @@ unsafe fn affine_forward_vnni256(layer: &DenseLayer, input: &[u8], output: &mut 
             continue;
         }
 
-        let packed_input = _mm256_set1_epi32(input_chunk as i32);
-        let weight_base = unsafe { weights.add(chunk * layer.output_dims * DENSE_CHUNK_SIZE) };
-        let (w0, w1, w2, w3) = unsafe {
-            // SAFETY: each chunk owns 32 * 4 = 128 packed weights, exposed as four aligned 32-byte loads.
-            (
-                _mm256_load_si256(weight_base.cast::<__m256i>()),
-                _mm256_load_si256(weight_base.add(32).cast::<__m256i>()),
-                _mm256_load_si256(weight_base.add(64).cast::<__m256i>()),
-                _mm256_load_si256(weight_base.add(96).cast::<__m256i>()),
-            )
-        };
+        unsafe {
+            // SAFETY: `weights` is 32-byte aligned; each chunk spans four aligned 32-byte loads.
+            let packed_input = broadcast_i32_bytes32(input_chunk as i32);
+            let weight_base = chunk * weight_stride;
+            let w0 = load_bytes32_i8(weights, weight_base);
+            let w1 = load_bytes32_i8(weights, weight_base + 32);
+            let w2 = load_bytes32_i8(weights, weight_base + 64);
+            let w3 = load_bytes32_i8(weights, weight_base + 96);
 
-        acc0 = _mm256_dpbusd_epi32(acc0, packed_input, w0);
-        acc1 = _mm256_dpbusd_epi32(acc1, packed_input, w1);
-        acc2 = _mm256_dpbusd_epi32(acc2, packed_input, w2);
-        acc3 = _mm256_dpbusd_epi32(acc3, packed_input, w3);
+            acc0 = dpbusd_i32x8(acc0, packed_input, w0);
+            acc1 = dpbusd_i32x8(acc1, packed_input, w1);
+            acc2 = dpbusd_i32x8(acc2, packed_input, w2);
+            acc3 = dpbusd_i32x8(acc3, packed_input, w3);
+        }
     }
 
     unsafe {
         // SAFETY: output scratch is 64-byte aligned and stores exactly 32 i32s.
-        _mm256_store_si256(output.as_mut_ptr().cast::<__m256i>(), acc0);
-        _mm256_store_si256(output.as_mut_ptr().add(8).cast::<__m256i>(), acc1);
-        _mm256_store_si256(output.as_mut_ptr().add(16).cast::<__m256i>(), acc2);
-        _mm256_store_si256(output.as_mut_ptr().add(24).cast::<__m256i>(), acc3);
+        store_i32x8(output.as_mut_ptr(), 0, acc0);
+        store_i32x8(output.as_mut_ptr(), 8, acc1);
+        store_i32x8(output.as_mut_ptr(), 16, acc2);
+        store_i32x8(output.as_mut_ptr(), 24, acc3);
     }
 }
 
@@ -111,26 +107,14 @@ pub fn affine_forward_single_output(
 unsafe fn affine_forward_single_output_vnni256(layer: &DenseLayer, input: &[u8]) -> i32 {
     let sum = unsafe {
         // SAFETY: fc_2 input and weights are 32-byte aligned and each exactly 32 bytes wide.
-        let input_vec = _mm256_load_si256(input.as_ptr().cast::<__m256i>());
-        let weight_vec = _mm256_load_si256(layer.weights.as_ptr().cast::<__m256i>());
-        _mm256_dpbusd_epi32(_mm256_setzero_si256(), input_vec, weight_vec)
+        let input_vec = load_bytes32_u8_aligned(input.as_ptr(), 0);
+        let weight_vec = load_bytes32_i8(layer.weights.as_ptr(), 0);
+        dpbusd_i32x8(zero_i32x8(), input_vec, weight_vec)
     };
 
-    horizontal_add_i32x8(sum) + layer.biases[0]
-}
-
-#[cfg(target_arch = "x86_64")]
-#[inline(always)]
-fn horizontal_add_i32x8(sum: __m256i) -> i32 {
     unsafe {
-        // SAFETY: pure register shuffles/adds on the eight accumulated i32 lanes.
-        let mut sum128 = _mm_add_epi32(
-            _mm256_castsi256_si128(sum),
-            _mm256_extracti128_si256(sum, 1),
-        );
-        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0b10_11_00_01));
-        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0b01_00_11_10));
-        _mm_cvtsi128_si32(sum128)
+        // SAFETY: `sum` is the result of an AVX2/VNNI kernel and remains in registers here.
+        horizontal_sum_i32x8(sum) + layer.biases[0]
     }
 }
 

@@ -1,12 +1,9 @@
-use crate::oopsmate_core::Color;
 #[cfg(test)]
 use crate::arch::{FT_PERMUTE_BLOCK_I16S, FT_PERMUTE_GROUP_I16S, FT_PERMUTE_INVERSE_ORDER};
-
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::{
-    __m256i, _mm256_load_si256, _mm256_max_epi16, _mm256_min_epi16, _mm256_mulhi_epi16,
-    _mm256_packus_epi16, _mm256_set1_epi16, _mm256_setzero_si256, _mm256_slli_epi16,
-    _mm256_store_si256,
+use crate::oopsmate_core::Color;
+use crate::simd256::{
+    is_32_byte_aligned, load_i16x16, max_i16x16, min_i16x16, mulhi_i16x16, packus_i16x16,
+    shl_i16x16, splat_i16x16, store_bytes32_u8, zero_i16x16,
 };
 
 const FT_CLAMP_MAX: i16 = 127 * 2;
@@ -33,7 +30,9 @@ fn transform_perspective(accumulation: &[i16], output: &mut [u8]) {
     #[cfg(target_arch = "x86_64")]
     {
         debug_assert!(is_32_byte_aligned(accumulation.as_ptr()));
-        debug_assert!(is_32_byte_aligned(unsafe { accumulation.as_ptr().add(half) }));
+        debug_assert!(is_32_byte_aligned(unsafe {
+            accumulation.as_ptr().add(half)
+        }));
         debug_assert!(is_32_byte_aligned(output.as_ptr()));
         unsafe {
             transform_perspective_avx2(accumulation, output);
@@ -72,56 +71,43 @@ fn transform_perspective_scalar(accumulation: &[i16], output: &mut [u8]) {
 }
 
 #[cfg(target_arch = "x86_64")]
-#[inline(always)]
-fn is_32_byte_aligned<T>(ptr: *const T) -> bool {
-    (ptr as usize & 31) == 0
-}
-
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 unsafe fn transform_perspective_avx2(accumulation: &[i16], output: &mut [u8]) {
     let half = accumulation.len() / 2;
     let chunk_count = half / FT_SIMD_OUTPUT_CHUNK;
-    let zero = _mm256_setzero_si256();
-    let one = _mm256_set1_epi16(FT_CLAMP_MAX);
-    let in0 = accumulation.as_ptr().cast::<__m256i>();
-    let in1 = unsafe { accumulation.as_ptr().add(half).cast::<__m256i>() };
-    let out = output.as_mut_ptr().cast::<__m256i>();
+    let zero = unsafe {
+        // SAFETY: zero vector construction is pure register setup.
+        zero_i16x16()
+    };
+    let one = unsafe {
+        // SAFETY: splat vector construction is pure register setup.
+        splat_i16x16(FT_CLAMP_MAX)
+    };
+    let input = accumulation.as_ptr();
+    let out = output.as_mut_ptr();
 
     for chunk in 0..chunk_count {
-        let base = chunk * 2;
-        let (sum0a, sum0b, sum1a, sum1b) = unsafe {
-            // SAFETY: caller guarantees both accumulation halves and output are 32-byte aligned.
-            // Each chunk consumes two aligned 256-bit vectors from each half and produces one
-            // aligned 256-bit packed output vector.
-            (
-                _mm256_slli_epi16(
-                    _mm256_max_epi16(
-                        _mm256_min_epi16(_mm256_load_si256(in0.add(base)), one),
-                        zero,
-                    ),
-                    FT_SIMD_SHIFT,
-                ),
-                _mm256_slli_epi16(
-                    _mm256_max_epi16(
-                        _mm256_min_epi16(_mm256_load_si256(in0.add(base + 1)), one),
-                        zero,
-                    ),
-                    FT_SIMD_SHIFT,
-                ),
-                _mm256_min_epi16(_mm256_load_si256(in1.add(base)), one),
-                _mm256_min_epi16(_mm256_load_si256(in1.add(base + 1)), one),
-            )
+        let left_offset = chunk * FT_SIMD_OUTPUT_CHUNK;
+        let right_offset = half + left_offset;
+        let packed = unsafe {
+            // SAFETY: caller guarantees both halves and output are 32-byte aligned and sized in 32-byte chunks.
+            let left0 = shl_i16x16::<FT_SIMD_SHIFT>(max_i16x16(
+                min_i16x16(load_i16x16(input, left_offset), one),
+                zero,
+            ));
+            let left1 = shl_i16x16::<FT_SIMD_SHIFT>(max_i16x16(
+                min_i16x16(load_i16x16(input, left_offset + 16), one),
+                zero,
+            ));
+            let right0 = min_i16x16(load_i16x16(input, right_offset), one);
+            let right1 = min_i16x16(load_i16x16(input, right_offset + 16), one);
+
+            packus_i16x16(mulhi_i16x16(left0, right0), mulhi_i16x16(left1, right1))
         };
 
-        let packed = _mm256_packus_epi16(
-            _mm256_mulhi_epi16(sum0a, sum1a),
-            _mm256_mulhi_epi16(sum0b, sum1b),
-        );
-
         unsafe {
-            // SAFETY: `out.add(chunk)` points to the aligned 32-byte slot for this chunk.
-            _mm256_store_si256(out.add(chunk), packed);
+            // SAFETY: `out` is 32-byte aligned and chunked in 32-byte output groups.
+            store_bytes32_u8(out, left_offset, packed);
         }
     }
 }

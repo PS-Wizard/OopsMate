@@ -2,12 +2,10 @@ use crate::aligned::CacheAligned;
 use crate::arch::DENSE_CHUNK_SIZE;
 use crate::constants::FC0_TOTAL_OUTPUTS;
 use crate::network::DenseLayer;
-
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::{
-    __m256i, _mm256_castsi256_ps, _mm256_cmpeq_epi32, _mm256_dpbusd_epi32, _mm256_load_si256,
-    _mm256_loadu_si256, _mm256_movemask_ps, _mm256_set1_epi32, _mm256_setzero_si256,
-    _mm256_store_si256,
+use crate::simd256::{
+    broadcast_i32_bytes32, dpbusd_i32x8, is_32_byte_aligned, load_bytes32_i8,
+    load_bytes32_u8_aligned, load_bytes32_u8_unaligned, load_i32x8, store_i32x8, zero_bytes32,
+    zero_lane_mask_u32x8, I32x8,
 };
 
 #[inline(always)]
@@ -34,44 +32,35 @@ pub fn sparse_affine_forward(
 }
 
 #[cfg(target_arch = "x86_64")]
-#[inline(always)]
-fn is_32_byte_aligned<T>(ptr: *const T) -> bool {
-    (ptr as usize & 31) == 0
-}
-
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2,avx512vnni,avx512vl")]
 unsafe fn accumulate_chunk_vnni256(
     layer: &DenseLayer,
     weights: *const i8,
     chunk: usize,
     input_chunk: u32,
-    acc0: &mut __m256i,
-    acc1: &mut __m256i,
+    acc0: &mut I32x8,
+    acc1: &mut I32x8,
 ) {
-    let packed_input = _mm256_set1_epi32(input_chunk as i32);
-    let (w0, w1) = unsafe {
-        // SAFETY: each chunk owns output_dims * 4 packed weights; fc_0 has 16 outputs,
-        // so two 32-byte loads cover the full 64-byte chunk payload.
-        let weight_base = weights.add(chunk * layer.output_dims * DENSE_CHUNK_SIZE);
-        (
-            _mm256_load_si256(weight_base.cast::<__m256i>()),
-            _mm256_load_si256(weight_base.add(32).cast::<__m256i>()),
-        )
-    };
+    unsafe {
+        // SAFETY: each chunk owns exactly two aligned 32-byte weight vectors for fc_0.
+        let packed_input = broadcast_i32_bytes32(input_chunk as i32);
+        let weight_base = chunk * layer.output_dims * DENSE_CHUNK_SIZE;
+        let w0 = load_bytes32_i8(weights, weight_base);
+        let w1 = load_bytes32_i8(weights, weight_base + 32);
 
-    *acc0 = _mm256_dpbusd_epi32(*acc0, packed_input, w0);
-    *acc1 = _mm256_dpbusd_epi32(*acc1, packed_input, w1);
+        *acc0 = dpbusd_i32x8(*acc0, packed_input, w0);
+        *acc1 = dpbusd_i32x8(*acc1, packed_input, w1);
+    }
 }
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2,avx512vnni,avx512vl")]
 unsafe fn sparse_affine_forward_vnni256(layer: &DenseLayer, input: &[u8], output: &mut [i32]) {
-    let (mut acc0, mut acc1) = unsafe {
+    let (mut acc0, mut acc1): (I32x8, I32x8) = unsafe {
         // SAFETY: biases are 64-byte aligned; two aligned 256-bit loads cover all 16 outputs.
         (
-            _mm256_load_si256(layer.biases.as_ptr().cast::<__m256i>()),
-            _mm256_load_si256(layer.biases.as_ptr().add(8).cast::<__m256i>()),
+            load_i32x8(layer.biases.as_ptr(), 0),
+            load_i32x8(layer.biases.as_ptr(), 8),
         )
     };
 
@@ -80,25 +69,28 @@ unsafe fn sparse_affine_forward_vnni256(layer: &DenseLayer, input: &[u8], output
     let block_count = chunk_count / 8;
     let weights = layer.weights.as_ptr();
     let input_ptr = input.as_ptr();
-    let zero = _mm256_setzero_si256();
+    let zero = unsafe {
+        // SAFETY: zero vector construction is pure register setup.
+        zero_bytes32()
+    };
 
     if block_count != 0 {
         let aligned_input = is_32_byte_aligned(input_ptr);
 
         for block in 0..block_count {
-            let block_ptr = unsafe { input_ptr.add(block * 32) };
+            let block_offset = block * 32;
             let input_block = unsafe {
-                // SAFETY: every block covers exactly 32 bytes inside `input`; aligned load is only
-                // used when the caller-provided input pointer is 32-byte aligned.
+                // SAFETY: every block covers exactly 32 bytes inside `input`.
                 if aligned_input {
-                    _mm256_load_si256(block_ptr.cast::<__m256i>())
+                    load_bytes32_u8_aligned(input_ptr, block_offset)
                 } else {
-                    _mm256_loadu_si256(block_ptr.cast::<__m256i>())
+                    load_bytes32_u8_unaligned(input_ptr, block_offset)
                 }
             };
-            let zero_mask =
-                _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpeq_epi32(input_block, zero)))
-                    as u32;
+            let zero_mask = unsafe {
+                // SAFETY: `input_block` and `zero` are valid AVX2 register values.
+                zero_lane_mask_u32x8(input_block, zero)
+            };
             let mut active_mask = (!zero_mask) & 0xff;
 
             while active_mask != 0 {
@@ -111,6 +103,7 @@ unsafe fn sparse_affine_forward_vnni256(layer: &DenseLayer, input: &[u8], output
                     input32.add(chunk).read_unaligned()
                 };
                 unsafe {
+                    // SAFETY: chunk index is in-bounds and `weights` points to aligned packed rows.
                     accumulate_chunk_vnni256(
                         layer,
                         weights,
@@ -134,14 +127,15 @@ unsafe fn sparse_affine_forward_vnni256(layer: &DenseLayer, input: &[u8], output
         }
 
         unsafe {
+            // SAFETY: chunk index is in-bounds and `weights` points to aligned packed rows.
             accumulate_chunk_vnni256(layer, weights, chunk, input_chunk, &mut acc0, &mut acc1);
         }
     }
 
     unsafe {
         // SAFETY: output scratch is 64-byte aligned; two aligned 256-bit stores write exactly that.
-        _mm256_store_si256(output.as_mut_ptr().cast::<__m256i>(), acc0);
-        _mm256_store_si256(output.as_mut_ptr().add(8).cast::<__m256i>(), acc1);
+        store_i32x8(output.as_mut_ptr(), 0, acc0);
+        store_i32x8(output.as_mut_ptr(), 8, acc1);
     }
 }
 

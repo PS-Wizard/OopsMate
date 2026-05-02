@@ -3,11 +3,7 @@ use super::simd::{
     can_vectorize_i32_6,
 };
 use crate::constants::PSQT_BUCKETS;
-
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::{
-    __m256i, _mm256_add_epi32, _mm256_load_si256, _mm256_store_si256, _mm256_sub_epi32,
-};
+use crate::simd256::{add_i32x8, load_i32x8, store_i32x8, sub_i32x8};
 
 #[inline(always)]
 pub(crate) fn psqt_add(psqt: &mut [i32; PSQT_BUCKETS], add: &[i32]) {
@@ -33,7 +29,11 @@ pub(crate) fn psqt_sub(psqt: &mut [i32; PSQT_BUCKETS], sub: &[i32]) {
 pub(crate) fn psqt_add_sub(psqt: &mut [i32; PSQT_BUCKETS], add: &[i32], sub: &[i32]) {
     debug_assert_eq!(add.len(), PSQT_BUCKETS);
     debug_assert_eq!(sub.len(), PSQT_BUCKETS);
-    debug_assert!(can_vectorize_i32_3(psqt.as_ptr(), add.as_ptr(), sub.as_ptr()));
+    debug_assert!(can_vectorize_i32_3(
+        psqt.as_ptr(),
+        add.as_ptr(),
+        sub.as_ptr()
+    ));
     #[cfg(target_arch = "x86_64")]
     unsafe {
         psqt_add_sub_avx2(psqt, add, sub);
@@ -47,7 +47,11 @@ pub(crate) fn psqt_add_into_both(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     debug_assert_eq!(add.len(), PSQT_BUCKETS);
-    debug_assert!(can_vectorize_i32_3(base.as_ptr(), add.as_ptr(), out.as_ptr()));
+    debug_assert!(can_vectorize_i32_3(
+        base.as_ptr(),
+        add.as_ptr(),
+        out.as_ptr()
+    ));
     #[cfg(target_arch = "x86_64")]
     unsafe {
         psqt_add_into_both_avx2(base, add, out);
@@ -61,7 +65,11 @@ pub(crate) fn psqt_sub_into_both(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     debug_assert_eq!(sub.len(), PSQT_BUCKETS);
-    debug_assert!(can_vectorize_i32_3(base.as_ptr(), sub.as_ptr(), out.as_ptr()));
+    debug_assert!(can_vectorize_i32_3(
+        base.as_ptr(),
+        sub.as_ptr(),
+        out.as_ptr()
+    ));
     #[cfg(target_arch = "x86_64")]
     unsafe {
         psqt_sub_into_both_avx2(base, sub, out);
@@ -77,7 +85,12 @@ pub(crate) fn psqt_add1_sub1_into(
 ) {
     debug_assert_eq!(add.len(), PSQT_BUCKETS);
     debug_assert_eq!(sub.len(), PSQT_BUCKETS);
-    debug_assert!(can_vectorize_i32_4(base.as_ptr(), add.as_ptr(), sub.as_ptr(), out.as_ptr()));
+    debug_assert!(can_vectorize_i32_4(
+        base.as_ptr(),
+        add.as_ptr(),
+        sub.as_ptr(),
+        out.as_ptr()
+    ));
     #[cfg(target_arch = "x86_64")]
     unsafe {
         psqt_add1_sub1_into_avx2(base, add, sub, out);
@@ -93,7 +106,12 @@ pub(crate) fn psqt_add1_sub1_into_both(
 ) {
     debug_assert_eq!(add.len(), PSQT_BUCKETS);
     debug_assert_eq!(sub.len(), PSQT_BUCKETS);
-    debug_assert!(can_vectorize_i32_4(base.as_ptr(), add.as_ptr(), sub.as_ptr(), out.as_ptr()));
+    debug_assert!(can_vectorize_i32_4(
+        base.as_ptr(),
+        add.as_ptr(),
+        sub.as_ptr(),
+        out.as_ptr()
+    ));
     #[cfg(target_arch = "x86_64")]
     unsafe {
         psqt_add1_sub1_into_both_avx2(base, add, sub, out);
@@ -227,11 +245,9 @@ pub(crate) fn psqt_add2_sub2_into(
 #[target_feature(enable = "avx2")]
 unsafe fn psqt_add_avx2(psqt: &mut [i32; PSQT_BUCKETS], add: &[i32]) {
     unsafe {
-        let value = _mm256_add_epi32(
-            _mm256_load_si256(psqt.as_ptr().cast::<__m256i>()),
-            _mm256_load_si256(add.as_ptr().cast::<__m256i>()),
-        );
-        _mm256_store_si256(psqt.as_mut_ptr().cast::<__m256i>(), value);
+        // SAFETY: callers validate 32-byte alignment for both 8-lane i32 vectors.
+        let value = add_i32x8(load_i32x8(psqt.as_ptr(), 0), load_i32x8(add.as_ptr(), 0));
+        store_i32x8(psqt.as_mut_ptr(), 0, value);
     }
 }
 
@@ -239,11 +255,9 @@ unsafe fn psqt_add_avx2(psqt: &mut [i32; PSQT_BUCKETS], add: &[i32]) {
 #[target_feature(enable = "avx2")]
 unsafe fn psqt_sub_avx2(psqt: &mut [i32; PSQT_BUCKETS], sub: &[i32]) {
     unsafe {
-        let value = _mm256_sub_epi32(
-            _mm256_load_si256(psqt.as_ptr().cast::<__m256i>()),
-            _mm256_load_si256(sub.as_ptr().cast::<__m256i>()),
-        );
-        _mm256_store_si256(psqt.as_mut_ptr().cast::<__m256i>(), value);
+        // SAFETY: callers validate 32-byte alignment for both 8-lane i32 vectors.
+        let value = sub_i32x8(load_i32x8(psqt.as_ptr(), 0), load_i32x8(sub.as_ptr(), 0));
+        store_i32x8(psqt.as_mut_ptr(), 0, value);
     }
 }
 
@@ -251,14 +265,12 @@ unsafe fn psqt_sub_avx2(psqt: &mut [i32; PSQT_BUCKETS], sub: &[i32]) {
 #[target_feature(enable = "avx2")]
 unsafe fn psqt_add_sub_avx2(psqt: &mut [i32; PSQT_BUCKETS], add: &[i32], sub: &[i32]) {
     unsafe {
-        let value = _mm256_add_epi32(
-            _mm256_load_si256(psqt.as_ptr().cast::<__m256i>()),
-            _mm256_sub_epi32(
-                _mm256_load_si256(add.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(sub.as_ptr().cast::<__m256i>()),
-            ),
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = add_i32x8(
+            load_i32x8(psqt.as_ptr(), 0),
+            sub_i32x8(load_i32x8(add.as_ptr(), 0), load_i32x8(sub.as_ptr(), 0)),
         );
-        _mm256_store_si256(psqt.as_mut_ptr().cast::<__m256i>(), value);
+        store_i32x8(psqt.as_mut_ptr(), 0, value);
     }
 }
 
@@ -270,12 +282,10 @@ unsafe fn psqt_add_into_both_avx2(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     unsafe {
-        let value = _mm256_add_epi32(
-            _mm256_load_si256(base.as_ptr().cast::<__m256i>()),
-            _mm256_load_si256(add.as_ptr().cast::<__m256i>()),
-        );
-        _mm256_store_si256(base.as_mut_ptr().cast::<__m256i>(), value);
-        _mm256_store_si256(out.as_mut_ptr().cast::<__m256i>(), value);
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = add_i32x8(load_i32x8(base.as_ptr(), 0), load_i32x8(add.as_ptr(), 0));
+        store_i32x8(base.as_mut_ptr(), 0, value);
+        store_i32x8(out.as_mut_ptr(), 0, value);
     }
 }
 
@@ -287,12 +297,10 @@ unsafe fn psqt_sub_into_both_avx2(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     unsafe {
-        let value = _mm256_sub_epi32(
-            _mm256_load_si256(base.as_ptr().cast::<__m256i>()),
-            _mm256_load_si256(sub.as_ptr().cast::<__m256i>()),
-        );
-        _mm256_store_si256(base.as_mut_ptr().cast::<__m256i>(), value);
-        _mm256_store_si256(out.as_mut_ptr().cast::<__m256i>(), value);
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = sub_i32x8(load_i32x8(base.as_ptr(), 0), load_i32x8(sub.as_ptr(), 0));
+        store_i32x8(base.as_mut_ptr(), 0, value);
+        store_i32x8(out.as_mut_ptr(), 0, value);
     }
 }
 
@@ -305,14 +313,12 @@ unsafe fn psqt_add1_sub1_into_avx2(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     unsafe {
-        let value = _mm256_add_epi32(
-            _mm256_load_si256(base.as_ptr().cast::<__m256i>()),
-            _mm256_sub_epi32(
-                _mm256_load_si256(add.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(sub.as_ptr().cast::<__m256i>()),
-            ),
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = add_i32x8(
+            load_i32x8(base.as_ptr(), 0),
+            sub_i32x8(load_i32x8(add.as_ptr(), 0), load_i32x8(sub.as_ptr(), 0)),
         );
-        _mm256_store_si256(out.as_mut_ptr().cast::<__m256i>(), value);
+        store_i32x8(out.as_mut_ptr(), 0, value);
     }
 }
 
@@ -325,15 +331,13 @@ unsafe fn psqt_add1_sub1_into_both_avx2(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     unsafe {
-        let value = _mm256_add_epi32(
-            _mm256_load_si256(base.as_ptr().cast::<__m256i>()),
-            _mm256_sub_epi32(
-                _mm256_load_si256(add.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(sub.as_ptr().cast::<__m256i>()),
-            ),
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = add_i32x8(
+            load_i32x8(base.as_ptr(), 0),
+            sub_i32x8(load_i32x8(add.as_ptr(), 0), load_i32x8(sub.as_ptr(), 0)),
         );
-        _mm256_store_si256(base.as_mut_ptr().cast::<__m256i>(), value);
-        _mm256_store_si256(out.as_mut_ptr().cast::<__m256i>(), value);
+        store_i32x8(base.as_mut_ptr(), 0, value);
+        store_i32x8(out.as_mut_ptr(), 0, value);
     }
 }
 
@@ -347,17 +351,12 @@ unsafe fn psqt_add1_sub2_into_avx2(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     unsafe {
-        let value = _mm256_sub_epi32(
-            _mm256_add_epi32(
-                _mm256_load_si256(base.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(add.as_ptr().cast::<__m256i>()),
-            ),
-            _mm256_add_epi32(
-                _mm256_load_si256(sub0.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(sub1.as_ptr().cast::<__m256i>()),
-            ),
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = sub_i32x8(
+            add_i32x8(load_i32x8(base.as_ptr(), 0), load_i32x8(add.as_ptr(), 0)),
+            add_i32x8(load_i32x8(sub0.as_ptr(), 0), load_i32x8(sub1.as_ptr(), 0)),
         );
-        _mm256_store_si256(out.as_mut_ptr().cast::<__m256i>(), value);
+        store_i32x8(out.as_mut_ptr(), 0, value);
     }
 }
 
@@ -371,18 +370,13 @@ unsafe fn psqt_add1_sub2_into_both_avx2(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     unsafe {
-        let value = _mm256_sub_epi32(
-            _mm256_add_epi32(
-                _mm256_load_si256(base.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(add.as_ptr().cast::<__m256i>()),
-            ),
-            _mm256_add_epi32(
-                _mm256_load_si256(sub0.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(sub1.as_ptr().cast::<__m256i>()),
-            ),
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = sub_i32x8(
+            add_i32x8(load_i32x8(base.as_ptr(), 0), load_i32x8(add.as_ptr(), 0)),
+            add_i32x8(load_i32x8(sub0.as_ptr(), 0), load_i32x8(sub1.as_ptr(), 0)),
         );
-        _mm256_store_si256(base.as_mut_ptr().cast::<__m256i>(), value);
-        _mm256_store_si256(out.as_mut_ptr().cast::<__m256i>(), value);
+        store_i32x8(base.as_mut_ptr(), 0, value);
+        store_i32x8(out.as_mut_ptr(), 0, value);
     }
 }
 
@@ -396,17 +390,12 @@ unsafe fn psqt_add2_sub1_into_avx2(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     unsafe {
-        let value = _mm256_add_epi32(
-            _mm256_add_epi32(
-                _mm256_load_si256(base.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(add0.as_ptr().cast::<__m256i>()),
-            ),
-            _mm256_sub_epi32(
-                _mm256_load_si256(add1.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(sub.as_ptr().cast::<__m256i>()),
-            ),
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = add_i32x8(
+            add_i32x8(load_i32x8(base.as_ptr(), 0), load_i32x8(add0.as_ptr(), 0)),
+            sub_i32x8(load_i32x8(add1.as_ptr(), 0), load_i32x8(sub.as_ptr(), 0)),
         );
-        _mm256_store_si256(out.as_mut_ptr().cast::<__m256i>(), value);
+        store_i32x8(out.as_mut_ptr(), 0, value);
     }
 }
 
@@ -420,18 +409,13 @@ unsafe fn psqt_add2_sub1_into_both_avx2(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     unsafe {
-        let value = _mm256_add_epi32(
-            _mm256_add_epi32(
-                _mm256_load_si256(base.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(add0.as_ptr().cast::<__m256i>()),
-            ),
-            _mm256_sub_epi32(
-                _mm256_load_si256(add1.as_ptr().cast::<__m256i>()),
-                _mm256_load_si256(sub.as_ptr().cast::<__m256i>()),
-            ),
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = add_i32x8(
+            add_i32x8(load_i32x8(base.as_ptr(), 0), load_i32x8(add0.as_ptr(), 0)),
+            sub_i32x8(load_i32x8(add1.as_ptr(), 0), load_i32x8(sub.as_ptr(), 0)),
         );
-        _mm256_store_si256(base.as_mut_ptr().cast::<__m256i>(), value);
-        _mm256_store_si256(out.as_mut_ptr().cast::<__m256i>(), value);
+        store_i32x8(base.as_mut_ptr(), 0, value);
+        store_i32x8(out.as_mut_ptr(), 0, value);
     }
 }
 
@@ -446,19 +430,14 @@ unsafe fn psqt_add2_sub2_into_avx2(
     out: &mut [i32; PSQT_BUCKETS],
 ) {
     unsafe {
-        let value = _mm256_add_epi32(
-            _mm256_load_si256(base.as_ptr().cast::<__m256i>()),
-            _mm256_sub_epi32(
-                _mm256_add_epi32(
-                    _mm256_load_si256(add0.as_ptr().cast::<__m256i>()),
-                    _mm256_load_si256(add1.as_ptr().cast::<__m256i>()),
-                ),
-                _mm256_add_epi32(
-                    _mm256_load_si256(sub0.as_ptr().cast::<__m256i>()),
-                    _mm256_load_si256(sub1.as_ptr().cast::<__m256i>()),
-                ),
+        // SAFETY: callers validate 32-byte alignment for all 8-lane i32 vectors.
+        let value = add_i32x8(
+            load_i32x8(base.as_ptr(), 0),
+            sub_i32x8(
+                add_i32x8(load_i32x8(add0.as_ptr(), 0), load_i32x8(add1.as_ptr(), 0)),
+                add_i32x8(load_i32x8(sub0.as_ptr(), 0), load_i32x8(sub1.as_ptr(), 0)),
             ),
         );
-        _mm256_store_si256(out.as_mut_ptr().cast::<__m256i>(), value);
+        store_i32x8(out.as_mut_ptr(), 0, value);
     }
 }

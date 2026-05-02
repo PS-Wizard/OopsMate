@@ -14,6 +14,7 @@ mod finny;
 mod layers;
 mod layout;
 mod loader;
+mod simd256;
 mod transform;
 mod update;
 
