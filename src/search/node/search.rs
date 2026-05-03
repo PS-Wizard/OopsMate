@@ -20,7 +20,7 @@ use crate::{Move, Position};
 pub(crate) fn search_node<E: EvalProvider>(
     pos: &mut Position,
     ctx: &mut SearchContext<'_, E>,
-    mut depth: u8,
+    depth: u8,
     mut alpha: i32,
     beta: i32,
     node: NodeState,
@@ -110,6 +110,7 @@ pub(crate) fn search_node<E: EvalProvider>(
         return score;
     }
 
+    let mut singular_extension = 0u8;
     if features::SINGULAR_EXTENSIONS
         && !node.pv_node
         && node.excluded_move.is_none()
@@ -132,7 +133,7 @@ pub(crate) fn search_node<E: EvalProvider>(
                 );
 
                 if score < singular_beta {
-                    depth += 1;
+                    singular_extension = 1;
                 } else if score >= beta {
                     return singular_beta;
                 }
@@ -181,14 +182,14 @@ pub(crate) fn search_node<E: EvalProvider>(
             break;
         }
 
-        saw_legal_move = true;
-
         if let Some(excluded) = node.excluded_move {
             if mv.0 == excluded.0 {
                 move_index += 1;
                 continue;
             }
         }
+
+        saw_legal_move = true;
 
         let delta = ctx.eval.update_on_move(&mut ctx.eval_state, pos, mv);
         pos.make_move(mv);
@@ -198,6 +199,12 @@ pub(crate) fn search_node<E: EvalProvider>(
         } else {
             0
         };
+        let move_extension = check_extension
+            + if singular_extension != 0 && tt_move.is_some_and(|tt_mv| mv.0 == tt_mv.0) {
+                singular_extension
+            } else {
+                0
+            };
 
         if use_futility
             && move_index > 0
@@ -226,7 +233,7 @@ pub(crate) fn search_node<E: EvalProvider>(
                 move_index,
                 in_check,
                 gives_check,
-                check_extension,
+                move_extension,
                 node,
             )
         } else {
@@ -241,7 +248,7 @@ pub(crate) fn search_node<E: EvalProvider>(
                 move_index,
                 in_check,
                 gives_check,
-                check_extension,
+                move_extension,
                 node,
                 is_hash_move,
             )
@@ -293,7 +300,9 @@ pub(crate) fn search_node<E: EvalProvider>(
     }
 
     if !saw_legal_move {
-        return if in_check {
+        return if node.excluded_move.is_some() {
+            alpha_start
+        } else if in_check {
             checkmate_score(node.ply)
         } else {
             0
