@@ -66,7 +66,7 @@ pub(crate) fn should_stop_next_iteration(
             }
 
             let time_remaining = soft_time_ms.saturating_sub(elapsed_total);
-            let predicted_next_depth = current_depth_time.saturating_mul(2);
+            let predicted_next_depth = current_depth_time.saturating_mul(3);
 
             predicted_next_depth > time_remaining
         }

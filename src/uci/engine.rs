@@ -14,6 +14,7 @@ pub struct UciEngine<E: EvalProvider> {
     pub(crate) tt: Option<TranspositionTable>,
     pub(crate) eval: E,
     pub(crate) active_search: Option<ActiveSearch>,
+    pub(crate) move_overhead_ms: u64,
 }
 
 impl<E: EvalProvider> UciEngine<E> {
@@ -24,6 +25,7 @@ impl<E: EvalProvider> UciEngine<E> {
             tt: Some(TranspositionTable::new_mb(256)),
             eval,
             active_search: None,
+            move_overhead_ms: crate::time_control::DEFAULT_MOVE_OVERHEAD_MS,
         }
     }
 }

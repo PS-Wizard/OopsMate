@@ -3,6 +3,7 @@
 use std::time::{Duration, Instant};
 
 const MIN_SEARCH_BUDGET_MS: u64 = 1;
+pub const DEFAULT_MOVE_OVERHEAD_MS: u64 = 25;
 
 /// Soft and hard limits for a single search allocation.
 pub struct TimeControl {
@@ -39,30 +40,41 @@ impl TimeControl {
 /// Derives a practical move allocation from remaining time, increment, and
 /// optional moves-to-go information.
 pub fn calculate_time_allocation(our_time: u64, our_inc: u64, moves_to_go: Option<u32>) -> u64 {
-    if let Some(mtg) = moves_to_go.filter(|&mtg| mtg > 0) {
-        let base = our_time / mtg as u64;
-        let inc_share = (our_inc * 3) / 4;
-        let allocation = base.saturating_add(inc_share);
-        let max_share = (our_time / 2).max(MIN_SEARCH_BUDGET_MS);
-        return allocation.min(max_share).max(MIN_SEARCH_BUDGET_MS);
+    calculate_clock_limits(our_time, our_inc, moves_to_go, DEFAULT_MOVE_OVERHEAD_MS).0
+}
+
+/// Derives soft and hard search limits from UCI clock data.
+pub fn calculate_clock_limits(
+    our_time: u64,
+    our_inc: u64,
+    moves_to_go: Option<u32>,
+    move_overhead_ms: u64,
+) -> (u64, u64) {
+    let available = our_time
+        .saturating_sub(move_overhead_ms)
+        .max(MIN_SEARCH_BUDGET_MS);
+    let moves_left = moves_to_go
+        .filter(|&mtg| mtg > 0)
+        .map(u64::from)
+        .unwrap_or_else(|| match our_time {
+            0..=1_000 => 12,
+            1_001..=5_000 => 18,
+            5_001..=20_000 => 24,
+            _ => 30,
+        });
+
+    let base = (available / moves_left).max(MIN_SEARCH_BUDGET_MS);
+    let soft = base.saturating_add((our_inc * 3) / 4);
+    let mut hard_cap = base.saturating_mul(4).min((available * 35) / 100);
+
+    if available < 300 {
+        hard_cap = hard_cap.min((available * 15) / 100);
+    } else if available < 1_000 {
+        hard_cap = hard_cap.min(available / 4);
     }
 
-    let moves_left = match our_time {
-        0..=1_000 => 10,
-        1_001..=5_000 => 16,
-        5_001..=20_000 => 22,
-        _ => 28,
-    };
-    let base_time = our_time / moves_left;
-    let allocated = base_time + (our_inc * 7) / 8;
-    let max_share = match our_time {
-        0..=1_000 => our_time / 2,
-        1_001..=5_000 => our_time / 3,
-        _ => our_time / 4,
-    }
-    .max(MIN_SEARCH_BUDGET_MS);
-
-    allocated.min(max_share).max(MIN_SEARCH_BUDGET_MS)
+    let hard = hard_cap.max(MIN_SEARCH_BUDGET_MS).min(available);
+    (soft.min(hard).max(MIN_SEARCH_BUDGET_MS), hard)
 }
 
 /// Shrinks an external time limit into an internal search budget that leaves a
@@ -82,25 +94,26 @@ pub fn clamp_search_budget(limit_ms: u64) -> u64 {
 /// Keeps `movetime` close to the requested limit while preserving a tiny
 /// scheduling reserve so the engine does not routinely flag on time.
 pub fn clamp_movetime_budget(limit_ms: u64) -> u64 {
-    let reserve = match limit_ms {
-        0..=50 => 1,
-        51..=100 => 2,
-        101..=250 => 5,
-        251..=1_000 => 10,
-        _ => (limit_ms / 100).clamp(10, 50),
-    };
+    clamp_movetime_budget_with_overhead(limit_ms, DEFAULT_MOVE_OVERHEAD_MS)
+}
 
+/// Keeps `movetime` inside the requested limit while preserving UCI overhead.
+pub fn clamp_movetime_budget_with_overhead(limit_ms: u64, move_overhead_ms: u64) -> u64 {
+    let reserve = move_overhead_ms.min(limit_ms.saturating_sub(MIN_SEARCH_BUDGET_MS));
     limit_ms.saturating_sub(reserve).max(MIN_SEARCH_BUDGET_MS)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{calculate_time_allocation, clamp_movetime_budget, clamp_search_budget};
+    use super::{
+        calculate_clock_limits, calculate_time_allocation, clamp_movetime_budget,
+        clamp_movetime_budget_with_overhead, clamp_search_budget,
+    };
 
     #[test]
     fn sudden_death_uses_more_than_old_fraction_at_five_seconds() {
         let allocation = calculate_time_allocation(5_000, 0, None);
-        assert!(allocation >= 300);
+        assert!(allocation >= 250);
     }
 
     #[test]
@@ -118,7 +131,15 @@ mod tests {
 
     #[test]
     fn movetime_budget_uses_most_of_requested_time() {
-        assert_eq!(clamp_movetime_budget(500), 490);
-        assert_eq!(clamp_movetime_budget(20), 19);
+        assert_eq!(clamp_movetime_budget(500), 475);
+        assert_eq!(clamp_movetime_budget(20), 1);
+        assert_eq!(clamp_movetime_budget_with_overhead(500, 10), 490);
+    }
+
+    #[test]
+    fn clock_limits_keep_hard_cap_below_remaining_time() {
+        let (soft, hard) = calculate_clock_limits(1_000, 0, None, 25);
+        assert!(soft <= hard);
+        assert!(hard <= 975 / 4);
     }
 }

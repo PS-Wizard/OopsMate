@@ -1,7 +1,7 @@
 use super::UciEngine;
 use crate::{
     search::{search_with_stop_signal, SearchLimits},
-    time_control::{calculate_time_allocation, clamp_movetime_budget, clamp_search_budget},
+    time_control::{calculate_clock_limits, clamp_movetime_budget_with_overhead},
     Position,
 };
 use std::io::{self, BufRead, Write};
@@ -56,6 +56,7 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
         println!("id name OopsMate");
         println!("id author Swoyam P.");
         println!("option name Hash type spin default 64 min 1 max 1024");
+        println!("option name Move Overhead type spin default 25 min 0 max 2000");
         println!("uciok");
         let _ = std::io::stdout().flush();
     }
@@ -78,10 +79,18 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
 
         let value = parts[name_end + 1];
 
-        if name.as_str() == "hash" {
-            if let Ok(mb) = value.parse::<usize>() {
-                self.tt = Some(crate::tpt::TranspositionTable::new_mb(mb));
+        match name.as_str() {
+            "hash" => {
+                if let Ok(mb) = value.parse::<usize>() {
+                    self.tt = Some(crate::tpt::TranspositionTable::new_mb(mb));
+                }
             }
+            "move overhead" => {
+                if let Ok(ms) = value.parse::<u64>() {
+                    self.move_overhead_ms = ms.min(2_000);
+                }
+            }
+            _ => {}
         }
     }
 
@@ -220,7 +229,10 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
         let limits = if infinite {
             SearchLimits::infinite()
         } else if let Some(mt) = movetime {
-            SearchLimits::movetime(clamp_movetime_budget(mt))
+            SearchLimits::movetime(clamp_movetime_budget_with_overhead(
+                mt,
+                self.move_overhead_ms,
+            ))
         } else if wtime.is_some() || btime.is_some() {
             let our_time = match self.position.side_to_move {
                 crate::types::Color::White => wtime.unwrap_or(60000),
@@ -230,8 +242,8 @@ impl<E: crate::eval::EvalProvider> UciEngine<E> {
                 crate::types::Color::White => winc,
                 crate::types::Color::Black => binc,
             };
-            let hard_time_ms = calculate_time_allocation(our_time, our_inc, movestogo);
-            let soft_time_ms = clamp_search_budget(hard_time_ms);
+            let (soft_time_ms, hard_time_ms) =
+                calculate_clock_limits(our_time, our_inc, movestogo, self.move_overhead_ms);
             SearchLimits::clock(soft_time_ms, hard_time_ms)
         } else {
             SearchLimits::infinite()

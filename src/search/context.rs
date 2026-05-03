@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
-const NODE_TIME_CHECK_MASK: u64 = 63;
+const NODE_TIME_CHECK_MASK: u64 = 255;
 
 /// Mutable counters and stop state carried through a single search.
 pub(crate) struct SearchStats {

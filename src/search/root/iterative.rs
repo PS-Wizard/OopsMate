@@ -74,6 +74,12 @@ pub(crate) fn run_search<E: EvalProvider>(
         }
     }
 
+    if completed_depth == 0 {
+        if let Some(mv) = best_move {
+            print_uci_info(0, best_score, &ctx.stats, ctx.tt, &mv);
+        }
+    }
+
     best_move.map(|mv| SearchInfo {
         best_move: mv,
         score: best_score,
