@@ -40,7 +40,6 @@ search-full = [
     "aspiration-windows",
     "iid",
     "singular-extensions",
-    "check-extensions",
 ]
 pruning-full = [
     "null-move",
