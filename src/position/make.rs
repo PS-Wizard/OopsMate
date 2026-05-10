@@ -28,6 +28,7 @@ impl Position {
             castling_rights: self.castling_rights,
             en_passant: self.en_passant,
             halfmove: self.halfmove,
+            plies_from_null: self.plies_from_null,
             hash: self.hash,
             captured_piece,
         });
@@ -134,6 +135,7 @@ impl Position {
         } else {
             self.halfmove += 1;
         }
+        self.plies_from_null = self.plies_from_null.saturating_add(1);
 
         if self.side_to_move == Color::Black {
             self.fullmove += 1;
@@ -157,6 +159,7 @@ impl Position {
             castling_rights: self.castling_rights,
             en_passant: self.en_passant,
             halfmove: self.halfmove,
+            plies_from_null: self.plies_from_null,
             hash: self.hash,
             captured_piece: None,
         });
@@ -167,6 +170,7 @@ impl Position {
         }
 
         self.halfmove += 1;
+        self.plies_from_null = 0;
         self.hash ^= SIDE_KEY;
         self.side_to_move = self.side_to_move.flip();
     }

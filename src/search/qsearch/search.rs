@@ -20,7 +20,7 @@ pub(crate) fn qsearch<E: EvalProvider>(
         return alpha;
     }
 
-    if pos.is_fifty_move_draw() || pos.is_repetition() {
+    if (pos.is_fifty_move_draw() && !pos.is_in_check()) || pos.is_repetition() {
         return 0;
     }
 

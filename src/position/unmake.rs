@@ -11,6 +11,7 @@ impl Position {
         let state = self.history.pop().expect("No history to unmake null move");
         self.en_passant = state.en_passant;
         self.halfmove = state.halfmove;
+        self.plies_from_null = state.plies_from_null;
         self.hash = state.hash;
         self.castling_rights = state.castling_rights;
         self.side_to_move = self.side_to_move.flip();
@@ -24,6 +25,7 @@ impl Position {
         self.castling_rights = state.castling_rights;
         self.en_passant = state.en_passant;
         self.halfmove = state.halfmove;
+        self.plies_from_null = state.plies_from_null;
         self.hash = state.hash;
 
         let to = m.to();

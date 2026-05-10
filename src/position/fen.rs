@@ -21,6 +21,7 @@ impl Position {
             castling_rights: CastleRights::NONE,
             en_passant: None,
             halfmove: 0,
+            plies_from_null: 0,
             fullmove: 1,
             hash: 0,
             history: Vec::with_capacity(1024),

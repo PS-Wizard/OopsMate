@@ -33,7 +33,9 @@ impl Position {
         }
 
         let hash = self.hash;
-        let max_back = (self.halfmove as usize).min(self.history.len());
+        let max_back = (self.halfmove as usize)
+            .min(self.plies_from_null as usize)
+            .min(self.history.len());
 
         for prev in self
             .history

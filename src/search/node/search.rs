@@ -36,7 +36,7 @@ pub(crate) fn search_node<E: EvalProvider>(
         return 0;
     }
 
-    if pos.is_fifty_move_draw() || (node.ply > 0 && pos.is_repetition()) {
+    if (pos.is_fifty_move_draw() && !pos.is_in_check()) || (node.ply > 0 && pos.is_repetition()) {
         return 0;
     }
 

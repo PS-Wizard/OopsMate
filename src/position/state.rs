@@ -9,6 +9,8 @@ pub struct GameState {
     pub en_passant: Option<u8>,
     /// Halfmove clock before the move.
     pub halfmove: u16,
+    /// Plies since the previous null move before the move.
+    pub plies_from_null: u16,
     /// Zobrist hash before the move.
     pub hash: u64,
     /// Captured piece type, used during unmake.
@@ -38,6 +40,8 @@ pub struct Position {
     pub en_passant: Option<u8>,
     /// Halfmove clock used for the fifty-move rule.
     pub halfmove: u16,
+    /// Plies since the previous null move, used to keep search repetitions local.
+    pub plies_from_null: u16,
     /// Fullmove counter from the FEN state.
     pub fullmove: u16,
     /// Incrementally maintained Zobrist hash.
