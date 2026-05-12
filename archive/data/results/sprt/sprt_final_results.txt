@@ -1,0 +1,249 @@
+OopsMate 1v1 SPRT Summary
+=========================
+Started game 124 of 40000 (bitbit vs OopsMate-NNUE)
+Finished game 120 (bitbit vs OopsMate-NNUE): 1/2-1/2 {Draw by adjudication}
+--------------------------------------------------
+Results of OopsMate-NNUE vs bitbit (10+0.1, NULL, 64MB - 256MB, book.epd):
+Elo: 104.37 +/- 41.66, nElo: 166.25 +/- 62.16
+LOS: 100.00 %, DrawRatio: 21.67 %, PairsRatio: 4.88
+Games: 120, Wins: 50, Losses: 15, Draws: 55, Points: 77.5 (64.58 %)
+Ptnml(0-2): [1, 7, 13, 34, 5], WL/DD Ratio: 0.86
+LLR: 0.75 (25.4%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+--------------------------------------------------
+ Final Result vs boot7
+Warning; Last info string with score not found from boot7
+Warning; Last info string with score not found from boot7
+Warning; Last info string with score not found from boot7
+Finished game 59 (OopsMate-NNUE vs boot7): 1/2-1/2 {Draw by 3-fold repetition}
+Results of OopsMate-NNUE vs boot7 (10+0.1, NULL - 1t, 64MB - 128MB, book.epd):
+LLR: -0.43 (-14.8%) (-2.94, 2.94) [0.00, 5.00]
+
+--------------------------------------------------
+Results of OopsMate-NNUE vs boot7 (10+0.1, NULL - 1t, 64MB - 128MB, book.epd):
+Elo: -154.14 +/- 44.15, nElo: -351.68 +/- 87.91
+LOS: 0.00 %, DrawRatio: 16.67 %, PairsRatio: 0.04
+Games: 60, Wins: 6, Losses: 31, Draws: 23, Points: 17.5 (29.17 %)
+Ptnml(0-2): [2, 22, 5, 1, 0], WL/DD Ratio: inf
+LLR: -0.43 (-14.8%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+
+
+--------------------------------------------------
+ Final Result vs combusken
+Started game 84 of 40000 (combusken vs OopsMate-NNUE)
+Finished game 81 (OopsMate-NNUE vs combusken): 1-0 {White mates}
+Started game 85 of 40000 (OopsMate-NNUE vs combusken)
+Finished game 80 (combusken vs OopsMate-NNUE): 1/2-1/2 {Draw by insufficient mating material}
+Results of OopsMate-NNUE vs combusken (10+0.1, NULL - 1t, 64MB - 16MB, book.epd):
+LLR: 0.50 (16.9%) (-2.94, 2.94) [0.00, 5.00]
+Started game 86 of 40000 (combusken vs OopsMate-NNUE)
+Finished game 82 (combusken vs OopsMate-NNUE): 0-1 {Black mates}
+Started game 87 of 40000 (OopsMate-NNUE vs combusken)
+--------------------------------------------------
+Results of OopsMate-NNUE vs combusken (10+0.1, NULL - 1t, 64MB - 16MB, book.epd):
+Elo: 117.16 +/- 51.84, nElo: 187.22 +/- 76.13
+LOS: 100.00 %, DrawRatio: 30.00 %, PairsRatio: 8.33
+Games: 80, Wins: 35, Losses: 9, Draws: 36, Points: 53.0 (66.25 %)
+Ptnml(0-2): [1, 2, 12, 20, 5], WL/DD Ratio: 0.71
+LLR: 0.50 (16.9%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+Started game 86 of 40000 (combusken vs OopsMate-NNUE)
+
+
+
+--------------------------------------------------
+ Final Result vs eleanor
+Started game 386 of 40000 (eleanor vs OopsMate-NNUE)
+Finished game 379 (OopsMate-NNUE vs eleanor): 0-1 {Black mates}
+Results of OopsMate-NNUE vs eleanor (10+0.1, NULL - 1t, 64MB - 8MB, book.epd):
+LLR: -1.06 (-36.0%) (-2.94, 2.94) [0.00, 5.00]
+Started game 387 of 40000 (OopsMate-NNUE vs eleanor)
+Warning; PV continues after threefold repetition - move c3d4 from eleanor
+
+--------------------------------------------------
+Results of OopsMate-NNUE vs eleanor (10+0.1, NULL - 1t, 64MB - 8MB, book.epd):
+Elo: -23.68 +/- 21.70, nElo: -38.19 +/- 34.84
+LOS: 1.58 %, DrawRatio: 43.46 %, PairsRatio: 0.69
+Games: 382, Wins: 92, Losses: 118, Draws: 172, Points: 178.0 (46.60 %)
+Ptnml(0-2): [10, 54, 83, 40, 4], WL/DD Ratio: 1.13
+LLR: -1.06 (-36.0%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+
+
+--------------------------------------------------
+ Final Result vs elixir_linux
+Started game 283 of 40000 (OopsMate-NNUE vs elixir_linux)
+Finished game 276 (elixir_linux vs OopsMate-NNUE): 1/2-1/2 {Draw by adjudication}
+Started game 284 of 40000 (elixir_linux vs OopsMate-NNUE)
+Finished game 281 (OopsMate-NNUE vs elixir_linux): 1-0 {White mates}
+Started game 285 of 40000 (OopsMate-NNUE vs elixir_linux)
+Finished game 280 (elixir_linux vs OopsMate-NNUE): 0-1 {Black mates}
+Results of OopsMate-NNUE vs elixir_linux (10+0.1, NULL - 1t, 64MB, book.epd):
+LLR: -0.16 (-5.5%) (-2.94, 2.94) [0.00, 5.00]
+Started game 286 of 40000 (elixir_linux vs OopsMate-NNUE)
+
+--------------------------------------------------
+Results of OopsMate-NNUE vs elixir_linux (10+0.1, NULL - 1t, 64MB, book.epd):
+Elo: -2.48 +/- 24.36, nElo: -4.15 +/- 40.70
+LOS: 42.07 %, DrawRatio: 52.14 %, PairsRatio: 0.91
+Games: 280, Wins: 68, Losses: 70, Draws: 142, Points: 139.0 (49.64 %)
+Ptnml(0-2): [5, 30, 73, 26, 6], WL/DD Ratio: 0.70
+LLR: -0.16 (-5.5%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+--------------------------------------------------
+ Final Result vs goldfish
+Finished game 139 (OopsMate-NNUE vs goldfish): 1-0 {White mates}
+Started game 143 of 40000 (OopsMate-NNUE vs goldfish)
+Warning; Last info string with score not found from goldfish
+Warning; Last info string with score not found from goldfish
+Warning; Last info string with score not found from goldfish
+Finished game 140 (goldfish vs OopsMate-NNUE): 0-1 {Black mates}
+Results of OopsMate-NNUE vs goldfish (10+0.1, NULL - 1t, 64MB - 16MB, book.epd):
+LLR: 0.99 (33.5%) (-2.94, 2.94) [0.00, 5.00]
+Started game 144 of 40000 (goldfish vs OopsMate-NNUE)
+--------------------------------------------------
+Results of OopsMate-NNUE vs goldfish (10+0.1, NULL - 1t, 64MB - 16MB, book.epd):
+Elo: 408.48 +/- 97.29, nElo: 581.21 +/- 57.97
+LOS: 100.00 %, DrawRatio: 13.04 %, PairsRatio: inf
+Games: 138, Wins: 122, Losses: 8, Draws: 8, Points: 126.0 (91.30 %)
+Ptnml(0-2): [0, 0, 9, 6, 54], WL/DD Ratio: 8.00
+LLR: 0.99 (33.5%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+
+--------------------------------------------------
+ Final Result vs Koivisto
+Started game 93 of 40000 (OopsMate-NNUE vs Koivisto)
+Finished game 89 (OopsMate-NNUE vs Koivisto): 0-1 {Black mates}
+Started game 94 of 40000 (Koivisto vs OopsMate-NNUE)
+Finished game 90 (Koivisto vs OopsMate-NNUE): 1/2-1/2 {Draw by insufficient mating material}
+Started game 95 of 40000 (OopsMate-NNUE vs Koivisto)
+Finished game 91 (OopsMate-NNUE vs Koivisto): 0-1 {Black mates}
+Started game 96 of 40000 (Koivisto vs OopsMate-NNUE)
+Finished game 93 (OopsMate-NNUE vs Koivisto): 1/2-1/2 {Draw by adjudication}
+Started game 97 of 40000 (OopsMate-NNUE vs Koivisto)
+Finished game 94 (Koivisto vs OopsMate-NNUE): 1/2-1/2 {Draw by adjudication}
+Started game 98 of 40000 (Koivisto vs OopsMate-NNUE)
+Finished game 92 (Koivisto vs OopsMate-NNUE): 1/2-1/2 {Draw by fifty moves rule}
+Started game 99 of 40000 (OopsMate-NNUE vs Koivisto)
+Finished game 95 (OopsMate-NNUE vs Koivisto): 1/2-1/2 {Draw by adjudication}
+Started game 100 of 40000 (Koivisto vs OopsMate-NNUE)
+
+
+Results of OopsMate-NNUE vs Koivisto (10+0.1, NULL - 1t, 64MB - 16MB, book.epd):
+Elo: -168.40 +/- 47.73, nElo: -315.87 +/- 76.13
+LOS: 0.00 %, DrawRatio: 30.00 %, PairsRatio: 0.00
+Games: 80, Wins: 6, Losses: 42, Draws: 32, Points: 22.0 (27.50 %)
+Ptnml(0-2): [8, 20, 12, 0, 0], WL/DD Ratio: 1.00
+LLR: -0.58 (-19.7%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+--------------------------------------------------
+ Final Result vs meltdown
+Started game 94 of 40000 (meltdown vs OopsMate-NNUE)
+Finished game 88 (meltdown vs OopsMate-NNUE): 0-1 {Black mates}
+Started game 95 of 40000 (OopsMate-NNUE vs meltdown)
+Finished game 92 (meltdown vs OopsMate-NNUE): 0-1 {Black mates}
+Started game 96 of 40000 (meltdown vs OopsMate-NNUE)
+Finished game 90 (meltdown vs OopsMate-NNUE): 1/2-1/2 {Draw by adjudication}
+Started game 97 of 40000 (OopsMate-NNUE vs meltdown)
+Finished game 95 (OopsMate-NNUE vs meltdown): 1-0 {White mates}
+Started game 98 of 40000 (meltdown vs OopsMate-NNUE)
+Finished game 96 (meltdown vs OopsMate-NNUE): 1/2-1/2 {Draw by 3-fold repetition}
+Started game 99 of 40000 (OopsMate-NNUE vs meltdown)
+Finished game 94 (meltdown vs OopsMate-NNUE): 0-1 {Black mates}
+Started game 100 of 40000 (meltdown vs OopsMate-NNUE)
+Finished game 93 (OopsMate-NNUE vs meltdown): 0-1 {Black mates}
+Started game 101 of 40000 (OopsMate-NNUE vs meltdown)
+
+--------------------------------------------------
+Results of OopsMate-NNUE vs meltdown (10+0.1, NULL - 1t, 64MB - 16MB, book.epd):
+Elo: 196.84 +/- 65.10, nElo: 292.33 +/- 77.10
+LOS: 100.00 %, DrawRatio: 28.21 %, PairsRatio: 27.00
+Games: 78, Wins: 46, Losses: 6, Draws: 26, Points: 59.0 (75.64 %)
+Ptnml(0-2): [0, 1, 11, 13, 14], WL/DD Ratio: 0.83
+LLR: 0.56 (18.9%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+--------------------------------------------------
+ Final Result vs minke
+Started game 127 of 40000 (OopsMate-NNUE vs minke)
+Finished game 121 (OopsMate-NNUE vs minke): 1/2-1/2 {Draw by fifty moves rule}
+Started game 128 of 40000 (minke vs OopsMate-NNUE)
+Finished game 124 (minke vs OopsMate-NNUE): 0-1 {Black mates}
+Started game 129 of 40000 (OopsMate-NNUE vs minke)
+Finished game 128 (minke vs OopsMate-NNUE): 1/2-1/2 {Draw by 3-fold repetition}
+Started game 130 of 40000 (minke vs OopsMate-NNUE)
+Finished game 125 (OopsMate-NNUE vs minke): 0-1 {Black mates}
+Started game 131 of 40000 (OopsMate-NNUE vs minke)
+Finished game 126 (minke vs OopsMate-NNUE): 1-0 {White mates}
+Started game 132 of 40000 (minke vs OopsMate-NNUE)
+Finished game 130 (minke vs OopsMate-NNUE): 0-1 {Black mates}
+Started game 133 of 40000 (OopsMate-NNUE vs minke)
+Finished game 129 (OopsMate-NNUE vs minke): 0-1 {Black mates}
+Started game 134 of 40000 (minke vs OopsMate-NNUE)
+
+
+Results of OopsMate-NNUE vs minke (10+0.1, NULL - 1t, 64MB - 16MB, book.epd):
+Elo: -67.43 +/- 35.57, nElo: -121.27 +/- 62.16
+LOS: 0.01 %, DrawRatio: 45.00 %, PairsRatio: 0.27
+Games: 120, Wins: 16, Losses: 39, Draws: 65, Points: 48.5 (40.42 %)
+Ptnml(0-2): [4, 22, 27, 7, 0], WL/DD Ratio: 0.50
+LLR: -0.87 (-29.5%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+
+--------------------------------------------------
+ Final Result vs reckless-linux-avx512
+Started game 44 of 40000 (reckless-linux-avx512 vs OopsMate-NNUE)
+Finished game 39 (OopsMate-NNUE vs reckless-linux-avx512): 0-1 {Black mates}
+Started game 45 of 40000 (OopsMate-NNUE vs reckless-linux-avx512)
+Finished game 40 (reckless-linux-avx512 vs OopsMate-NNUE): 1-0 {White mates}
+Results of OopsMate-NNUE vs reckless-linux-avx512 (10+0.1, NULL - 1t, 64MB - 16MB, book.epd):
+LLR: -0.29 (-9.8%) (-2.94, 2.94) [0.00, 5.00]
+Started game 46 of 40000 (reckless-linux-avx512 vs OopsMate-NNUE)
+Finished game 41 (OopsMate-NNUE vs reckless-linux-avx512): 0-1 {Black mates}
+Started game 47 of 40000 (OopsMate-NNUE vs reckless-linux-avx512)
+
+Results of OopsMate-NNUE vs reckless-linux-avx512 (10+0.1, NULL - 1t, 64MB - 16MB, book.epd):
+Elo: -301.33 +/- 76.03, nElo: -702.07 +/- 107.67
+LOS: 0.00 %, DrawRatio: 0.00 %, PairsRatio: 0.00
+Games: 40, Wins: 0, Losses: 28, Draws: 12, Points: 6.0 (15.00 %)
+Ptnml(0-2): [8, 12, 0, 0, 0], WL/DD Ratio: -nan
+LLR: -0.29 (-9.8%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+ Final Result vs sayuri
+Started game 26 of 40000 (sayuri vs OopsMate-NNUE)
+Finished game 20 (sayuri vs OopsMate-NNUE): 0-1 {Black mates}
+Started game 27 of 40000 (OopsMate-NNUE vs sayuri)
+Finished game 19 (OopsMate-NNUE vs sayuri): 1-0 {White mates}
+Results of OopsMate-NNUE vs sayuri (10+0.1, NULL - 1t, 64MB - 1MB, book.epd):
+LLR: 0.16 (5.3%) (-2.94, 2.94) [0.00, 5.00]
+Started game 28 of 40000 (sayuri vs OopsMate-NNUE)
+Finished game 26 (sayuri vs OopsMate-NNUE): 0-1 {Black mates}
+Started game 29 of 40000 (OopsMate-NNUE vs sayuri)
+
+
+--------------------------------------------------
+Results of OopsMate-NNUE vs sayuri (10+0.1, NULL - 1t, 64MB - 1MB, book.epd):
+Elo: 528.89 +/- -nan, nElo: 776.89 +/- 145.18
+LOS: 100.00 %, DrawRatio: 9.09 %, PairsRatio: inf
+Games: 22, Wins: 21, Losses: 1, Draws: 0, Points: 21.0 (95.45 %)
+Ptnml(0-2): [0, 0, 1, 0, 10], WL/DD Ratio: inf
+LLR: 0.16 (5.3%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+--------------------------------------------------
+ Final Result vs seredina
+Finished game 40 (seredina vs OopsMate-NNUE): 0-1 {Black mates}
+Started game 45 of 40000 (OopsMate-NNUE vs seredina)
+Finished game 39 (OopsMate-NNUE vs seredina): 1-0 {White mates}
+Results of OopsMate-NNUE vs seredina (10+0.1, NULL, 64MB - 16MB, book.epd):
+LLR: 0.22 (7.6%) (-2.94, 2.94) [0.00, 5.00]
+Started game 46 of 40000 (seredina vs OopsMate-NNUE)
+
+
+--------------------------------------------------
+Results of OopsMate-NNUE vs seredina (10+0.1, NULL, 64MB - 16MB, book.epd):
+Elo: 136.97 +/- 100.40, nElo: 169.08 +/- 107.67
+LOS: 99.90 %, DrawRatio: 30.00 %, PairsRatio: 6.00
+Games: 40, Wins: 23, Losses: 8, Draws: 9, Points: 27.5 (68.75 %)
+Ptnml(0-2): [1, 1, 6, 6, 6], WL/DD Ratio: 5.00
+LLR: 0.22 (7.6%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
