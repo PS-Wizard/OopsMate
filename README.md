@@ -12,6 +12,10 @@ This is a chess engine written in rust, with 0 external dependencies. It contain
 
 OopsMate is licensed under the GNU General Public License v3.0 only. See `LICENSE`.
 
+#### Fair Play
+
+OopsMate is an educational and benchmarking-focused chess engine. Do not use it for computer-assisted play on online chess platforms or in any setting where engine assistance is prohibited.
+
 ---
 
 #### Based off of internal testing, we are ~3.3k 
