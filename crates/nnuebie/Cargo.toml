@@ -3,6 +3,7 @@ name = "nnuebie"
 version = "0.1.0"
 edition = "2021"
 description = "A lean NNUE evaluation crate for Rust chess engines"
+license = "GPL-3.0-only"
 
 [dependencies]
 

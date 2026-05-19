@@ -8,6 +8,10 @@ This is a chess engine written in rust, with 0 external dependencies. It contain
 
 **Development Has been shifted to [OopsMate-V2](https://github.com/PS-Wizard/oopsmate-v2/) as a clean rewrite. V2 aims to reach *atleast* top 50** 
 
+#### License
+
+OopsMate is licensed under the GNU General Public License v3.0 only. See `LICENSE`.
+
 ---
 
 #### Based off of internal testing, we are ~3.3k 

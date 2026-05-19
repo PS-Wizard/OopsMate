@@ -1,3 +1,16 @@
+./fastchess \
+        -engine cmd=./oopsmate-nnue name="OopsMate-v2" \
+        -engine cmd=./oopsmate_old name="OopsMate-v16-lazysmp" \
+        -each tc=10+0.1 \
+        -rounds 200 \
+        -repeat \
+        -recover \
+        -concurrency 5 \
+        -openings file=book.epd format=epd order=random \
+        -draw movenumber=40 movecount=8 score=10 \
+        -sprt elo0=0 elo1=5 alpha=0.05 beta=0.05 model=logistic \
+        -pgnout file=sprt_oopsmate_v16_vs_current.pgn
+
 cutechess-cli \
   -engine cmd=./oopsmate name="OopsMate" \
   -engine cmd=./bitbit name="BitBit" \
