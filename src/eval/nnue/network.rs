@@ -1,7 +1,7 @@
 use crate::eval::nnue::aligned::AlignedSlice;
 use crate::eval::nnue::constants::{
     BIG_FEATURE_TRANSFORMER_HASH, BIG_HALF_DIMS, BIG_LAYER_STACK_HASH, BIG_NETWORK_HASH,
-    DEFAULT_BIG_NETWORK_PATH, DEFAULT_SMALL_NETWORK_PATH, FC0_TOTAL_OUTPUTS, FC1_INPUT_DIMS,
+    DEFAULT_BIG_NETWORK_BYTES, DEFAULT_SMALL_NETWORK_BYTES, FC0_TOTAL_OUTPUTS, FC1_INPUT_DIMS,
     FC1_OUTPUTS, FEATURE_DIMS, LAYER_STACKS, NNUE_VERSION, SMALL_FEATURE_TRANSFORMER_HASH,
     SMALL_HALF_DIMS, SMALL_LAYER_STACK_HASH, SMALL_NETWORK_HASH,
 };
@@ -10,9 +10,7 @@ use crate::eval::nnue::loader::{
     read_i8_array, read_i32_array, read_leb128_i16_array, read_leb128_i32_array, read_u32,
 };
 use crate::eval::nnue::compat::{Color, Position, PositionExt, Square};
-use std::fs::File;
-use std::io::{self, BufReader, Read};
-use std::path::Path;
+use std::io::{self, Cursor, Read};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PositionInputs {
@@ -102,13 +100,12 @@ impl NetworkKind {
 
 impl NnueNetworks {
     pub fn load_default() -> io::Result<Self> {
-        Self::load(DEFAULT_BIG_NETWORK_PATH, DEFAULT_SMALL_NETWORK_PATH)
-    }
+        let mut big = Cursor::new(DEFAULT_BIG_NETWORK_BYTES);
+        let mut small = Cursor::new(DEFAULT_SMALL_NETWORK_BYTES);
 
-    pub fn load<P: AsRef<Path>, Q: AsRef<Path>>(big_path: P, small_path: Q) -> io::Result<Self> {
         Ok(Self {
-            big: LoadedNetwork::load_from_path(big_path.as_ref(), NetworkKind::Big)?,
-            small: LoadedNetwork::load_from_path(small_path.as_ref(), NetworkKind::Small)?,
+            big: LoadedNetwork::load_from_reader(&mut big, NetworkKind::Big)?,
+            small: LoadedNetwork::load_from_reader(&mut small, NetworkKind::Small)?,
         })
     }
 
@@ -128,12 +125,6 @@ impl NnueNetworks {
 }
 
 impl LoadedNetwork {
-    fn load_from_path(path: &Path, kind: NetworkKind) -> io::Result<Self> {
-        let file = File::open(path)?;
-        let mut reader = BufReader::new(file);
-        Self::load_from_reader(&mut reader, kind)
-    }
-
     fn load_from_reader<R: Read>(reader: &mut R, kind: NetworkKind) -> io::Result<Self> {
         let version = read_u32(reader)?;
         let header_hash = read_u32(reader)?;

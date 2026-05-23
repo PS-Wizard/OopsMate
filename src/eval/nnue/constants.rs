@@ -30,14 +30,19 @@ pub const QUEEN_VALUE: i32 = 2_538;
 pub const VALUE_TB_WIN_IN_MAX_PLY: i32 = 31_507;
 pub const VALUE_TB_LOSS_IN_MAX_PLY: i32 = -31_507;
 
-pub const DEFAULT_BIG_NETWORK_PATH: &str = concat!(
+/// Embedded Stockfish SF17 NNUE networks used by the default `NnueProvider`.
+///
+/// These are embedded to make distribution (e.g. AUR) self-contained: the engine
+/// does not depend on any runtime filesystem paths.
+pub const DEFAULT_BIG_NETWORK_BYTES: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/crates/nnuebie/archive/nnue/networks/nn-1c0000000000.nnue"
-);
-pub const DEFAULT_SMALL_NETWORK_PATH: &str = concat!(
+));
+
+pub const DEFAULT_SMALL_NETWORK_BYTES: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/crates/nnuebie/archive/nnue/networks/nn-37f18f62d772.nnue"
-);
+));
 
 const fn affine_hash(prev_hash: u32, output_dims: u32) -> u32 {
     let mut hash = 0xCC03_DAE4u32.wrapping_add(output_dims);

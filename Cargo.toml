@@ -81,5 +81,13 @@ codegen-units = 1
 panic = "abort"
 debug = true  
 
+[[bench]]
+name = "search_perf"
+harness = false
+
+[[bench]]
+name = "perft"
+harness = false
+
 [profile.bench]
 inherits = "release"
