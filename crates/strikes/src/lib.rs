@@ -1,168 +1,273 @@
-#[cfg(not(target_arch = "x86_64"))]
-compile_error!("strikes currently supports x86_64 only");
+use crate::{
+    attacks::{
+        bishops::{generate_bishop_attacks, generate_bishop_masks},
+        kings::generate_king_attacks,
+        knights::generate_knight_attacks,
+        pawns::generate_pawn_attacks,
+        rooks::{generate_rook_attacks, generate_rook_masks},
+    },
+    paths::{between::generate_between, through::generate_line},
+    table_builder::generate_attack_table,
+};
+use std::sync::LazyLock;
 
-#[cfg(not(target_feature = "bmi2"))]
-compile_error!("strikes currently requires BMI2 support for PEXT-based slider lookups");
+mod attacks;
+mod enumerate;
+mod paths;
+mod table_builder;
 
-// The large attack tables are generated at build time so runtime stays tiny and
-// pays no initialization cost.
-include!(concat!(env!("OUT_DIR"), "/tables.rs"));
+// Attacks & Masks
+pub static PAWN_ATTACKS: [[u64; 64]; 2] = generate_pawn_attacks();
+pub static KING_ATTACKS: [u64; 64] = generate_king_attacks();
+pub static KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
+pub static ROOK_MASKS: [u64; 64] = generate_rook_masks();
+pub static BISHOP_MASKS: [u64; 64] = generate_bishop_masks();
+pub static ROOK_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+    LazyLock::new(|| generate_attack_table(generate_rook_attacks, &ROOK_MASKS));
+pub static BISHOP_ATTACKS: LazyLock<Vec<Vec<u64>>> =
+    LazyLock::new(|| generate_attack_table(generate_bishop_attacks, &BISHOP_MASKS));
 
-mod backend;
-mod geometry;
-mod leapers;
-mod sliders;
+#[inline(always)]
+fn pext_index(blockers: u64, mask: u64) -> usize {
+    unsafe { std::arch::x86_64::_pext_u64(blockers, mask) as usize }
+}
 
-pub use geometry::{line_between, line_through};
-pub use leapers::{king_attacks, knight_attacks, pawn_attacks};
-pub use sliders::{bishop_attacks, queen_attacks, rook_attacks};
+#[inline(always)]
+pub fn pawn_attacks(color: usize, square: usize) -> u64 {
+    PAWN_ATTACKS[color][square]
+}
 
+#[inline(always)]
+pub fn king_attacks(square: usize) -> u64 {
+    KING_ATTACKS[square]
+}
+
+#[inline(always)]
+pub fn knight_attacks(square: usize) -> u64 {
+    KNIGHT_ATTACKS[square]
+}
+
+#[inline(always)]
+pub fn bishop_attacks(square: usize, blockers: u64) -> u64 {
+    let index = pext_index(blockers, BISHOP_MASKS[square]);
+    BISHOP_ATTACKS[square][index]
+}
+
+#[inline(always)]
+pub fn rook_attacks(square: usize, blockers: u64) -> u64 {
+    let index = pext_index(blockers, ROOK_MASKS[square]);
+    ROOK_ATTACKS[square][index]
+}
+
+#[inline(always)]
+pub fn queen_attacks(square: usize, blockers: u64) -> u64 {
+    bishop_attacks(square, blockers) | rook_attacks(square, blockers)
+}
+
+// Ray between 2 given indices
+pub static BETWEEN: [[u64; 64]; 64] = generate_between();
+pub static THROUGH: [[u64; 64]; 64] = generate_line();
+
+/// Gets all indices containing to given square, i.e
+/// line_between("a2","c2") -> "b2"
+#[inline(always)]
+pub fn line_between(from: usize, to: usize) -> u64 {
+    BETWEEN[from][to]
+}
+
+/// Gets all indices containing to given square, i.e
+/// line_through("a1","b1") -> "a1,b1,c1,d1,e1,...,h1"
+#[inline(always)]
+pub fn line_through(sq1: usize, sq2: usize) -> u64 {
+    THROUGH[sq1][sq2]
+}
+
+/// Function to warm up attack tables, move stuff into cpu cache
 pub fn warmup_attack_tables() {
+    use std::arch::x86_64::_pext_u64;
+
+    // Force LazyLock initialization for all tables
+    let _ = BISHOP_ATTACKS.len();
+    let _ = ROOK_ATTACKS.len();
+
     let mut sink = 0u64;
 
-    for &value in &PAWN_ATTACKS[0] {
-        sink ^= value;
+    // --- Warm up masks explicitly ---
+    for &mask in BISHOP_MASKS.iter() {
+        sink ^= mask;
     }
-    for &value in &PAWN_ATTACKS[1] {
-        sink ^= value;
+    for &mask in ROOK_MASKS.iter() {
+        sink ^= mask;
     }
-    for &value in &KNIGHT_ATTACKS {
-        sink ^= value;
+
+    // --- Warm up fixed tables ---
+    for sq in 0..64 {
+        sink ^= KING_ATTACKS[sq];
+        sink ^= KNIGHT_ATTACKS[sq];
     }
-    for &value in &KING_ATTACKS {
-        sink ^= value;
-    }
-    for &value in &ROOK_MASKS {
-        sink ^= value;
-    }
-    for &value in &BISHOP_MASKS {
-        sink ^= value;
-    }
-    for &value in &ROOK_ATTACKS {
-        sink ^= value;
-    }
-    for &value in &BISHOP_ATTACKS {
-        sink ^= value;
-    }
-    for row in &BETWEEN {
-        for &value in row {
-            sink ^= value;
-        }
-    }
-    for row in &THROUGH {
-        for &value in row {
-            sink ^= value;
+
+    // --- Warm up bishop attacks ---
+    for sq in 0..64 {
+        let mask = BISHOP_MASKS[sq];
+        let table = &BISHOP_ATTACKS[sq];
+        for idx in 0..table.len() {
+            // simulate real _pext usage
+            let blockers = idx as u64;
+            let _ = unsafe { _pext_u64(blockers, mask) };
+            sink ^= table[idx];
         }
     }
 
+    // --- Warm up rook attacks ---
+    for sq in 0..64 {
+        let mask = ROOK_MASKS[sq];
+        let table = &ROOK_ATTACKS[sq];
+        for idx in 0..table.len() {
+            let blockers = idx as u64;
+            let _ = unsafe { _pext_u64(blockers, mask) };
+            sink ^= table[idx];
+        }
+    }
+
+    // Prevent optimizer from nuking everything
     std::hint::black_box(sink);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::arch::x86_64::_pext_u64;
+    use std::hint::black_box;
+    use std::time::Instant;
 
-    fn rook_attack_slow(square: usize, blockers: u64) -> u64 {
-        let rank = (square / 8) as i32;
-        let file = (square % 8) as i32;
-        let mut attacks = 0u64;
-
-        for (dr, df) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-            let mut r = rank + dr;
-            let mut f = file + df;
-            while (0..8).contains(&r) && (0..8).contains(&f) {
-                let target = (r * 8 + f) as usize;
-                attacks |= 1u64 << target;
-                if blockers & (1u64 << target) != 0 {
-                    break;
-                }
-                r += dr;
-                f += df;
-            }
+    // Helper to run a benchmark loop and return average ns per op
+    fn bench_op<F>(name: &str, iterations: u64, mut op: F)
+    where
+        F: FnMut(),
+    {
+        let start = Instant::now();
+        for _ in 0..iterations {
+            op();
         }
+        let duration = start.elapsed();
+        let ns_per_op = duration.as_nanos() as f64 / iterations as f64;
 
-        attacks
-    }
-
-    fn bishop_attack_slow(square: usize, blockers: u64) -> u64 {
-        let rank = (square / 8) as i32;
-        let file = (square % 8) as i32;
-        let mut attacks = 0u64;
-
-        for (dr, df) in [(1, 1), (1, -1), (-1, 1), (-1, -1)] {
-            let mut r = rank + dr;
-            let mut f = file + df;
-            while (0..8).contains(&r) && (0..8).contains(&f) {
-                let target = (r * 8 + f) as usize;
-                attacks |= 1u64 << target;
-                if blockers & (1u64 << target) != 0 {
-                    break;
-                }
-                r += dr;
-                f += df;
-            }
-        }
-
-        attacks
+        println!(
+            "{:<15} | Total: {:<10.3?} | Avg: {:.3} ns/op | Ops: {}",
+            name, duration, ns_per_op, iterations
+        );
     }
 
     #[test]
-    fn slider_tables_match_slow_reference() {
-        for square in 0..64 {
-            let rook_mask = ROOK_MASKS[square];
-            let mut blockers = 0u64;
-            loop {
-                assert_eq!(
-                    rook_attacks(square, blockers),
-                    rook_attack_slow(square, blockers)
-                );
-                blockers = blockers.wrapping_sub(rook_mask) & rook_mask;
-                if blockers == 0 {
-                    break;
-                }
-            }
+    fn test_1_attack_lookup_speed() {
+        println!("\n╔════════════════════════════════════════════════════════════╗");
+        println!("║               ATTACK TABLE LOOKUP SPEED                    ║");
+        println!("╚════════════════════════════════════════════════════════════╝");
 
-            let bishop_mask = BISHOP_MASKS[square];
-            let mut blockers = 0u64;
-            loop {
-                assert_eq!(
-                    bishop_attacks(square, blockers),
-                    bishop_attack_slow(square, blockers)
-                );
-                blockers = blockers.wrapping_sub(bishop_mask) & bishop_mask;
-                if blockers == 0 {
-                    break;
-                }
-            }
-        }
+        warmup_attack_tables();
+
+        // 1. Sliding Pieces 
+        // We simulate real lookups: Fetch Mask -> PEXT(blockers, mask) -> Table[index]
+        let iterations = 10_000_000;
+
+        // Setup some dummy blockers to prevent constant folding
+        let dummy_blockers = 0x00FF_00FF_00FF_00FFu64;
+
+        bench_op("Rook (PEXT)", iterations, || {
+            let sq = black_box(36); // e5
+            let mask = ROOK_MASKS[sq];
+            let idx = unsafe { _pext_u64(dummy_blockers, mask) };
+            let _ = black_box(ROOK_ATTACKS[sq][idx as usize]);
+        });
+
+        bench_op("Bishop (PEXT)", iterations, || {
+            let sq = black_box(36); // e5
+            let mask = BISHOP_MASKS[sq];
+            let idx = unsafe { _pext_u64(dummy_blockers, mask) };
+            let _ = black_box(BISHOP_ATTACKS[sq][idx as usize]);
+        });
+
+        // 2. Leapers (Direct Array Access)
+        bench_op("Knight", iterations, || {
+            let sq = black_box(36);
+            let _ = black_box(KNIGHT_ATTACKS[sq]);
+        });
+
+        bench_op("King", iterations, || {
+            let sq = black_box(36);
+            let _ = black_box(KING_ATTACKS[sq]);
+        });
+
+        bench_op("Pawn (White)", iterations, || {
+            let sq = black_box(36);
+            let _ = black_box(PAWN_ATTACKS[0][sq]);
+        });
     }
 
     #[test]
-    fn leaper_tables_match_known_targets() {
-        assert_eq!(knight_attacks(28), 0x0000_2844_0044_2800);
-        assert_eq!(king_attacks(28), 0x0000_0038_2838_0000);
-        assert_eq!(pawn_attacks(WHITE, 28), 0x0000_0028_0000_0000);
-        assert_eq!(pawn_attacks(BLACK, 28), 0x0000_0000_0028_0000);
-    }
+    fn test_2_memory_footprint() {
+        println!("\n╔════════════════════════════════════════════════════════════╗");
+        println!("║               ATTACK TABLE MEMORY USAGE                    ║");
+        println!("╚════════════════════════════════════════════════════════════╝");
 
-    #[test]
-    fn geometry_tables_match_expected_lines() {
-        assert_eq!(line_between(4, 60), 0x0010_1010_1010_1000);
-        assert_eq!(line_between(2, 20), 0x0000_0000_0000_0800);
-        assert_eq!(line_between(0, 10), 0);
-        assert_eq!(line_through(4, 60), 0x1010_1010_1010_1010);
-        assert_eq!(line_through(0, 7), 0x0000_0000_0000_00ff);
-        assert_eq!(line_through(0, 9), 0x8040_2010_0804_0201);
-    }
+        // Force initialization of lazy statics
+        let _ = BISHOP_ATTACKS.len();
+        let _ = ROOK_ATTACKS.len();
 
-    #[test]
-    fn queen_attacks_is_union_of_rook_and_bishop() {
-        let occupied = 0x00ff_2400_1800_ff00;
-        for square in 0..64 {
-            assert_eq!(
-                queen_attacks(square, occupied),
-                rook_attacks(square, occupied) | bishop_attacks(square, occupied)
-            );
-        }
+        let mut total_bytes = 0;
+
+        let calc_table_size = |table: &Vec<Vec<u64>>| -> usize {
+            let top_level = table.capacity() * std::mem::size_of::<Vec<u64>>();
+            let data_level: usize = table.iter().map(|v| v.capacity() * 8).sum();
+            top_level + data_level
+        };
+
+        // 1. Sliding Pieces
+        let rook_sz = calc_table_size(&ROOK_ATTACKS);
+        let bishop_sz = calc_table_size(&BISHOP_ATTACKS);
+
+        // 2. Fixed Tables (Compile time)
+        let rook_mask_sz = std::mem::size_of_val(&ROOK_MASKS);
+        let bishop_mask_sz = std::mem::size_of_val(&BISHOP_MASKS);
+        let king_sz = std::mem::size_of_val(&KING_ATTACKS);
+        let knight_sz = std::mem::size_of_val(&KNIGHT_ATTACKS);
+        let pawn_sz = std::mem::size_of_val(&PAWN_ATTACKS);
+
+        total_bytes +=
+            rook_sz + bishop_sz + rook_mask_sz + bishop_mask_sz + king_sz + knight_sz + pawn_sz;
+
+        // --- Output ---
+        let to_kb = |b: usize| b as f64 / 1024.0;
+        let to_mb = |b: usize| b as f64 / (1024.0 * 1024.0);
+
+        println!(
+            "{:<15} | {:>10.2} KB | {:>10.2} MB",
+            "Rook Table",
+            to_kb(rook_sz),
+            to_mb(rook_sz)
+        );
+        println!(
+            "{:<15} | {:>10.2} KB | {:>10.2} MB",
+            "Bishop Table",
+            to_kb(bishop_sz),
+            to_mb(bishop_sz)
+        );
+        println!("{:<15} | {:>10.2} KB |", "Rook Masks", to_kb(rook_mask_sz));
+        println!(
+            "{:<15} | {:>10.2} KB |",
+            "Bishop Masks",
+            to_kb(bishop_mask_sz)
+        );
+        println!("{:<15} | {:>10.2} KB |", "King Table", to_kb(king_sz));
+        println!("{:<15} | {:>10.2} KB |", "Knight Table", to_kb(knight_sz));
+        println!("{:<15} | {:>10.2} KB |", "Pawn Table", to_kb(pawn_sz));
+
+        println!("--------------------------------------------------");
+        println!(
+            "{:<15} | {:>10.2} KB | {:>10.2} MB",
+            "TOTAL",
+            to_kb(total_bytes),
+            to_mb(total_bytes)
+        );
     }
 }

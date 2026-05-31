@@ -5,3 +5,10 @@ version = 4
 [[package]]
 name = "strikes"
 version = "0.1.0"
+dependencies = [
+ "utilities",
+]
+
+[[package]]
+name = "utilities"
+version = "0.1.0"
