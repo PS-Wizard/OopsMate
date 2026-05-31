@@ -18,6 +18,9 @@ dependencies = [
 [[package]]
 name = "strikes"
 version = "0.1.0"
+dependencies = [
+ "utilities",
+]
 
 [[package]]
 name = "utilities"

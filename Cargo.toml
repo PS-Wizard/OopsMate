@@ -39,7 +39,9 @@ see = []
 search-full = [
     "pvs",
     "aspiration-windows",
+    "iid",
     "singular-extensions",
+    "check-extensions",
 ]
 pruning-full = [
     "null-move",
